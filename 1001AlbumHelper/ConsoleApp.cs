@@ -5,19 +5,28 @@ bool keepRunning = true;
 while (keepRunning)
 {
     Console.WriteLine("\n=== 1001 Albums Helper ===\n");
-    Console.WriteLine("1. Fetch fresh 1001 Albums list from Discogs");
-    Console.WriteLine("2. Create 'Albums Larkins Thinks You Must Hear' from starred albums");
-    Console.WriteLine("3. Renumber My Replacement Albums list");
-    Console.WriteLine("4. Download latest sheets from Google Sheets");
-    Console.WriteLine("5. Merge Discogs list with my existing ratings");
-    Console.WriteLine("\nEnter your choice (1-5, or 'q' to quit): ");
+
+    Console.WriteLine("Common options:");
+    Console.WriteLine("  1. Download latest sheets from Google Sheets");
+    Console.WriteLine("     Download the newest versions of all your album lists from Google Sheets into the input folder.\n");
+    Console.WriteLine("  2. Create 'Albums Larkins Thinks You Must Hear' from starred albums");
+    Console.WriteLine("     Generate a list of your favorite albums (those you've starred) from your main rated CSV.\n");
+    Console.WriteLine("  3. Renumber My Replacement Albums list");
+    Console.WriteLine("     Sort and renumber your replacement albums list, saving a clean version to the output folder.\n");
+
+    Console.WriteLine("Other options:");
+    Console.WriteLine("  4. Fetch fresh 1001 Albums list from Discogs");
+    Console.WriteLine("     Download the official 1001 albums list from Discogs and save as a CSV.\n");
+    Console.WriteLine("  5. Merge Discogs list with my existing ratings");
+    Console.WriteLine("     Combine the Discogs album list with your ratings to create a merged CSV.\n");
+    Console.WriteLine("Enter your choice (1-5, or 'q' to quit): ");
 
     string? choice = Console.ReadLine();
 
     switch (choice?.ToLower())
     {
         case "1":
-            await FetchFreshListAsync();
+            await DownloadGoogleSheetsAsync();
             break;
         case "2":
             CreateStarredAlbumsList();
@@ -26,7 +35,7 @@ while (keepRunning)
             RenumberReplacementAlbums();
             break;
         case "4":
-            await DownloadGoogleSheetsAsync();
+            await FetchFreshListAsync();
             break;
         case "5":
             MergeRatingsWithDiscogsList();
@@ -64,23 +73,53 @@ async Task FetchFreshListAsync()
 void CreateStarredAlbumsList()
 {
     Console.WriteLine("\n=== Creating Starred Albums List ===\n");
-    
     var processor = new AlbumProcessor();
-    // Read the main file with ratings, output filtered starred albums
     string inputPath = Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "input", "1001 Albums You Must Hear Before You Die - 1001 albums.csv");
     inputPath = Path.GetFullPath(inputPath);
-    processor.CreateStarredAlbumsList(inputPath, "1001 Albums Larkins Thinks You Must Hear.csv");
+    string outputFileName = "1001 Albums Larkins Thinks You Must Hear.csv";
+    processor.CreateStarredAlbumsList(inputPath, outputFileName);
+
+    // Open the generated file
+    string outputPath = Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "output", outputFileName);
+    outputPath = Path.GetFullPath(outputPath);
+    TryOpenFile(outputPath);
 }
 
 void RenumberReplacementAlbums()
 {
     Console.WriteLine("\n=== Renumbering Replacement Albums ===\n");
-    
     var processor = new AlbumProcessor();
-    // Read the replacement albums CSV and renumber it
     string inputPath = Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "input", "1001 Albums You Must Hear Before You Die - *my replacement albums.csv");
     inputPath = Path.GetFullPath(inputPath);
-    processor.RenumberReplacementAlbums(inputPath, "my replacement albums.csv");
+    string outputFileName = "my replacement albums.csv";
+    processor.RenumberReplacementAlbums(inputPath, outputFileName);
+
+    // Open the generated file
+    string outputPath = Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "output", outputFileName);
+    outputPath = Path.GetFullPath(outputPath);
+    TryOpenFile(outputPath);
+}
+
+// Helper to open a file in the default app (cross-platform)
+void TryOpenFile(string filePath)
+{
+    try
+    {
+#if WINDOWS
+    System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(filePath) { UseShellExecute = true });
+#elif MACOS
+    System.Diagnostics.Process.Start("open", $"\"{filePath}\"");
+#elif LINUX
+    System.Diagnostics.Process.Start("xdg-open", $"\"{filePath}\"");
+#else
+    // Try open for .NET 6+
+    System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo { FileName = filePath, UseShellExecute = true });
+#endif
+    }
+    catch (Exception ex)
+    {
+    Console.WriteLine($"(Could not open file automatically: {ex.Message})");
+    }
 }
 
 async Task DownloadGoogleSheetsAsync()
