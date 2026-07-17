@@ -186,9 +186,8 @@ public class AlbumProcessor
             }).ToList();
 
             // Create CSV output
-            Directory.CreateDirectory("output");
-            string outputPath = Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "output", outputFileName);
-            outputPath = Path.GetFullPath(outputPath);
+            Directory.CreateDirectory(Operations.OutputDir);
+            string outputPath = Path.Combine(Operations.OutputDir, outputFileName);
 
             using var writer = new StreamWriter(outputPath);
             
@@ -393,10 +392,9 @@ public class AlbumProcessor
             Console.WriteLine("\nSaving merged list...");
             
             // Save output
-            Directory.CreateDirectory("output");
-            string outputPath = Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "output", outputFileName);
-            outputPath = Path.GetFullPath(outputPath);
-            
+            Directory.CreateDirectory(Operations.OutputDir);
+            string outputPath = Path.Combine(Operations.OutputDir, outputFileName);
+
             File.WriteAllLines(outputPath, mergedLines);
             
             Console.WriteLine($"✓ Successfully merged! Saved to: {outputPath}");

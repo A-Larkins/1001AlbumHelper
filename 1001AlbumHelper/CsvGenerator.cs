@@ -6,12 +6,11 @@ public class CsvGenerator
     {
         try
         {
-            Directory.CreateDirectory("output");
-            string outputPath = Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "output", fileName);
-            outputPath = Path.GetFullPath(outputPath);
+            Directory.CreateDirectory(Operations.OutputDir);
+            string outputPath = Path.Combine(Operations.OutputDir, fileName);
 
             using var writer = new StreamWriter(outputPath);
-            
+
             // Write legend (matching Google Sheets format exactly)
             writer.WriteLine("0,⭐,Really enjoyable/Favs,Only bangers and/or perfect albums.");
             writer.WriteLine("0,👍,Mostly enjoyable,\"Good stuff, but just not my favorite, or just not a perfect album.\"");
@@ -47,12 +46,11 @@ public class CsvGenerator
     {
         try
         {
-            Directory.CreateDirectory("output");
-            string outputPath = Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "output", fileName);
-            outputPath = Path.GetFullPath(outputPath);
+            Directory.CreateDirectory(Operations.OutputDir);
+            string outputPath = Path.Combine(Operations.OutputDir, fileName);
 
             using var writer = new StreamWriter(outputPath);
-            
+
             // Write headers
             writer.WriteLine("#,Album,Artist,Year");
             
