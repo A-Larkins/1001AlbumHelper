@@ -1,0 +1,133 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="_1001AlbumHelper.ListViewerWindow"
+        xmlns:local="clr-namespace:_1001AlbumHelper"
+        Width="880" Height="680" MinWidth="640" MinHeight="480"
+        Title="Browse lists"
+        WindowStartupLocation="CenterOwner"
+        RequestedThemeVariant="Dark">
+
+  <Window.Background>
+    <LinearGradientBrush StartPoint="0%,0%" EndPoint="30%,100%">
+      <GradientStop Color="#151020" Offset="0" />
+      <GradientStop Color="#0e0b09" Offset="0.45" />
+      <GradientStop Color="#0b0807" Offset="1" />
+    </LinearGradientBrush>
+  </Window.Background>
+
+  <Window.Styles>
+    <Style Selector="Button.seg">
+      <Setter Property="Background" Value="#1d1714" />
+      <Setter Property="BorderBrush" Value="#362b23" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="8" />
+      <Setter Property="Padding" Value="14,7" />
+      <Setter Property="Foreground" Value="#9c8b7c" />
+      <Setter Property="FontSize" Value="12.5" />
+      <Setter Property="Cursor" Value="Hand" />
+    </Style>
+    <Style Selector="Button.seg:pointerover /template/ ContentPresenter">
+      <Setter Property="BorderBrush" Value="#4a3a2c" />
+    </Style>
+    <Style Selector="Button.seg.on">
+      <Setter Property="Background" Value="#3a2b12" />
+      <Setter Property="BorderBrush" Value="#b3852f" />
+      <Setter Property="Foreground" Value="#f5c985" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+
+    <Style Selector="Button.ghost">
+      <Setter Property="Background" Value="#221b16" />
+      <Setter Property="BorderBrush" Value="#3a2e25" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="8" />
+      <Setter Property="Padding" Value="12,7" />
+      <Setter Property="Foreground" Value="#cbbdb0" />
+      <Setter Property="FontSize" Value="12" />
+      <Setter Property="Cursor" Value="Hand" />
+    </Style>
+    <Style Selector="Button.ghost:pointerover /template/ ContentPresenter">
+      <Setter Property="BorderBrush" Value="#54453a" />
+    </Style>
+
+    <Style Selector="TextBox.search">
+      <Setter Property="Background" Value="#141010" />
+      <Setter Property="BorderBrush" Value="#3a2e25" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="9" />
+      <Setter Property="Padding" Value="11,8" />
+      <Setter Property="Foreground" Value="#f3e9df" />
+      <Setter Property="FontSize" Value="13" />
+    </Style>
+    <Style Selector="TextBox.search:focus /template/ Border#PART_BorderElement">
+      <Setter Property="BorderBrush" Value="#b3852f" />
+    </Style>
+
+    <Style Selector="ListBoxItem">
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="MinHeight" Value="0" />
+    </Style>
+  </Window.Styles>
+
+  <Grid Margin="20,18,20,16" RowDefinitions="Auto,Auto,Auto,*,Auto">
+
+    <!-- List picker -->
+    <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="8" Margin="0,0,0,12">
+      <Button x:Name="MasterButton" Classes="seg on" Content="📀  The 1001" Click="OnPickMaster" />
+      <Button x:Name="MustHearButton" Classes="seg" Content="⭐  Must Hear" Click="OnPickMustHear" />
+      <Button x:Name="ReplacementsButton" Classes="seg" Content="➕  Replacements" Click="OnPickReplacements" />
+    </StackPanel>
+
+    <!-- Search -->
+    <Grid Grid.Row="1" ColumnDefinitions="*,Auto" Margin="0,0,0,10">
+      <TextBox Grid.Column="0" x:Name="SearchBox" Classes="search"
+               Watermark="Search album, artist, year or number…" />
+      <TextBlock Grid.Column="1" x:Name="CountText" Text="" FontSize="12" Foreground="#9c8b7c"
+                 VerticalAlignment="Center" Margin="12,0,2,0" />
+    </Grid>
+
+    <!-- Column headings -->
+    <Grid Grid.Row="2" ColumnDefinitions="54,40,*,240,58" Margin="12,0,16,6">
+      <TextBlock Grid.Column="0" Text="#" FontSize="10.5" FontWeight="Bold" Foreground="#6f6053" />
+      <TextBlock Grid.Column="1" x:Name="RatingHeader" Text="" FontSize="10.5" FontWeight="Bold" Foreground="#6f6053" />
+      <TextBlock Grid.Column="2" Text="ALBUM" FontSize="10.5" FontWeight="Bold" Foreground="#6f6053" />
+      <TextBlock Grid.Column="3" Text="ARTIST" FontSize="10.5" FontWeight="Bold" Foreground="#6f6053" />
+      <TextBlock Grid.Column="4" Text="YEAR" FontSize="10.5" FontWeight="Bold" Foreground="#6f6053" />
+    </Grid>
+
+    <Border Grid.Row="3" CornerRadius="12" Background="#120f0e" BorderBrush="#282019" BorderThickness="1">
+      <Panel>
+        <ListBox x:Name="RowsList" Background="Transparent" BorderThickness="0" Padding="4">
+          <ListBox.ItemTemplate>
+            <DataTemplate x:DataType="local:ViewRow">
+              <Grid ColumnDefinitions="54,40,*,240,58" Margin="8,6">
+                <TextBlock Grid.Column="0" Text="{Binding Number}" FontSize="12"
+                           Foreground="#7f7164" FontFamily="Menlo,Consolas,monospace" />
+                <TextBlock Grid.Column="1" Text="{Binding Rating}" FontSize="13" />
+                <TextBlock Grid.Column="2" Text="{Binding Title}" FontSize="13"
+                           Foreground="#f0e5da" TextTrimming="CharacterEllipsis" />
+                <TextBlock Grid.Column="3" Text="{Binding Artist}" FontSize="12.5"
+                           Foreground="#b9a894" TextTrimming="CharacterEllipsis" />
+                <TextBlock Grid.Column="4" Text="{Binding Year}" FontSize="12"
+                           Foreground="#7f7164" FontFamily="Menlo,Consolas,monospace" />
+              </Grid>
+            </DataTemplate>
+          </ListBox.ItemTemplate>
+        </ListBox>
+
+        <TextBlock x:Name="MessageText" Text="Loading…" FontSize="14" Foreground="#a99884"
+                   HorizontalAlignment="Center" VerticalAlignment="Center" TextWrapping="Wrap"
+                   TextAlignment="Center" />
+      </Panel>
+    </Border>
+
+    <Grid Grid.Row="4" ColumnDefinitions="*,Auto" Margin="0,12,0,0">
+      <TextBlock Grid.Column="0" x:Name="StatusText" Text="" FontSize="11.5" Foreground="#7f7164"
+                 VerticalAlignment="Center" />
+      <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
+        <Button Classes="ghost" Content="Reload" Click="OnReload" />
+        <Button Classes="ghost" Content="Close" Click="OnClose" />
+      </StackPanel>
+    </Grid>
+  </Grid>
+</Window>

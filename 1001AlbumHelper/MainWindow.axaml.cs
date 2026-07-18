@@ -79,6 +79,7 @@ public partial class MainWindow : Window
         var writer = new UiLogWriter(line => Dispatcher.UIThread.Post(() => AppendLine(line)));
         bool ok = false;
         string? err = null;
+        string? exportedPdf = null;
 
         await Task.Run(async () =>
         {
@@ -89,6 +90,7 @@ public partial class MainWindow : Window
                 switch (action)
                 {
                     case "sync-all": await Operations.SyncAllAsync(); break;
+                    case "export-pdf": exportedPdf = await Operations.ExportPdfAsync(); break;
                     case "sync-check": await Operations.ListSheetTabsAsync(); break;
                 }
                 ok = true;
@@ -120,6 +122,9 @@ public partial class MainWindow : Window
 
             // A sync changes exactly what the badge reports, so re-check once it's done.
             if (action == "sync-all") _ = RefreshSyncStatusAsync();
+
+            // Reveal the finished PDF rather than making them hunt for it.
+            if (exportedPdf is not null) RevealInFinder(exportedPdf);
         });
     }
 
@@ -131,7 +136,9 @@ public partial class MainWindow : Window
         RateNextButton.IsEnabled = !on;
         BackfillButton.IsEnabled = !on;
         AddAlbumButton.IsEnabled = !on;
+        BrowseButton.IsEnabled = !on;
         SyncButton.IsEnabled = !on;
+        ExportButton.IsEnabled = !on;
     }
 
     private void AppendLine(string line)
@@ -153,6 +160,12 @@ public partial class MainWindow : Window
         new RatingWindow(mode).ShowDialog(this);
     }
 
+    private void OnBrowse(object? sender, RoutedEventArgs e)
+    {
+        if (!BrowseButton.IsEnabled) return;
+        new ListViewerWindow().ShowDialog(this);
+    }
+
     private async void OnAddAlbum(object? sender, RoutedEventArgs e)
     {
         if (!AddAlbumButton.IsEnabled) return;
@@ -171,6 +184,19 @@ public partial class MainWindow : Window
             Console.SetOut(previousOut);
             writer.Flush();
         }
+    }
+
+    /// <summary>Opens a Finder window with the file selected.</summary>
+    private static void RevealInFinder(string path)
+    {
+        try
+        {
+            if (OperatingSystem.IsMacOS()) Process.Start("open", $"-R \"{path}\"");
+            else if (OperatingSystem.IsWindows())
+                Process.Start(new ProcessStartInfo("explorer.exe")
+                { Arguments = $"/select,\"{path}\"", UseShellExecute = true });
+        }
+        catch { /* non-fatal: the log already shows where the file went */ }
     }
 
     /// <summary>Turns Console output into one UI-thread callback per line.</summary>

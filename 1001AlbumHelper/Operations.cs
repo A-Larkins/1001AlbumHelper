@@ -541,6 +541,80 @@ public static class Operations
                         + (plan.Removed.Count > 0 ? $", {plan.Removed.Count} removed" : "") + ".");
     }
 
+    /// <summary>All three lists as read from the sheet, for read-only consumers.</summary>
+    public sealed record AllLists(
+        IReadOnlyList<AlbumEntry> Master,
+        IReadOnlyList<NumberedList.Row> MustHear,
+        IReadOnlyList<NumberedList.Row> Replacements,
+        string? Error = null);
+
+    /// <summary>Reads every list in one pass. Read-only — nothing is written.</summary>
+    public static async Task<AllLists> LoadAllListsAsync()
+    {
+        var noAlbums = Array.Empty<AlbumEntry>();
+        var noRows = Array.Empty<NumberedList.Row>();
+
+        var cfg = LoadSheetsConfig();
+        GoogleSheetsWriter? writer;
+        try
+        {
+            writer = await CreateWriterQuietlyAsync(cfg);
+        }
+        catch (Exception ex)
+        {
+            return new AllLists(noAlbums, noRows, noRows, $"Couldn't reach Google Sheets: {ex.Message}");
+        }
+        if (writer is null)
+            return new AllLists(noAlbums, noRows, noRows, "Google Sheets isn't configured.");
+
+        try
+        {
+            var master = await RatingSession.LoadAsync(writer, cfg.AlbumsTab, cfg.StarredTab);
+            var mustHear = await NumberedList.ReadAsync(writer, cfg.StarredTab);
+            var replacements = await NumberedList.ReadAsync(writer, cfg.ReplacementsTab);
+            return new AllLists(master.AllAlbums, mustHear.Rows, replacements.Rows);
+        }
+        catch (Exception ex)
+        {
+            return new AllLists(noAlbums, noRows, noRows, $"Couldn't read the lists: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Exports the combined list — ⭐ picks kept from the 1001, then the replacements — as a
+    /// numbered PDF. Returns the file path, or null if it couldn't be produced.
+    /// </summary>
+    public static async Task<string?> ExportPdfAsync(string? destination = null)
+    {
+        Console.WriteLine("\n=== Export to PDF ===\n");
+
+        var lists = await LoadAllListsAsync();
+        if (lists.Error is not null)
+        {
+            Console.WriteLine($"✗ {lists.Error}");
+            return null;
+        }
+
+        var cfg = LoadSheetsConfig();
+        string path = destination ?? Path.Combine(
+            OutputDir, $"1001 Albums Larkins Thinks You Must Hear - {DateTime.Now:yyyy-MM-dd}.pdf");
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+
+        Console.WriteLine($"Must Hear: {lists.MustHear.Count} · replacements: {lists.Replacements.Count}");
+        try
+        {
+            PdfExporter.Write(path, lists.MustHear, lists.Replacements, cfg.StarredTab);
+            Console.WriteLine($"✓ Wrote {lists.MustHear.Count + lists.Replacements.Count} albums to:");
+            Console.WriteLine($"   {path}");
+            return path;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"✗ Couldn't write the PDF: {ex.Message}");
+            return null;
+        }
+    }
+
     /// <summary>Authenticates without the chatty console output, for the startup check.</summary>
     private static async Task<GoogleSheetsWriter?> CreateWriterQuietlyAsync(GoogleSheetsConfig cfg)
     {

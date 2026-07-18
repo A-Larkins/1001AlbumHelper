@@ -192,7 +192,7 @@
         </Grid>
       </Button>
 
-      <Grid ColumnDefinitions="*,*">
+      <Grid ColumnDefinitions="*,*,*">
         <Button Grid.Column="0" x:Name="BackfillButton" Classes="card" Click="OnBackfill" Margin="0,0,6,0">
           <Grid ColumnDefinitions="Auto,*">
             <Border Grid.Column="0" Classes="badge">
@@ -205,7 +205,7 @@
           </Grid>
         </Button>
 
-        <Button Grid.Column="1" x:Name="AddAlbumButton" Classes="card" Click="OnAddAlbum" Margin="6,0,0,0">
+        <Button Grid.Column="1" x:Name="AddAlbumButton" Classes="card" Click="OnAddAlbum" Margin="6,0,6,0">
           <Grid ColumnDefinitions="Auto,*">
             <Border Grid.Column="0" Classes="badge">
               <TextBlock Text="➕" />
@@ -216,7 +216,31 @@
             </StackPanel>
           </Grid>
         </Button>
+
+        <Button Grid.Column="2" x:Name="BrowseButton" Classes="card" Click="OnBrowse" Margin="6,0,0,0">
+          <Grid ColumnDefinitions="Auto,*">
+            <Border Grid.Column="0" Classes="badge">
+              <TextBlock Text="🔍" />
+            </Border>
+            <StackPanel Grid.Column="1" Margin="13,0,0,0" VerticalAlignment="Center">
+              <TextBlock Classes="title" Text="Browse &amp; search" />
+              <TextBlock Classes="desc" Text="Look through any of the three lists." />
+            </StackPanel>
+          </Grid>
+        </Button>
       </Grid>
+
+      <Button x:Name="ExportButton" Classes="card" Tag="export-pdf" Click="OnRun">
+        <Grid ColumnDefinitions="Auto,*">
+          <Border Grid.Column="0" Classes="badge">
+            <TextBlock Text="📄" />
+          </Border>
+          <StackPanel Grid.Column="1" Margin="13,0,0,0" VerticalAlignment="Center">
+            <TextBlock Classes="title" Text="Export as PDF" />
+            <TextBlock Classes="desc" Text="Must Hear plus your replacements, numbered straight through, in two sections." />
+          </StackPanel>
+        </Grid>
+      </Button>
 
       <Button x:Name="SyncButton" Classes="card" Tag="sync-all" Click="OnRun">
         <Grid ColumnDefinitions="Auto,*,Auto">
