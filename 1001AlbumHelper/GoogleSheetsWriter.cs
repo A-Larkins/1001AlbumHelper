@@ -226,6 +226,29 @@ public sealed class GoogleSheetsWriter
         await update.ExecuteAsync();
     }
 
+    /// <summary>
+    /// Overwrites a rectangular block of values starting at <paramref name="topLeft"/> (e.g. "A2").
+    /// Only values change — formatting, and anything outside the block, is left alone.
+    /// </summary>
+    public async Task WriteRangeAsync(string tabName, string topLeft, IList<IList<object>> rows)
+    {
+        if (rows.Count == 0) return;
+
+        var update = _service.Spreadsheets.Values.Update(
+            new ValueRange { Values = rows }, _spreadsheetId, $"{QuoteTab(tabName)}!{topLeft}");
+        update.ValueInputOption =
+            SpreadsheetsResource.ValuesResource.UpdateRequest.ValueInputOptionEnum.RAW;
+        await update.ExecuteAsync();
+    }
+
+    /// <summary>Blanks a range's values (used to clear rows left over after a compaction).</summary>
+    public async Task ClearRangeAsync(string tabName, string a1Range)
+    {
+        await _service.Spreadsheets.Values
+            .Clear(new ClearValuesRequest(), _spreadsheetId, $"{QuoteTab(tabName)}!{a1Range}")
+            .ExecuteAsync();
+    }
+
     /// <summary>Overwrites a single column from <paramref name="startRow"/> down. Other columns are untouched.</summary>
     public async Task WriteColumnAsync(string tabName, string column, int startRow, IReadOnlyList<string> values)
     {

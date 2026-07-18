@@ -217,6 +217,25 @@
           </Grid>
         </Button>
       </Grid>
+
+      <Button x:Name="SyncButton" Classes="card" Tag="sync-all" Click="OnRun">
+        <Grid ColumnDefinitions="Auto,*,Auto">
+          <Border Grid.Column="0" Classes="badge">
+            <TextBlock Text="🔄" />
+          </Border>
+          <StackPanel Grid.Column="1" Margin="13,0,0,0" VerticalAlignment="Center">
+            <TextBlock Classes="title" Text="Sync all" />
+            <TextBlock x:Name="SyncDescText" Classes="desc"
+                       Text="Reconciles both lists with the 1001 list — catches edits made in the browser." />
+          </StackPanel>
+          <Border Grid.Column="2" x:Name="SyncBadge" IsVisible="False" VerticalAlignment="Center"
+                  CornerRadius="999" Background="#5a3a12" BorderBrush="#d8a24a" BorderThickness="1"
+                  Padding="10,4" Margin="10,0,0,0">
+            <TextBlock x:Name="SyncBadgeText" Text="" FontSize="11" FontWeight="SemiBold"
+                       Foreground="#f7cf90" />
+          </Border>
+        </Grid>
+      </Button>
     </StackPanel>
 
     <!-- ===== Log ===== -->

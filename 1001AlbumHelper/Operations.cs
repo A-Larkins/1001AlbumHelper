@@ -378,6 +378,166 @@ public static class Operations
         }
     }
 
+    /// <summary>What a sync would have to fix. All counts come from a read-only pass.</summary>
+    public sealed record SyncStatus(
+        IReadOnlyList<AlbumEntry> MissingStars,
+        int LooseReplacements,
+        bool ReplacementsMisnumbered,
+        bool MustHearMisnumbered,
+        IReadOnlyList<NumberedList.Row> NoLongerStarred,
+        string? Error = null)
+    {
+        /// <summary>Entries on Must Hear that lost their ⭐ are reported but never removed.</summary>
+        public bool NeedsSync => MissingStars.Count > 0 || LooseReplacements > 0
+                              || ReplacementsMisnumbered || MustHearMisnumbered;
+
+        public string Summary()
+        {
+            if (Error is not null) return Error;
+            if (!NeedsSync) return "Everything's in sync.";
+
+            var bits = new List<string>();
+            if (MissingStars.Count > 0) bits.Add($"{MissingStars.Count} ⭐ missing from Must Hear");
+            if (LooseReplacements > 0) bits.Add($"{LooseReplacements} unnumbered replacement(s)");
+            if (ReplacementsMisnumbered) bits.Add("replacements need renumbering");
+            if (MustHearMisnumbered) bits.Add("Must Hear needs renumbering");
+            return string.Join(" · ", bits);
+        }
+    }
+
+    /// <summary>Read-only: works out whether a sync is needed. Never modifies the spreadsheet.</summary>
+    public static async Task<SyncStatus> CheckSyncStatusAsync(bool quiet = false)
+    {
+        var empty = Array.Empty<AlbumEntry>();
+        var noRows = Array.Empty<NumberedList.Row>();
+
+        var cfg = LoadSheetsConfig();
+        GoogleSheetsWriter? writer;
+        try
+        {
+            writer = quiet ? await CreateWriterQuietlyAsync(cfg) : await CreateWriterAsync(cfg);
+        }
+        catch (Exception ex)
+        {
+            return new SyncStatus(empty, 0, false, false, noRows, $"Couldn't reach Google Sheets: {ex.Message}");
+        }
+        if (writer is null)
+            return new SyncStatus(empty, 0, false, false, noRows, "Google Sheets isn't configured.");
+
+        try
+        {
+            var master = await RatingSession.LoadAsync(writer, cfg.AlbumsTab, cfg.StarredTab);
+            var mustHear = await NumberedList.ReadAsync(writer, cfg.StarredTab);
+            var replacements = await NumberedList.ReadAsync(writer, cfg.ReplacementsTab);
+
+            var starred = master.AllAlbums.Where(a => a.Rating == RatingSession.Starred).ToList();
+            var missing = starred
+                .Where(a => NumberedList.Find(mustHear, a.Title, a.Artist) is null)
+                .ToList();
+
+            // The reverse direction: on Must Hear but no longer starred upstream.
+            var stale = mustHear.Rows
+                .Where(r => !starred.Any(a =>
+                    NumberedList.Matches(a.Title, r.Title) && NumberedList.Matches(a.Artist, r.Artist)))
+                .ToList();
+
+            return new SyncStatus(
+                missing,
+                replacements.Unnumbered.Count,
+                NumberedList.NumberingIsBroken(replacements) || replacements.Unnumbered.Count > 0,
+                NumberedList.NumberingIsBroken(mustHear) || mustHear.Unnumbered.Count > 0,
+                stale);
+        }
+        catch (Exception ex)
+        {
+            return new SyncStatus(empty, 0, false, false, noRows, $"Sync check failed: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Reconciles both derived lists with the master list: adds ⭐ albums missing from Must Hear,
+    /// places any unnumbered replacement rows by year, and renumbers both lists.
+    /// <para>
+    /// Deliberately additive — an album on Must Hear whose ⭐ was removed upstream is reported but
+    /// left in place, since deleting someone's row on a guess is not a repair.
+    /// </para>
+    /// </summary>
+    public static async Task SyncAllAsync()
+    {
+        Console.WriteLine("\n=== Sync all ===\n");
+
+        var cfg = LoadSheetsConfig();
+        var writer = await CreateWriterAsync(cfg);
+        if (writer is null) return;
+
+        var master = await RatingSession.LoadAsync(writer, cfg.AlbumsTab, cfg.StarredTab);
+        var starred = master.AllAlbums.Where(a => a.Rating == RatingSession.Starred).ToList();
+        Console.WriteLine($"Master list: {master.TotalAlbums} albums, {starred.Count} starred.");
+
+        // 1. Stars missing from Must Hear.
+        var mustHear = await NumberedList.ReadAsync(writer, cfg.StarredTab);
+        var missing = starred.Where(a => NumberedList.Find(mustHear, a.Title, a.Artist) is null).ToList();
+
+        if (missing.Count == 0)
+        {
+            Console.WriteLine($"✓ \"{cfg.StarredTab}\" already has every ⭐.");
+        }
+        else
+        {
+            Console.WriteLine($"Adding {missing.Count} ⭐ to \"{cfg.StarredTab}\"…");
+            foreach (var album in missing)
+            {
+                if (!int.TryParse(album.Year, out int year))
+                {
+                    Console.WriteLine($"   ⚠️ skipped “{album.Title}” — unreadable year “{album.Year}”.");
+                    continue;
+                }
+                int pos = await NumberedList.InsertByYearAsync(
+                    writer, cfg.StarredTab, album.Title, album.Artist, year);
+                Console.WriteLine($"   + #{pos} {album.Title} — {album.Artist} ({year})");
+            }
+        }
+
+        // 2. Loose rows and numbering on both lists.
+        foreach (var tab in new[] { cfg.StarredTab, cfg.ReplacementsTab })
+        {
+            var repair = await NumberedList.RepairAsync(writer, tab);
+            if (repair.Placed > 0)
+                Console.WriteLine($"✓ \"{tab}\": placed {repair.Placed} unnumbered row(s) " +
+                                  $"— {string.Join(", ", repair.PlacedTitles)}");
+            if (repair.Renumbered) Console.WriteLine($"✓ \"{tab}\": renumbered from 1.");
+            else Console.WriteLine($"✓ \"{tab}\": numbering already correct.");
+        }
+
+        // 3. Advisory only.
+        var finalMustHear = await NumberedList.ReadAsync(writer, cfg.StarredTab);
+        var stale = finalMustHear.Rows
+            .Where(r => !starred.Any(a =>
+                NumberedList.Matches(a.Title, r.Title) && NumberedList.Matches(a.Artist, r.Artist)))
+            .ToList();
+        if (stale.Count > 0)
+        {
+            Console.WriteLine($"\nℹ️  {stale.Count} row(s) on \"{cfg.StarredTab}\" are no longer ⭐ upstream:");
+            foreach (var r in stale.Take(10))
+                Console.WriteLine($"     #{r.Number} {r.Title} — {r.Artist}");
+            Console.WriteLine("   Left in place — remove them by hand if they shouldn't be there.");
+        }
+
+        Console.WriteLine("\n✓ Sync complete.");
+    }
+
+    /// <summary>Authenticates without the chatty console output, for the startup check.</summary>
+    private static async Task<GoogleSheetsWriter?> CreateWriterQuietlyAsync(GoogleSheetsConfig cfg)
+    {
+        if (string.IsNullOrWhiteSpace(cfg.SpreadsheetId) || cfg.SpreadsheetId.StartsWith("PUT_"))
+            return null;
+        string credPath = Path.Combine(ProjectDir, cfg.CredentialsFile);
+        if (!File.Exists(credPath)) return null;
+
+        return await GoogleSheetsWriter.CreateAsync(
+            cfg.SpreadsheetId, credPath, Path.Combine(ProjectDir, ".google-sheets-token"));
+    }
+
     /// <summary>How an attempt to add a replacement album turned out.</summary>
     public enum AddOutcome
     {
