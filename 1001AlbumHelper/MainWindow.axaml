@@ -168,45 +168,6 @@
               <TextBlock Classes="desc" Text="Sign in and list the sheet’s tabs — a safe, read-only check that everything is wired up." />
             </StackPanel>
           </Button>
-
-          <TextBlock Classes="sectionLabel" Text="BUILD THE LISTS" />
-
-          <Button Classes="card" Tag="download" Click="OnRun">
-            <StackPanel>
-              <TextBlock Classes="title" Text="⬇  1 · Download latest sheets" />
-              <TextBlock Classes="desc" Text="Pull the newest versions of all your album lists from Google Sheets into the input folder." />
-            </StackPanel>
-          </Button>
-
-          <Button Classes="card" Tag="starred" Click="OnRun">
-            <StackPanel>
-              <TextBlock Classes="title" Text="⭐  2 · Build “Albums Larkins Must Hear”" />
-              <TextBlock Classes="desc" Text="Generate a list of your favourite (starred) albums from your main rated CSV." />
-            </StackPanel>
-          </Button>
-
-          <Button Classes="card" Tag="renumber" Click="OnRun">
-            <StackPanel>
-              <TextBlock Classes="title" Text="🔢  3 · Renumber replacement albums" />
-              <TextBlock Classes="desc" Text="Sort your replacement albums by year and write a clean, renumbered copy to output." />
-            </StackPanel>
-          </Button>
-
-          <TextBlock Classes="sectionLabel" Text="ADVANCED" />
-
-          <Button Classes="card" Tag="fetch" Click="OnRun">
-            <StackPanel>
-              <TextBlock Classes="title" Text="🌐  4 · Fetch fresh list from Discogs" />
-              <TextBlock Classes="desc" Text="Download the official 1001-albums list from the Discogs API. Takes ~17 minutes — watch the log." />
-            </StackPanel>
-          </Button>
-
-          <Button Classes="card" Tag="merge" Click="OnRun">
-            <StackPanel>
-              <TextBlock Classes="title" Text="🔀  5 · Merge ratings with Discogs list" />
-              <TextBlock Classes="desc" Text="Combine the fresh Discogs list with your existing ratings into a single merged CSV." />
-            </StackPanel>
-          </Button>
         </StackPanel>
       </ScrollViewer>
 

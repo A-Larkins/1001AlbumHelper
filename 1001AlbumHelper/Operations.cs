@@ -106,7 +106,7 @@ public static class Operations
         processor.RenumberReplacementAlbums(inputPath, ReplacementOutputFile);
     }
 
-    /// <summary>Download the official 1001-albums list from Discogs and save it as a CSV.</summary>
+    /// <summary>Download the official 1001-albums list from Discogs and save it as a new local CSV.</summary>
     public static async Task FetchFreshListAsync()
     {
         Console.WriteLine("\n=== Fetching 1001 Albums from Discogs ===\n");
@@ -117,9 +117,11 @@ public static class Operations
 
         if (albums.Count > 0)
         {
-            Console.WriteLine($"\nFound {albums.Count} albums. Creating CSV file...");
+            // A fresh, uniquely-named file each time — never overwrites anything.
+            string fileName = UniqueOutputName("1001Albums-discogs");
+            Console.WriteLine($"\nFound {albums.Count} albums. Creating {fileName}…");
             var csvGenerator = new CsvGenerator();
-            csvGenerator.CreateAlbumSpreadsheet(albums, DiscogsOutputFile);
+            csvGenerator.CreateAlbumSpreadsheet(albums, fileName);
         }
         else
         {
@@ -127,20 +129,48 @@ public static class Operations
         }
     }
 
-    /// <summary>Combine the Discogs list with your existing ratings into a merged CSV.</summary>
+    /// <summary>Combine the newest Discogs list with your ratings into a new local merged CSV.</summary>
     public static void MergeRatingsWithDiscogsList()
     {
         Console.WriteLine("\n=== Merging Ratings with Discogs List ===\n");
 
-        var processor = new AlbumProcessor();
-
-        // The fresh Discogs list produced by FetchFreshListAsync
-        string discogsPath = Path.Combine(OutputDir, DiscogsOutputFile);
+        // Use the most recent Discogs list already in the output folder.
+        string? discogsPath = LatestDiscogsList();
+        if (discogsPath is null)
+        {
+            Console.WriteLine("No Discogs list found in the output folder. Run 'Fetch fresh list from Discogs' first.");
+            return;
+        }
+        Console.WriteLine($"Using Discogs list: {Path.GetFileName(discogsPath)}");
 
         // Your existing rated list downloaded from Google Sheets
         string ratedPath = Path.Combine(InputDir, RatedListFile);
 
-        processor.MergeRatingsWithDiscogsList(discogsPath, ratedPath, DiscogsOutputFile);
+        // Write to a fresh, uniquely-named file — never overwrites anything.
+        string outName = UniqueOutputName("1001Albums-merged");
+        var processor = new AlbumProcessor();
+        processor.MergeRatingsWithDiscogsList(discogsPath, ratedPath, outName);
+    }
+
+    // A unique, timestamped output file name so Discogs runs never overwrite existing files.
+    private static string UniqueOutputName(string baseName)
+    {
+        Directory.CreateDirectory(OutputDir);
+        string stamp = DateTime.Now.ToString("yyyyMMdd-HHmmss");
+        string name = $"{baseName}-{stamp}.csv";
+        int i = 2;
+        while (File.Exists(Path.Combine(OutputDir, name)))
+            name = $"{baseName}-{stamp}-{i++}.csv";
+        return name;
+    }
+
+    private static string? LatestDiscogsList()
+    {
+        if (!Directory.Exists(OutputDir)) return null;
+        return Directory.EnumerateFiles(OutputDir, "1001Albums-discogs-*.csv")
+            .Concat(Directory.EnumerateFiles(OutputDir, DiscogsOutputFile)) // legacy name, if present
+            .OrderByDescending(File.GetLastWriteTimeUtc)
+            .FirstOrDefault();
     }
 
     // ----- Google Sheets sync -------------------------------------------------

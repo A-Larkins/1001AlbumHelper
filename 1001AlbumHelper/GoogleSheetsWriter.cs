@@ -63,8 +63,10 @@ public sealed class GoogleSheetsWriter
             .Clear(new ClearValuesRequest(), _spreadsheetId, range)
             .ExecuteAsync();
 
-        // Reset the font size across the whole tab so stale/oversized formatting
-        // (e.g. a leftover big-font row) can't linger under the new values.
+        // Reset ALL cell formatting on the tab to a clean default (10pt font, no borders,
+        // default alignment/background). "userEnteredFormat" in the field mask replaces the
+        // whole format, so leftover formatting (a big-font row, stray borders, etc.) can't
+        // make any row look different. A second request keeps the header row bold.
         var normalize = new BatchUpdateSpreadsheetRequest
         {
             Requests = new List<Request>
@@ -78,7 +80,19 @@ public sealed class GoogleSheetsWriter
                         {
                             UserEnteredFormat = new CellFormat { TextFormat = new TextFormat { FontSize = 10 } }
                         },
-                        Fields = "userEnteredFormat.textFormat.fontSize"
+                        Fields = "userEnteredFormat"
+                    }
+                },
+                new Request
+                {
+                    RepeatCell = new RepeatCellRequest
+                    {
+                        Range = new GridRange { SheetId = sheetId, StartRowIndex = 0, EndRowIndex = 1 },
+                        Cell = new CellData
+                        {
+                            UserEnteredFormat = new CellFormat { TextFormat = new TextFormat { Bold = true } }
+                        },
+                        Fields = "userEnteredFormat.textFormat.bold"
                     }
                 }
             }
