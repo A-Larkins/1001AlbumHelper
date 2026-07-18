@@ -107,26 +107,38 @@ public static class NumberedList
         return position;
     }
 
-    /// <summary>What a <see cref="RepairAsync"/> pass changed.</summary>
-    public sealed record Repair(int Placed, bool Renumbered, IReadOnlyList<string> PlacedTitles);
+    /// <summary>The outcome of an <see cref="ApplyAsync"/> pass.</summary>
+    public sealed record Plan(
+        IReadOnlyList<Row> Keep,
+        IReadOnlyList<Row> Removed,
+        IReadOnlyList<Row> Placed,
+        bool Changed);
 
     /// <summary>
-    /// Slots any unnumbered rows into their year position and renumbers the list from 1.
+    /// Works out the list's correct final state: drops rows matching <paramref name="shouldRemove"/>,
+    /// slots unnumbered rows into their year block, and renumbers from 1. Pure — no I/O.
     /// <para>
-    /// Already-numbered rows keep their existing relative order — only the numbers change. That
-    /// matters because the list is year-ordered but not perfectly sorted, so a blanket re-sort
-    /// would shuffle rows the owner deliberately placed.
+    /// Surviving numbered rows keep their existing relative order. The lists are year-ordered but
+    /// not perfectly sorted, so a blanket re-sort would move rows placed deliberately.
     /// </para>
     /// </summary>
-    public static async Task<Repair> RepairAsync(GoogleSheetsWriter writer, string tab)
+    public static Plan BuildPlan(Contents contents, Func<Row, bool>? shouldRemove = null)
     {
-        var contents = await ReadAsync(writer, tab);
+        shouldRemove ??= _ => false;
 
-        var ordered = contents.Rows.ToList();
-        var placed = new List<string>();
+        var removed = new List<Row>();
+        var ordered = new List<Row>();
+        foreach (var row in contents.Rows)
+        {
+            if (shouldRemove(row)) removed.Add(row);
+            else ordered.Add(row);
+        }
 
+        var placed = new List<Row>();
         foreach (var loose in contents.Unnumbered)
         {
+            if (shouldRemove(loose)) { removed.Add(loose); continue; }
+
             int at = ordered.Count;
             if (int.TryParse(loose.Year, out int year))
             {
@@ -136,13 +148,26 @@ public static class NumberedList
                     if (int.TryParse(ordered[i].Year, out int y) && y <= year) at = i + 1;
             }
             ordered.Insert(at, loose);
-            placed.Add(loose.Title.Length > 0 ? loose.Title : loose.Artist);
+            placed.Add(loose);
         }
 
-        bool needsRenumber = NumberingIsBroken(contents) || contents.Unnumbered.Count > 0;
-        if (!needsRenumber) return new Repair(0, false, Array.Empty<string>());
+        bool changed = removed.Count > 0 || placed.Count > 0 || NumberingIsBroken(contents);
+        return new Plan(ordered, removed, placed, changed);
+    }
 
-        var values = ordered
+    /// <summary>
+    /// Applies <see cref="BuildPlan"/> to the sheet. Rewrites the data block's values and blanks
+    /// any rows left over at the bottom once the list has shrunk. A list already in its correct
+    /// state is not written to at all.
+    /// </summary>
+    public static async Task<Plan> ApplyAsync(
+        GoogleSheetsWriter writer, string tab, Func<Row, bool>? shouldRemove = null)
+    {
+        var contents = await ReadAsync(writer, tab);
+        var plan = BuildPlan(contents, shouldRemove);
+        if (!plan.Changed) return plan;
+
+        var values = plan.Keep
             .Select((r, i) => (IList<object>)new List<object>
             {
                 (i + 1).ToString(), r.Title, r.Artist, r.Year
@@ -151,7 +176,7 @@ public static class NumberedList
 
         await writer.WriteRangeAsync(tab, $"A{contents.HeaderRow + 1}", values);
 
-        // Placing loose rows compacts the list upward, leaving stragglers at the bottom.
+        // Removing or compacting leaves stragglers below the new last row.
         int lastWritten = contents.HeaderRow + values.Count;
         int lastRead = Math.Max(
             contents.Rows.Count > 0 ? contents.Rows[^1].SheetRow : 0,
@@ -159,7 +184,7 @@ public static class NumberedList
         if (lastRead > lastWritten)
             await writer.ClearRangeAsync(tab, $"A{lastWritten + 1}:D{lastRead}");
 
-        return new Repair(placed.Count, true, placed);
+        return plan;
     }
 
     /// <summary>True if an album with the same title and artist is already on the tab.</summary>
