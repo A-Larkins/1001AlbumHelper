@@ -154,6 +154,10 @@ public static class Operations
         var writer = await CreateWriterAsync(cfg);
         if (writer is null) return;
 
+        // Pull the latest from the sheet first so we never write back stale data.
+        Console.WriteLine("\n— Refreshing input from Google Sheets —");
+        await DownloadGoogleSheetsAsync();
+
         Console.WriteLine("\n— Building 'Must Hear' list —");
         CreateStarredAlbumsList();
         await PushToSheetAsync(writer, StarredOutputFile, cfg.StarredTab);
@@ -174,6 +178,9 @@ public static class Operations
         var writer = await CreateWriterAsync(cfg);
         if (writer is null) return;
 
+        Console.WriteLine("\n— Refreshing input from Google Sheets —");
+        await DownloadGoogleSheetsAsync();
+
         CreateStarredAlbumsList();
         await PushToSheetAsync(writer, StarredOutputFile, cfg.StarredTab);
         Console.WriteLine("\n✓ Synced to Google Sheets.");
@@ -188,9 +195,46 @@ public static class Operations
         var writer = await CreateWriterAsync(cfg);
         if (writer is null) return;
 
+        Console.WriteLine("\n— Refreshing input from Google Sheets —");
+        await DownloadGoogleSheetsAsync();
+
         RenumberReplacementAlbums();
         await PushToSheetAsync(writer, ReplacementOutputFile, cfg.ReplacementsTab);
         Console.WriteLine("\n✓ Synced to Google Sheets.");
+    }
+
+    /// <summary>Read-only check: authenticate and list the configured spreadsheet's tabs.</summary>
+    public static async Task ListSheetTabsAsync()
+    {
+        Console.WriteLine("\n=== Google Sheets: connection check ===\n");
+
+        var cfg = LoadSheetsConfig();
+        var writer = await CreateWriterAsync(cfg);
+        if (writer is null) return;
+
+        try
+        {
+            var tabs = await writer.GetTabTitlesAsync();
+            Console.WriteLine($"Spreadsheet {cfg.SpreadsheetId} has {tabs.Count} tab(s):");
+            foreach (var t in tabs)
+                Console.WriteLine($"  • {t}");
+            Console.WriteLine();
+            Console.WriteLine($"Configured targets → StarredTab: \"{cfg.StarredTab}\"   ReplacementsTab: \"{cfg.ReplacementsTab}\"");
+            Console.WriteLine(tabs.Contains(cfg.StarredTab)
+                ? $"✓ \"{cfg.StarredTab}\" exists — the starred list will overwrite it."
+                : $"⚠️  \"{cfg.StarredTab}\" not found — it will be created as a new tab.");
+            Console.WriteLine(tabs.Contains(cfg.ReplacementsTab)
+                ? $"✓ \"{cfg.ReplacementsTab}\" exists — replacements will overwrite it."
+                : $"⚠️  \"{cfg.ReplacementsTab}\" not found — it will be created as a new tab.");
+        }
+        catch (Google.GoogleApiException ex) when (ex.HttpStatusCode == System.Net.HttpStatusCode.Forbidden)
+        {
+            Console.WriteLine("✗ The signed-in Google account can't read this sheet. Check that it owns or is shared on it.");
+        }
+        catch (Google.GoogleApiException ex) when (ex.HttpStatusCode == System.Net.HttpStatusCode.NotFound)
+        {
+            Console.WriteLine("✗ Spreadsheet not found. Double-check GoogleSheets:SpreadsheetId in appsettings.json.");
+        }
     }
 
     private static async Task<GoogleSheetsWriter?> CreateWriterAsync(GoogleSheetsConfig cfg)

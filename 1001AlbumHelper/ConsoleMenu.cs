@@ -30,7 +30,8 @@ public static class ConsoleMenu
             Console.WriteLine("     Rebuild the starred list, renumber replacements, and write both into your sheet.\n");
             Console.WriteLine("  7. Build & sync 'Must Hear' list to Google Sheets\n");
             Console.WriteLine("  8. Renumber & sync replacement albums to Google Sheets\n");
-            Console.WriteLine("Enter your choice (1-8, or 'q' to quit): ");
+            Console.WriteLine("  9. Check Google Sheets connection (list tabs)\n");
+            Console.WriteLine("Enter your choice (1-9, or 'q' to quit): ");
 
             string? choice = Console.ReadLine();
 
@@ -61,6 +62,9 @@ public static class ConsoleMenu
                     break;
                 case "8":
                     await Operations.SyncReplacementsToSheetAsync();
+                    break;
+                case "9":
+                    await Operations.ListSheetTabsAsync();
                     break;
                 case "q":
                     Console.WriteLine("\nGoodbye!");

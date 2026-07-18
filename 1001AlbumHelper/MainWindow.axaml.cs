@@ -70,6 +70,7 @@ public partial class MainWindow : Window
                     case "sync-both": await Operations.SyncBothToSheetsAsync(); break;
                     case "sync-starred": await Operations.SyncStarredToSheetAsync(); break;
                     case "sync-replacements": await Operations.SyncReplacementsToSheetAsync(); break;
+                    case "sync-check": await Operations.ListSheetTabsAsync(); break;
                 }
                 ok = true;
             }

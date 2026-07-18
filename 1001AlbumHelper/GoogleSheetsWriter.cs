@@ -45,6 +45,13 @@ public sealed class GoogleSheetsWriter
         return new GoogleSheetsWriter(service, spreadsheetId);
     }
 
+    /// <summary>Returns the titles of every tab in the spreadsheet (read-only).</summary>
+    public async Task<IReadOnlyList<string>> GetTabTitlesAsync()
+    {
+        var spreadsheet = await _service.Spreadsheets.Get(_spreadsheetId).ExecuteAsync();
+        return spreadsheet.Sheets.Select(s => s.Properties.Title).ToList();
+    }
+
     /// <summary>Replaces the entire contents of <paramref name="tabName"/> with <paramref name="rows"/>.</summary>
     public async Task WriteTabAsync(string tabName, IList<IList<object>> rows)
     {

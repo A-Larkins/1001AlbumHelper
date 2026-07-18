@@ -1,20 +1,32 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         x:Class="_1001AlbumHelper.MainWindow"
-        Width="960" Height="660" MinWidth="760" MinHeight="560"
+        Width="980" Height="700" MinWidth="780" MinHeight="580"
         Title="1001 Albums Helper"
-        Background="#0e0b09"
         RequestedThemeVariant="Dark">
+
+  <Window.Background>
+    <LinearGradientBrush StartPoint="0%,0%" EndPoint="30%,100%">
+      <GradientStop Color="#151020" Offset="0" />
+      <GradientStop Color="#0e0b09" Offset="0.45" />
+      <GradientStop Color="#0b0807" Offset="1" />
+    </LinearGradientBrush>
+  </Window.Background>
 
   <Window.Styles>
     <!-- Action "cards" -->
     <Style Selector="Button.card">
       <Setter Property="HorizontalAlignment" Value="Stretch" />
       <Setter Property="HorizontalContentAlignment" Value="Left" />
-      <Setter Property="Padding" Value="14,12" />
-      <Setter Property="CornerRadius" Value="12" />
-      <Setter Property="Background" Value="#241d18" />
-      <Setter Property="BorderBrush" Value="#362b23" />
+      <Setter Property="Padding" Value="15,13" />
+      <Setter Property="CornerRadius" Value="13" />
+      <Setter Property="Background">
+        <LinearGradientBrush StartPoint="0%,0%" EndPoint="0%,100%">
+          <GradientStop Color="#2a211a" Offset="0" />
+          <GradientStop Color="#201913" Offset="1" />
+        </LinearGradientBrush>
+      </Setter>
+      <Setter Property="BorderBrush" Value="#3a2e25" />
       <Setter Property="BorderThickness" Value="1" />
       <Setter Property="Cursor" Value="Hand" />
     </Style>
@@ -36,13 +48,21 @@
       <Setter Property="TextWrapping" Value="Wrap" />
       <Setter Property="Margin" Value="0,3,0,0" />
     </Style>
-    <!-- Highlighted "one click" card -->
-    <Style Selector="Button.card.accent">
-      <Setter Property="Background" Value="#33270f" />
-      <Setter Property="BorderBrush" Value="#8a6524" />
+    <!-- Highlighted "one click" card (named 'hero' to avoid Fluent's built-in .accent button style) -->
+    <Style Selector="Button.card.hero">
+      <Setter Property="Background">
+        <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,100%">
+          <GradientStop Color="#4a3411" Offset="0" />
+          <GradientStop Color="#302510" Offset="1" />
+        </LinearGradientBrush>
+      </Setter>
+      <Setter Property="BorderBrush" Value="#b3852f" />
     </Style>
-    <Style Selector="Button.card.accent TextBlock.title">
-      <Setter Property="Foreground" Value="#f2c078" />
+    <Style Selector="Button.card.hero:pointerover /template/ ContentPresenter">
+      <Setter Property="BorderBrush" Value="#d8a24a" />
+    </Style>
+    <Style Selector="Button.card.hero TextBlock.title">
+      <Setter Property="Foreground" Value="#f5c985" />
     </Style>
 
     <!-- Small ghost buttons -->
@@ -68,10 +88,10 @@
     </Style>
   </Window.Styles>
 
-  <Grid Margin="20" RowDefinitions="Auto,*">
+  <Grid Margin="22,20,22,18" RowDefinitions="Auto,Auto,*">
 
     <!-- Header -->
-    <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto" Margin="0,0,0,16">
+    <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto" Margin="0,0,0,14">
       <Border Grid.Column="0" Width="46" Height="46" CornerRadius="23" VerticalAlignment="Center"
               Background="#111014" BorderBrush="#2a2733" BorderThickness="1">
         <Border Width="16" Height="16" CornerRadius="8" HorizontalAlignment="Center" VerticalAlignment="Center">
@@ -101,13 +121,55 @@
       </Border>
     </Grid>
 
+    <!-- Divider under header -->
+    <Border Grid.Row="1" Height="1" Margin="0,0,0,14">
+      <Border.Background>
+        <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,0%">
+          <GradientStop Color="#00000000" Offset="0" />
+          <GradientStop Color="#3a2e25" Offset="0.15" />
+          <GradientStop Color="#3a2e25" Offset="0.85" />
+          <GradientStop Color="#00000000" Offset="1" />
+        </LinearGradientBrush>
+      </Border.Background>
+    </Border>
+
     <!-- Body -->
-    <Grid Grid.Row="1" ColumnDefinitions="320,*">
+    <Grid Grid.Row="2" ColumnDefinitions="330,*">
 
       <!-- Left: actions -->
       <ScrollViewer Grid.Column="0" VerticalScrollBarVisibility="Auto">
         <StackPanel x:Name="ActionsPanel" Spacing="8" Margin="0,0,4,0">
-          <TextBlock Classes="sectionLabel" Text="COMMON WORKFLOW" Margin="2,0,0,4" />
+          <TextBlock Classes="sectionLabel" Text="SYNC TO GOOGLE SHEETS" Margin="2,0,0,4" />
+
+          <Button Classes="card hero" Tag="sync-both" Click="OnRun">
+            <StackPanel>
+              <TextBlock Classes="title" Text="✅  Build &amp; sync BOTH to Google Sheets" />
+              <TextBlock Classes="desc" Text="One click: rebuild the ‘Must Hear’ list, renumber the replacements, and write both straight into your Google Sheet." />
+            </StackPanel>
+          </Button>
+
+          <Button Classes="card" Tag="sync-starred" Click="OnRun">
+            <StackPanel>
+              <TextBlock Classes="title" Text="⭐  Build &amp; sync ‘Must Hear’ list" />
+              <TextBlock Classes="desc" Text="Rebuild the starred list and write it to its Google Sheet tab." />
+            </StackPanel>
+          </Button>
+
+          <Button Classes="card" Tag="sync-replacements" Click="OnRun">
+            <StackPanel>
+              <TextBlock Classes="title" Text="🔢  Renumber &amp; sync replacements" />
+              <TextBlock Classes="desc" Text="Renumber the replacement albums and write them to their Google Sheet tab." />
+            </StackPanel>
+          </Button>
+
+          <Button Classes="card" Tag="sync-check" Click="OnRun">
+            <StackPanel>
+              <TextBlock Classes="title" Text="🔌  Check Google Sheets connection" />
+              <TextBlock Classes="desc" Text="Sign in and list the sheet’s tabs — a safe, read-only check that everything is wired up." />
+            </StackPanel>
+          </Button>
+
+          <TextBlock Classes="sectionLabel" Text="BUILD THE LISTS" />
 
           <Button Classes="card" Tag="download" Click="OnRun">
             <StackPanel>
@@ -143,29 +205,6 @@
             <StackPanel>
               <TextBlock Classes="title" Text="🔀  5 · Merge ratings with Discogs list" />
               <TextBlock Classes="desc" Text="Combine the fresh Discogs list with your existing ratings into a single merged CSV." />
-            </StackPanel>
-          </Button>
-
-          <TextBlock Classes="sectionLabel" Text="GOOGLE SHEETS" />
-
-          <Button Classes="card accent" Tag="sync-both" Click="OnRun">
-            <StackPanel>
-              <TextBlock Classes="title" Text="✅  Build &amp; sync BOTH to Google Sheets" />
-              <TextBlock Classes="desc" Text="One click: rebuild the 'Must Hear' list, renumber the replacements, and write both straight into your Google Sheet." />
-            </StackPanel>
-          </Button>
-
-          <Button Classes="card" Tag="sync-starred" Click="OnRun">
-            <StackPanel>
-              <TextBlock Classes="title" Text="⭐  Build &amp; sync 'Must Hear' list" />
-              <TextBlock Classes="desc" Text="Rebuild the starred list and write it to its Google Sheet tab." />
-            </StackPanel>
-          </Button>
-
-          <Button Classes="card" Tag="sync-replacements" Click="OnRun">
-            <StackPanel>
-              <TextBlock Classes="title" Text="🔢  Renumber &amp; sync replacements" />
-              <TextBlock Classes="desc" Text="Renumber the replacement albums and write them to their Google Sheet tab." />
             </StackPanel>
           </Button>
         </StackPanel>
