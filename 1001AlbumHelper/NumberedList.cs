@@ -13,7 +13,17 @@ public static class NumberedList
 {
     public sealed record Row(int SheetRow, string Number, string Title, string Artist, string Year);
 
-    public sealed record Contents(int HeaderRow, IReadOnlyList<Row> Rows);
+    /// <param name="Rows">Rows carrying a position number, in sheet order.</param>
+    /// <param name="Unnumbered">
+    /// Rows with content but no number — typically albums typed straight onto the end of the tab.
+    /// They're kept separate so a sync can place them properly rather than silently ignoring them.
+    /// </param>
+    public sealed record Contents(
+        int HeaderRow, IReadOnlyList<Row> Rows, IReadOnlyList<Row> Unnumbered);
+
+    /// <summary>True when the numbered rows don't read 1, 2, 3… without gaps.</summary>
+    public static bool NumberingIsBroken(Contents contents) =>
+        contents.Rows.Where((r, i) => r.Number != (i + 1).ToString()).Any();
 
     /// <summary>Reads a numbered tab, skipping anything above the "#" header.</summary>
     public static async Task<Contents> ReadAsync(GoogleSheetsWriter writer, string tab)
@@ -29,16 +39,19 @@ public static class NumberedList
                 $"Couldn't find the header row (a cell reading \"#\") on tab \"{tab}\".");
 
         var rows = new List<Row>();
+        var unnumbered = new List<Row>();
         for (int i = header + 1; i < raw.Count; i++)
         {
             var r = raw[i];
             string Cell(int c) => c < r.Count ? r[c].Trim() : "";
 
-            if (!int.TryParse(Cell(0), out _)) continue;
-            rows.Add(new Row(i + 1, Cell(0), Cell(1), Cell(2), Cell(3)));
+            var row = new Row(i + 1, Cell(0), Cell(1), Cell(2), Cell(3));
+            if (int.TryParse(Cell(0), out _)) rows.Add(row);
+            // An album typed in without a number still counts — but a wholly blank row doesn't.
+            else if (row.Title.Length > 0 || row.Artist.Length > 0) unnumbered.Add(row);
         }
 
-        return new Contents(header + 1, rows);
+        return new Contents(header + 1, rows, unnumbered);
     }
 
     /// <summary>
@@ -92,6 +105,61 @@ public static class NumberedList
         await writer.WriteColumnAsync(tab, "A", contents.HeaderRow + 1, numbers);
 
         return position;
+    }
+
+    /// <summary>What a <see cref="RepairAsync"/> pass changed.</summary>
+    public sealed record Repair(int Placed, bool Renumbered, IReadOnlyList<string> PlacedTitles);
+
+    /// <summary>
+    /// Slots any unnumbered rows into their year position and renumbers the list from 1.
+    /// <para>
+    /// Already-numbered rows keep their existing relative order — only the numbers change. That
+    /// matters because the list is year-ordered but not perfectly sorted, so a blanket re-sort
+    /// would shuffle rows the owner deliberately placed.
+    /// </para>
+    /// </summary>
+    public static async Task<Repair> RepairAsync(GoogleSheetsWriter writer, string tab)
+    {
+        var contents = await ReadAsync(writer, tab);
+
+        var ordered = contents.Rows.ToList();
+        var placed = new List<string>();
+
+        foreach (var loose in contents.Unnumbered)
+        {
+            int at = ordered.Count;
+            if (int.TryParse(loose.Year, out int year))
+            {
+                // Same end-of-year-block rule the add path uses.
+                at = 0;
+                for (int i = 0; i < ordered.Count; i++)
+                    if (int.TryParse(ordered[i].Year, out int y) && y <= year) at = i + 1;
+            }
+            ordered.Insert(at, loose);
+            placed.Add(loose.Title.Length > 0 ? loose.Title : loose.Artist);
+        }
+
+        bool needsRenumber = NumberingIsBroken(contents) || contents.Unnumbered.Count > 0;
+        if (!needsRenumber) return new Repair(0, false, Array.Empty<string>());
+
+        var values = ordered
+            .Select((r, i) => (IList<object>)new List<object>
+            {
+                (i + 1).ToString(), r.Title, r.Artist, r.Year
+            })
+            .ToList();
+
+        await writer.WriteRangeAsync(tab, $"A{contents.HeaderRow + 1}", values);
+
+        // Placing loose rows compacts the list upward, leaving stragglers at the bottom.
+        int lastWritten = contents.HeaderRow + values.Count;
+        int lastRead = Math.Max(
+            contents.Rows.Count > 0 ? contents.Rows[^1].SheetRow : 0,
+            contents.Unnumbered.Count > 0 ? contents.Unnumbered[^1].SheetRow : 0);
+        if (lastRead > lastWritten)
+            await writer.ClearRangeAsync(tab, $"A{lastWritten + 1}:D{lastRead}");
+
+        return new Repair(placed.Count, true, placed);
     }
 
     /// <summary>True if an album with the same title and artist is already on the tab.</summary>

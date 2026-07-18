@@ -30,6 +30,38 @@ public partial class MainWindow : Window
             var s = (DateTime.Now - _startedAt).TotalSeconds;
             ElapsedText.Text = s < 60 ? $"{s:0.0}s" : $"{(int)(s / 60)}m {(int)(s % 60)}s";
         };
+
+        Opened += async (_, _) => await RefreshSyncStatusAsync();
+    }
+
+    /// <summary>
+    /// Read-only check on open, so drift from browser edits is visible without being asked for.
+    /// Failures are swallowed to a quiet label — the app must still work offline.
+    /// </summary>
+    private async Task RefreshSyncStatusAsync()
+    {
+        SyncDescText.Text = "Checking whether anything needs syncing…";
+
+        var status = await Task.Run(() => Operations.CheckSyncStatusAsync(quiet: true));
+
+        if (status.Error is not null)
+        {
+            SyncDescText.Text = "Reconciles both lists with the 1001 list — couldn't check right now.";
+            SyncBadge.IsVisible = false;
+            return;
+        }
+
+        if (status.NeedsSync)
+        {
+            SyncDescText.Text = status.Summary();
+            SyncBadgeText.Text = "Sync needed";
+            SyncBadge.IsVisible = true;
+        }
+        else
+        {
+            SyncDescText.Text = "Everything's in sync — nothing to reconcile.";
+            SyncBadge.IsVisible = false;
+        }
     }
 
     // ---------- Running an operation ----------
@@ -56,6 +88,7 @@ public partial class MainWindow : Window
             {
                 switch (action)
                 {
+                    case "sync-all": await Operations.SyncAllAsync(); break;
                     case "sync-check": await Operations.ListSheetTabsAsync(); break;
                 }
                 ok = true;
@@ -84,6 +117,9 @@ public partial class MainWindow : Window
                 : $"✗ Failed{(err != null ? ": " + err : ".")}");
             SetRunning(false);
             _gate.Release();
+
+            // A sync changes exactly what the badge reports, so re-check once it's done.
+            if (action == "sync-all") _ = RefreshSyncStatusAsync();
         });
     }
 
@@ -95,6 +131,7 @@ public partial class MainWindow : Window
         RateNextButton.IsEnabled = !on;
         BackfillButton.IsEnabled = !on;
         AddAlbumButton.IsEnabled = !on;
+        SyncButton.IsEnabled = !on;
     }
 
     private void AppendLine(string line)
