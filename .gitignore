@@ -9,3 +9,6 @@ appsettings.json
 credentials.json
 client_secret*.json
 .google-sheets-token/
+
+# macOS finder metadata
+.DS_Store

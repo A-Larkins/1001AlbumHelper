@@ -357,7 +357,7 @@
 351,👍,Station To Station,David Bowie,1976
 352,⭐,Hejira,Joni Mitchell,1976
 353,⭐,Boston (self titled),Boston,1976
-354,⭐,Hotel California,Eagles,
+354,⭐,Hotel California,Hotel California,
 355,✓,Arrival,ABBA,1976
 356,⭐,Destroyer,Kiss,1976
 357,⭐,2112,Rush,1976
@@ -740,17 +740,17 @@
 734,👎,Suede (self titled),Suede,1993
 735,👍,Wild Wood,Paul Weller,1993
 736,⭐,Siamese Dream,The Smashing Pumpkins,1993
-737,,New Wave,The Auteurs,1993
-738,,Exile In Guyville,Liz Phair,1993
-739,,Gentlemen,The Afghan Whigs,1993
-740,,Whatever,Aimee Mann,1993
-741,,Fuzzy,Grant Lee Buffalo,1993
-742,⭐,In Utero,Nirvana,1993
-743,,Emergency On Planet Earth,Jamiroquai,1993
-744,,Very,Pet Shop Boys,1993
-745,,Rid Of Me,P J Harvey,1993
-746,,Modern Life Is Rubbish,Blur,1993
-747,,Tuesday Night Music Club,Sheryl Crow,1993
+737,👍,New Wave,The Auteurs,1993
+738,👎,Exile In Guyville,Liz Phair,1993
+739,👍,Gentlemen,The Afghan Whigs,1993
+740,⭐,Whatever,Aimee Mann,1993
+741,👍,Fuzzy,Grant Lee Buffalo,1993
+742,👍,In Utero,Nirvana,1993
+743,⭐,Emergency On Planet Earth,Jamiroquai,1993
+744,👎,Very,Pet Shop Boys,1993
+745,👎,Rid Of Me,P J Harvey,1993
+746,👍,Modern Life Is Rubbish,Blur,1993
+747,👍,Tuesday Night Music Club,Sheryl Crow,1993
 748,,The Infotainment Scan,The Fall,1993
 749,⭐,Enter The Wu-Tang (36 Chambers),Wu-Tang Clan,1993
 750,,Debut,Björk,1993
@@ -766,7 +766,7 @@
 760,,"Crooked Rain, Crooked Rain",Pavement,1994
 761,,Dummy,Portishead,1994
 762,,Haunted Dancehall,The Sabres Of Paradise,1994
-763,,Illmatic,Nas,1994
+763,⭐,Illmatic,Nas,1994
 764,,Ill Communication,Beastie Boys,1994
 765,,Brutal Youth,Elvis Costello,1994
 766,,Vauxhall And I,Morrissey,1994
@@ -785,16 +785,16 @@
 779,,Ready To Die,The Notorious B.I.G.,1994
 780,,Grace,Jeff Buckley,1994
 781,,Snivilisation,Orbital,1994
-782,,MTV Unplugged In New York,Nirvana,1994
+782,⭐,MTV Unplugged In New York,Nirvana,1994
 783,,The Downward Spiral,Nine Inch Nails,1994
 784,,Music For The Jilted Generation,The Prodigy,1994
-785,,Dookie,Green Day,1994
-786,,Foo Fighters (self titled),Foo Fighters,1995
+785,⭐,Dookie,Green Day,1994
+786,⭐,Foo Fighters (self titled),Foo Fighters,1995
 787,,Garbage (self titled),Garbage,1995
 788,,Smokers Delight,Nightmares On Wax,1995
 789,,Maxinquaye,Tricky,1995
 790,,Only Built 4 Cuban Linx...,Chef Raekwon* Guest Starring: Ghost Face Killer* A/K/A Tony Starks,1995
-791,,Mellon Collie And The Infinite Sadness,The Smashing Pumpkins,1995
+791,⭐,Mellon Collie And The Infinite Sadness,The Smashing Pumpkins,1995
 792,,"Scream, Dracula, Scream!",Rocket From The Crypt,1995
 793,,Exit Planet Dust,The Chemical Brothers,1995
 794,,Me Against The World,2Pac,1995
@@ -810,7 +810,7 @@
 804,,Brown Sugar,D'Angelo,1995
 805,,(What's The Story) Morning Glory?,Oasis (2),1995
 806,,Timeless,Goldie,1995
-807,,Jagged Little Pill,Alanis Morissette,1995
+807,⭐,Jagged Little Pill,Alanis Morissette,1995
 808,,Dust,Screaming Trees,1996
 809,,Fuzzy Logic,Super Furry Animals,1996
 810,,Better Living Through Chemistry,Fatboy Slim,1996
@@ -841,7 +841,7 @@
 835,,1977,Ash,1996
 836,,If You're Feeling Sinister,Belle And Sebastian,1996
 837,,Blur (self titled),Blur,1997
-838,,OK Computer,Radiohead,1997
+838,⭐,OK Computer,Radiohead,1997
 839,,Maverick A Strike,Finley Quaye,1997
 840,,Supa Dupa Fly,"Missy ""Misdemeanor"" Elliott",1997
 841,,Dig Your Own Hole,The Chemical Brothers,1997
@@ -876,11 +876,11 @@
 870,,The Miseducation Of Lauryn Hill,Lauryn Hill,1998
 871,,Celebrity Skin,Hole (2),1998
 872,,Deserter's Songs,Mercury Rev,1998
-873,,System Of A Down (self titled),System Of A Down,1998
+873,⭐,System Of A Down (self titled),System Of A Down,1998
 874,,Queens Of The Stone Age (self titled),Queens Of The Stone Age,1998
 875,,Moon Safari,AIR French Band,1998
 876,,OK,Talvin Singh,1998
-877,,Follow The Leader,Korn,1998
+877,👍,Follow The Leader,Korn,1998
 878,,Kenza,Khaled,1999
 879,,Devil Without A Cause,Kid Rock,1998
 880,,Music Has The Right To Children,Boards Of Canada,1998
@@ -890,7 +890,7 @@
 884,,Make Yourself,Incubus (2),1999
 885,,69 Love Songs,The Magnetic Fields,1999
 886,,The Man Who,Travis,1999
-887,,Slipknot (self titled),Slipknot,1999
+887,⭐,Slipknot (self titled),Slipknot,1999
 888,,Central Reservation,Beth Orton,1999
 889,,Beyond Skin,Nitin Sawhney,1999
 890,,The Contino Sessions,Death In Vegas,1999
@@ -904,7 +904,7 @@
 898,,I See A Darkness,Bonnie 'Prince' Billy,1998
 899,,H.M.S. Fable,Shack (3),1999
 900,,Remedy,Basement Jaxx,1999
-901,,Californication,Red Hot Chili Peppers,1999
+901,⭐,Californication,Red Hot Chili Peppers,1999
 902,,Ágætis Byrjun,Sigur Rós,1999
 903,,Lost Souls,Doves,2000
 904,,Original Motion Picture Score For The Virgin Suicides,AIR,2000
@@ -912,10 +912,10 @@
 906,,Tanto Tempo,Bebel Gilberto,2000
 907,,Sincere,MJ Cole,2000
 908,,Red Dirt Girl,Emmylou Harris,2000
-909,,Chocolate Starfish And The Hot Dog Flavored Water,Limp Bizkit,2000
+909,👍,Chocolate Starfish And The Hot Dog Flavored Water,Limp Bizkit,2000
 910,,Kid A,Radiohead,2000
 911,,All That You Can't Leave Behind,U2,2000
-912,,Hybrid Theory,Linkin Park,2000
+912,⭐,Hybrid Theory,Linkin Park,2000
 913,,Figure 8,Elliott Smith,2000
 914,,The Hour Of Bewilderbeast,Badly Drawn Boy,2000
 915,,"Stories From The City, Stories From The Sea",P J Harvey,2000
@@ -937,7 +937,7 @@
 931,,Vespertine,Björk,2001
 932,,Gorillaz (self titled),Gorillaz,2001
 933,,Gold,Ryan Adams,2001
-934,,Survivor,Destiny's Child,2001
+934,👍,Survivor,Destiny's Child,2001
 935,,Is This It,The Strokes,2001
 936,,Time (The Revelator),Gillian Welch,2001
 937,,La Revancha Del Tango,Gotan Project,2001
@@ -960,7 +960,7 @@
 954,,Under Construction,Missy Elliott,2002
 955,,The Rising,Bruce Springsteen,2002
 956,,Stripped,Christina Aguilera,2002
-957,,Phrenology,The Roots,2002
+957,👍,Phrenology,The Roots,2002
 958,,Sea Change,Beck,2002
 959,,Justified,Justin Timberlake,2002
 960,,Highly Evolved,The Vines,2002
