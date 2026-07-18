@@ -345,7 +345,60 @@ public static class Operations
             SpreadsheetId: config["GoogleSheets:SpreadsheetId"] ?? "",
             StarredTab: config["GoogleSheets:StarredTab"] ?? "Must Hear",
             ReplacementsTab: config["GoogleSheets:ReplacementsTab"] ?? "Replacements",
+            AlbumsTab: config["GoogleSheets:AlbumsTab"] ?? "1001 albums",
             CredentialsFile: config["GoogleSheets:CredentialsFile"] ?? "credentials.json");
+    }
+
+    /// <summary>
+    /// Opens a rating session over the master album list. Returns null (having explained why to
+    /// the log) when Google Sheets isn't configured or authentication fails.
+    /// </summary>
+    public static async Task<RatingSession?> OpenRatingSessionAsync()
+    {
+        var cfg = LoadSheetsConfig();
+        var writer = await CreateWriterAsync(cfg);
+        if (writer is null) return null;
+
+        Console.WriteLine($"Reading \"{cfg.AlbumsTab}\"…");
+        try
+        {
+            var session = await RatingSession.LoadAsync(writer, cfg.AlbumsTab, cfg.StarredTab);
+            Console.WriteLine($"✓ Loaded {session.TotalAlbums} albums.");
+            return session;
+        }
+        catch (Google.GoogleApiException ex) when (ex.HttpStatusCode == System.Net.HttpStatusCode.NotFound)
+        {
+            Console.WriteLine($"✗ Tab \"{cfg.AlbumsTab}\" not found. Set GoogleSheets:AlbumsTab in appsettings.json.");
+            return null;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"✗ Couldn't load the album list: {ex.Message}");
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Adds an album to the replacements tab, slotted in at the end of its year block, and
+    /// renumbers that list. Returns the position it landed at, or null if it couldn't be added.
+    /// </summary>
+    public static async Task<int?> AddReplacementAlbumAsync(string title, string artist, int year)
+    {
+        var cfg = LoadSheetsConfig();
+        var writer = await CreateWriterAsync(cfg);
+        if (writer is null) return null;
+
+        var contents = await NumberedList.ReadAsync(writer, cfg.ReplacementsTab);
+        if (NumberedList.Contains(contents, title, artist))
+        {
+            Console.WriteLine($"⚠️  “{title}” by {artist} is already on \"{cfg.ReplacementsTab}\".");
+            return null;
+        }
+
+        int position = await NumberedList.InsertByYearAsync(
+            writer, cfg.ReplacementsTab, title, artist, year);
+        Console.WriteLine($"✓ Added “{title}” ({year}) to \"{cfg.ReplacementsTab}\" at #{position}.");
+        return position;
     }
 
     private static IList<IList<object>> ReadCsvRows(string path)
@@ -385,5 +438,5 @@ public static class Operations
     }
 
     private sealed record GoogleSheetsConfig(
-        string SpreadsheetId, string StarredTab, string ReplacementsTab, string CredentialsFile);
+        string SpreadsheetId, string StarredTab, string ReplacementsTab, string AlbumsTab, string CredentialsFile);
 }

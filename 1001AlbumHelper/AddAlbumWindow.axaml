@@ -1,0 +1,105 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="_1001AlbumHelper.AddAlbumWindow"
+        Width="520" Height="400" MinWidth="440" MinHeight="380"
+        Title="Add an album"
+        WindowStartupLocation="CenterOwner"
+        RequestedThemeVariant="Dark">
+
+  <Window.Background>
+    <LinearGradientBrush StartPoint="0%,0%" EndPoint="30%,100%">
+      <GradientStop Color="#151020" Offset="0" />
+      <GradientStop Color="#0e0b09" Offset="0.45" />
+      <GradientStop Color="#0b0807" Offset="1" />
+    </LinearGradientBrush>
+  </Window.Background>
+
+  <Window.Styles>
+    <Style Selector="TextBlock.field">
+      <Setter Property="Foreground" Value="#9c8b7c" />
+      <Setter Property="FontSize" Value="11.5" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Margin" Value="2,0,0,5" />
+    </Style>
+    <Style Selector="TextBox">
+      <Setter Property="Background" Value="#141010" />
+      <Setter Property="BorderBrush" Value="#3a2e25" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="9" />
+      <Setter Property="Padding" Value="11,9" />
+      <Setter Property="Foreground" Value="#f3e9df" />
+      <Setter Property="FontSize" Value="13.5" />
+    </Style>
+    <Style Selector="TextBox:focus /template/ Border#PART_BorderElement">
+      <Setter Property="BorderBrush" Value="#b3852f" />
+    </Style>
+
+    <Style Selector="Button.primary">
+      <Setter Property="Background">
+        <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,100%">
+          <GradientStop Color="#4a3411" Offset="0" />
+          <GradientStop Color="#302510" Offset="1" />
+        </LinearGradientBrush>
+      </Setter>
+      <Setter Property="BorderBrush" Value="#b3852f" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="10" />
+      <Setter Property="Padding" Value="18,10" />
+      <Setter Property="Foreground" Value="#f5c985" />
+      <Setter Property="FontSize" Value="13" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Cursor" Value="Hand" />
+    </Style>
+    <Style Selector="Button.primary:pointerover /template/ ContentPresenter">
+      <Setter Property="BorderBrush" Value="#d8a24a" />
+    </Style>
+    <Style Selector="Button.primary:disabled /template/ ContentPresenter">
+      <Setter Property="Opacity" Value="0.45" />
+    </Style>
+
+    <Style Selector="Button.ghost">
+      <Setter Property="Background" Value="#241d18" />
+      <Setter Property="BorderBrush" Value="#362b23" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="10" />
+      <Setter Property="Padding" Value="16,10" />
+      <Setter Property="Foreground" Value="#d8ccc0" />
+      <Setter Property="FontSize" Value="13" />
+      <Setter Property="Cursor" Value="Hand" />
+    </Style>
+  </Window.Styles>
+
+  <Grid Margin="24,20,24,18" RowDefinitions="Auto,Auto,*,Auto">
+
+    <StackPanel Grid.Row="0" Spacing="3" Margin="0,0,0,16">
+      <TextBlock Text="Add an album" FontSize="19" FontWeight="Bold" Foreground="#f3e9df" />
+      <TextBlock x:Name="SubtitleText" Text="Slots into your replacements list by year, then renumbers it."
+                 FontSize="12" Foreground="#b3a394" TextWrapping="Wrap" />
+    </StackPanel>
+
+    <StackPanel Grid.Row="1" Spacing="13">
+      <StackPanel>
+        <TextBlock Classes="field" Text="ALBUM" />
+        <TextBox x:Name="TitleBox" Watermark="e.g. Blue Train" />
+      </StackPanel>
+      <StackPanel>
+        <TextBlock Classes="field" Text="ARTIST" />
+        <TextBox x:Name="ArtistBox" Watermark="e.g. John Coltrane" />
+      </StackPanel>
+      <StackPanel>
+        <TextBlock Classes="field" Text="YEAR" />
+        <TextBox x:Name="YearBox" Watermark="e.g. 1958" MaxLength="4" Width="120"
+                 HorizontalAlignment="Left" />
+      </StackPanel>
+    </StackPanel>
+
+    <TextBlock x:Name="StatusText" Grid.Row="2" Text="" FontSize="12" Foreground="#8a7a6c"
+               TextWrapping="Wrap" VerticalAlignment="Bottom" Margin="2,14,2,0" />
+
+    <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="9"
+                Margin="0,14,0,0">
+      <Button Classes="ghost" Content="Close" Click="OnClose" />
+      <Button x:Name="AddButton" Classes="primary" Content="Add album" Click="OnAdd" />
+    </StackPanel>
+  </Grid>
+</Window>

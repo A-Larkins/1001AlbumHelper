@@ -107,6 +107,108 @@ public sealed class GoogleSheetsWriter
         await update.ExecuteAsync();
     }
 
+    /// <summary>
+    /// Reads a tab's cells as raw strings. Short rows are returned as-is, so callers must
+    /// index defensively. Read-only — nothing is created or modified.
+    /// </summary>
+    public async Task<IReadOnlyList<IReadOnlyList<string>>> ReadTabAsync(string tabName, string a1Range)
+    {
+        var request = _service.Spreadsheets.Values.Get(_spreadsheetId, $"{QuoteTab(tabName)}!{a1Range}");
+        // Keep trailing empty cells so column positions stay meaningful.
+        request.ValueRenderOption = SpreadsheetsResource.ValuesResource.GetRequest.ValueRenderOptionEnum.FORMATTEDVALUE;
+        var response = await request.ExecuteAsync();
+
+        var result = new List<IReadOnlyList<string>>();
+        foreach (var row in response.Values ?? new List<IList<object>>())
+            result.Add(row.Select(c => c?.ToString() ?? "").ToList());
+        return result;
+    }
+
+    /// <summary>
+    /// Writes a single cell, leaving every other cell — and all formatting — untouched.
+    /// This is the only safe way to touch the master album list, which
+    /// <see cref="WriteTabAsync"/> would otherwise clear and reformat wholesale.
+    /// </summary>
+    public async Task UpdateCellAsync(string tabName, string cellA1, string value)
+    {
+        var update = _service.Spreadsheets.Values.Update(
+            new ValueRange { Values = new List<IList<object>> { new List<object> { value } } },
+            _spreadsheetId,
+            $"{QuoteTab(tabName)}!{cellA1}");
+        // RAW so an emoji or a leading "+"/"=" is stored literally rather than parsed as a formula.
+        update.ValueInputOption =
+            SpreadsheetsResource.ValuesResource.UpdateRequest.ValueInputOptionEnum.RAW;
+        await update.ExecuteAsync();
+    }
+
+    /// <summary>Looks up a tab's numeric id, throwing if it doesn't exist (never creates it).</summary>
+    public async Task<int> GetSheetIdAsync(string tabName)
+    {
+        var spreadsheet = await _service.Spreadsheets.Get(_spreadsheetId).ExecuteAsync();
+        var sheet = spreadsheet.Sheets.FirstOrDefault(
+            s => string.Equals(s.Properties.Title, tabName, StringComparison.Ordinal));
+        if (sheet is null)
+            throw new InvalidOperationException($"Tab \"{tabName}\" doesn't exist in this spreadsheet.");
+        return sheet.Properties.SheetId ?? 0;
+    }
+
+    /// <summary>
+    /// Inserts a blank row above <paramref name="rowNumber"/> (1-indexed) and fills it in.
+    /// The blank row inherits formatting from the row above, and everything below shifts down —
+    /// so unlike <see cref="WriteTabAsync"/> this preserves the rest of the tab.
+    /// </summary>
+    public async Task InsertRowAsync(string tabName, int rowNumber, IList<object> values)
+    {
+        int sheetId = await GetSheetIdAsync(tabName);
+
+        var insert = new BatchUpdateSpreadsheetRequest
+        {
+            Requests = new List<Request>
+            {
+                new Request
+                {
+                    InsertDimension = new InsertDimensionRequest
+                    {
+                        Range = new DimensionRange
+                        {
+                            SheetId = sheetId,
+                            Dimension = "ROWS",
+                            StartIndex = rowNumber - 1, // API is 0-indexed and end-exclusive
+                            EndIndex = rowNumber,
+                        },
+                        InheritFromBefore = true,
+                    }
+                }
+            }
+        };
+        await _service.Spreadsheets.BatchUpdate(insert, _spreadsheetId).ExecuteAsync();
+
+        var update = _service.Spreadsheets.Values.Update(
+            new ValueRange { Values = new List<IList<object>> { values } },
+            _spreadsheetId,
+            $"{QuoteTab(tabName)}!A{rowNumber}");
+        update.ValueInputOption =
+            SpreadsheetsResource.ValuesResource.UpdateRequest.ValueInputOptionEnum.RAW;
+        await update.ExecuteAsync();
+    }
+
+    /// <summary>Overwrites a single column from <paramref name="startRow"/> down. Other columns are untouched.</summary>
+    public async Task WriteColumnAsync(string tabName, string column, int startRow, IReadOnlyList<string> values)
+    {
+        if (values.Count == 0) return;
+
+        var cells = values.Select(v => (IList<object>)new List<object> { v }).ToList();
+        int endRow = startRow + values.Count - 1;
+
+        var update = _service.Spreadsheets.Values.Update(
+            new ValueRange { Values = cells },
+            _spreadsheetId,
+            $"{QuoteTab(tabName)}!{column}{startRow}:{column}{endRow}");
+        update.ValueInputOption =
+            SpreadsheetsResource.ValuesResource.UpdateRequest.ValueInputOptionEnum.RAW;
+        await update.ExecuteAsync();
+    }
+
     // Wrap a tab name in single quotes for A1 notation, escaping any embedded quotes.
     private static string QuoteTab(string tabName) => "'" + tabName.Replace("'", "''") + "'";
 

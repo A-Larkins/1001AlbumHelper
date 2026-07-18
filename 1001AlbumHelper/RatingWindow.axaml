@@ -1,0 +1,178 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="_1001AlbumHelper.RatingWindow"
+        Width="660" Height="600" MinWidth="560" MinHeight="540"
+        Title="Rate albums"
+        WindowStartupLocation="CenterOwner"
+        RequestedThemeVariant="Dark">
+
+  <Window.Background>
+    <LinearGradientBrush StartPoint="0%,0%" EndPoint="30%,100%">
+      <GradientStop Color="#151020" Offset="0" />
+      <GradientStop Color="#0e0b09" Offset="0.45" />
+      <GradientStop Color="#0b0807" Offset="1" />
+    </LinearGradientBrush>
+  </Window.Background>
+
+  <Window.Styles>
+    <!-- Segmented mode switch -->
+    <Style Selector="Button.seg">
+      <Setter Property="Background" Value="#1d1714" />
+      <Setter Property="BorderBrush" Value="#362b23" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="8" />
+      <Setter Property="Padding" Value="14,7" />
+      <Setter Property="Foreground" Value="#9c8b7c" />
+      <Setter Property="FontSize" Value="12.5" />
+      <Setter Property="Cursor" Value="Hand" />
+    </Style>
+    <Style Selector="Button.seg:pointerover /template/ ContentPresenter">
+      <Setter Property="BorderBrush" Value="#4a3a2c" />
+    </Style>
+    <Style Selector="Button.seg.on">
+      <Setter Property="Background" Value="#3a2b12" />
+      <Setter Property="BorderBrush" Value="#b3852f" />
+      <Setter Property="Foreground" Value="#f5c985" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+
+    <!-- Rating buttons -->
+    <Style Selector="Button.rate">
+      <Setter Property="HorizontalAlignment" Value="Stretch" />
+      <Setter Property="HorizontalContentAlignment" Value="Center" />
+      <Setter Property="Padding" Value="8,14" />
+      <Setter Property="CornerRadius" Value="12" />
+      <Setter Property="Background" Value="#241d18" />
+      <Setter Property="BorderBrush" Value="#3a2e25" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="Cursor" Value="Hand" />
+    </Style>
+    <Style Selector="Button.rate:pointerover /template/ ContentPresenter">
+      <Setter Property="Background" Value="#332821" />
+      <Setter Property="BorderBrush" Value="#d8a24a" />
+    </Style>
+    <Style Selector="Button.rate:disabled /template/ ContentPresenter">
+      <Setter Property="Opacity" Value="0.4" />
+    </Style>
+    <Style Selector="Button.rate TextBlock.sym">
+      <Setter Property="FontSize" Value="26" />
+      <Setter Property="HorizontalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Button.rate TextBlock.lbl">
+      <Setter Property="FontSize" Value="11" />
+      <Setter Property="Foreground" Value="#c0ad97" />
+      <Setter Property="TextAlignment" Value="Center" />
+      <Setter Property="TextWrapping" Value="Wrap" />
+      <Setter Property="Margin" Value="0,6,0,0" />
+    </Style>
+    <Style Selector="Button.rate TextBlock.key">
+      <Setter Property="FontSize" Value="10" />
+      <Setter Property="Foreground" Value="#6d5f53" />
+      <Setter Property="HorizontalAlignment" Value="Center" />
+      <Setter Property="Margin" Value="0,5,0,0" />
+    </Style>
+
+    <Style Selector="Button.ghost">
+      <Setter Property="Background" Value="#241d18" />
+      <Setter Property="BorderBrush" Value="#362b23" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="8" />
+      <Setter Property="Padding" Value="12,7" />
+      <Setter Property="Foreground" Value="#d8ccc0" />
+      <Setter Property="FontSize" Value="12" />
+      <Setter Property="Cursor" Value="Hand" />
+    </Style>
+    <Style Selector="Button.ghost:pointerover /template/ ContentPresenter">
+      <Setter Property="BorderBrush" Value="#4a3a2c" />
+    </Style>
+    <Style Selector="Button.ghost:disabled /template/ ContentPresenter">
+      <Setter Property="Opacity" Value="0.4" />
+    </Style>
+  </Window.Styles>
+
+  <Grid Margin="22,18,22,16" RowDefinitions="Auto,Auto,*,Auto,Auto">
+
+    <!-- Mode switch + counter -->
+    <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto" Margin="0,0,0,14">
+      <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8">
+        <Button x:Name="NextUpButton" Classes="seg on" Content="🎧  Next up" Click="OnPickNextUp"
+                ToolTip.Tip="Albums with no mark yet — in list order." />
+        <Button x:Name="BackfillButton" Classes="seg" Content="📼  Backfill ✓" Click="OnPickBackfill"
+                ToolTip.Tip="Albums you marked listened (✓) but never rated." />
+      </StackPanel>
+      <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+        <CheckBox x:Name="ShuffleBox" Content="Shuffle" FontSize="12" Foreground="#b3a394"
+                  IsCheckedChanged="OnShuffleChanged" />
+        <TextBlock x:Name="RemainingText" Text="" FontSize="12" Foreground="#9c8b7c"
+                   VerticalAlignment="Center" />
+      </StackPanel>
+    </Grid>
+
+    <Border Grid.Row="1" Height="1" Margin="0,0,0,16" Background="#3a2e25" />
+
+    <!-- The album -->
+    <Border Grid.Row="2" CornerRadius="14" Background="#141010" BorderBrush="#2a211b" BorderThickness="1"
+            Padding="26">
+      <Panel>
+        <!-- Album card -->
+        <StackPanel x:Name="AlbumPanel" VerticalAlignment="Center" Spacing="0">
+          <TextBlock x:Name="PositionText" Text="" FontSize="12" Foreground="#8a7a6c"
+                     HorizontalAlignment="Center" />
+          <TextBlock x:Name="TitleText" Text="" FontSize="27" FontWeight="Bold" Foreground="#f3e9df"
+                     TextWrapping="Wrap" TextAlignment="Center" Margin="0,12,0,0" />
+          <TextBlock x:Name="ArtistText" Text="" FontSize="17" Foreground="#e0b479"
+                     TextWrapping="Wrap" TextAlignment="Center" Margin="0,8,0,0" />
+          <TextBlock x:Name="YearText" Text="" FontSize="14" Foreground="#9c8b7c"
+                     HorizontalAlignment="Center" Margin="0,8,0,0" />
+        </StackPanel>
+
+        <!-- Shown while loading, and when a queue runs out -->
+        <TextBlock x:Name="MessageText" Text="Loading…" FontSize="15" Foreground="#b3a394"
+                   TextWrapping="Wrap" TextAlignment="Center"
+                   HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="False" />
+      </Panel>
+    </Border>
+
+    <!-- Ratings -->
+    <Grid Grid.Row="3" x:Name="RatingRow" ColumnDefinitions="*,*,*,*" Margin="0,16,0,0">
+      <Button Grid.Column="0" Classes="rate" Tag="⭐" Click="OnRate" Margin="0,0,5,0">
+        <StackPanel>
+          <TextBlock Classes="sym" Text="⭐" />
+          <TextBlock Classes="lbl" Text="Really enjoyable" />
+          <TextBlock Classes="key" Text="1" />
+        </StackPanel>
+      </Button>
+      <Button Grid.Column="1" Classes="rate" Tag="👍" Click="OnRate" Margin="5,0,5,0">
+        <StackPanel>
+          <TextBlock Classes="sym" Text="👍" />
+          <TextBlock Classes="lbl" Text="Mostly enjoyable" />
+          <TextBlock Classes="key" Text="2" />
+        </StackPanel>
+      </Button>
+      <Button Grid.Column="2" Classes="rate" Tag="👎" Click="OnRate" Margin="5,0,5,0">
+        <StackPanel>
+          <TextBlock Classes="sym" Text="👎" />
+          <TextBlock Classes="lbl" Text="Mostly sucks" />
+          <TextBlock Classes="key" Text="3" />
+        </StackPanel>
+      </Button>
+      <Button Grid.Column="3" Classes="rate" Tag="❌" Click="OnRate" Margin="5,0,0,0">
+        <StackPanel>
+          <TextBlock Classes="sym" Text="❌" />
+          <TextBlock Classes="lbl" Text="Trash" />
+          <TextBlock Classes="key" Text="4" />
+        </StackPanel>
+      </Button>
+    </Grid>
+
+    <!-- Footer -->
+    <Grid Grid.Row="4" ColumnDefinitions="*,Auto" Margin="0,14,0,0">
+      <TextBlock x:Name="StatusText" Grid.Column="0" Text="" FontSize="12" Foreground="#8a7a6c"
+                 TextWrapping="Wrap" VerticalAlignment="Center" />
+      <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
+        <Button x:Name="SkipButton" Classes="ghost" Content="Skip  (S)" Click="OnSkip" />
+        <Button Classes="ghost" Content="Done" Click="OnClose" />
+      </StackPanel>
+    </Grid>
+  </Grid>
+</Window>
