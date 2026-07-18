@@ -385,11 +385,12 @@ public static class Operations
         bool ReplacementsMisnumbered,
         bool MustHearMisnumbered,
         IReadOnlyList<NumberedList.Row> NoLongerStarred,
+        IReadOnlyList<NumberedList.Row> ReplacementsAlreadyIn1001,
         string? Error = null)
     {
-        /// <summary>Entries on Must Hear that lost their ⭐ are reported but never removed.</summary>
         public bool NeedsSync => MissingStars.Count > 0 || LooseReplacements > 0
-                              || ReplacementsMisnumbered || MustHearMisnumbered;
+                              || ReplacementsMisnumbered || MustHearMisnumbered
+                              || NoLongerStarred.Count > 0 || ReplacementsAlreadyIn1001.Count > 0;
 
         public string Summary()
         {
@@ -397,10 +398,12 @@ public static class Operations
             if (!NeedsSync) return "Everything's in sync.";
 
             var bits = new List<string>();
-            if (MissingStars.Count > 0) bits.Add($"{MissingStars.Count} ⭐ missing from Must Hear");
-            if (LooseReplacements > 0) bits.Add($"{LooseReplacements} unnumbered replacement(s)");
-            if (ReplacementsMisnumbered) bits.Add("replacements need renumbering");
-            if (MustHearMisnumbered) bits.Add("Must Hear needs renumbering");
+            if (MissingStars.Count > 0) bits.Add($"{MissingStars.Count} ⭐ to add");
+            if (NoLongerStarred.Count > 0) bits.Add($"{NoLongerStarred.Count} no longer ⭐ to drop");
+            if (ReplacementsAlreadyIn1001.Count > 0)
+                bits.Add($"{ReplacementsAlreadyIn1001.Count} replacement(s) already in the 1001");
+            if (LooseReplacements > 0) bits.Add($"{LooseReplacements} unnumbered");
+            if (ReplacementsMisnumbered || MustHearMisnumbered) bits.Add("renumbering needed");
             return string.Join(" · ", bits);
         }
     }
@@ -419,10 +422,10 @@ public static class Operations
         }
         catch (Exception ex)
         {
-            return new SyncStatus(empty, 0, false, false, noRows, $"Couldn't reach Google Sheets: {ex.Message}");
+            return new SyncStatus(empty, 0, false, false, noRows, noRows, $"Couldn't reach Google Sheets: {ex.Message}");
         }
         if (writer is null)
-            return new SyncStatus(empty, 0, false, false, noRows, "Google Sheets isn't configured.");
+            return new SyncStatus(empty, 0, false, false, noRows, noRows, "Google Sheets isn't configured.");
 
         try
         {
@@ -441,16 +444,23 @@ public static class Operations
                     NumberedList.Matches(a.Title, r.Title) && NumberedList.Matches(a.Artist, r.Artist)))
                 .ToList();
 
+            // Replacements exist to cover gaps in the 1001 list, so an entry on both is redundant.
+            var redundant = replacements.Rows
+                .Where(r => master.AllAlbums.Any(a =>
+                    NumberedList.Matches(a.Title, r.Title) && NumberedList.Matches(a.Artist, r.Artist)))
+                .ToList();
+
             return new SyncStatus(
                 missing,
                 replacements.Unnumbered.Count,
                 NumberedList.NumberingIsBroken(replacements) || replacements.Unnumbered.Count > 0,
                 NumberedList.NumberingIsBroken(mustHear) || mustHear.Unnumbered.Count > 0,
-                stale);
+                stale,
+                redundant);
         }
         catch (Exception ex)
         {
-            return new SyncStatus(empty, 0, false, false, noRows, $"Sync check failed: {ex.Message}");
+            return new SyncStatus(empty, 0, false, false, noRows, noRows, $"Sync check failed: {ex.Message}");
         }
     }
 
@@ -498,32 +508,37 @@ public static class Operations
             }
         }
 
-        // 2. Loose rows and numbering on both lists.
-        foreach (var tab in new[] { cfg.StarredTab, cfg.ReplacementsTab })
-        {
-            var repair = await NumberedList.RepairAsync(writer, tab);
-            if (repair.Placed > 0)
-                Console.WriteLine($"✓ \"{tab}\": placed {repair.Placed} unnumbered row(s) " +
-                                  $"— {string.Join(", ", repair.PlacedTitles)}");
-            if (repair.Renumbered) Console.WriteLine($"✓ \"{tab}\": renumbered from 1.");
-            else Console.WriteLine($"✓ \"{tab}\": numbering already correct.");
-        }
+        // 2. Must Hear: drop anything no longer starred upstream, place loose rows, renumber.
+        var mhPlan = await NumberedList.ApplyAsync(writer, cfg.StarredTab,
+            row => !starred.Any(a => NumberedList.Matches(a.Title, row.Title)
+                                  && NumberedList.Matches(a.Artist, row.Artist)));
+        ReportPlan(cfg.StarredTab, mhPlan, "no longer ⭐ on the 1001 list");
 
-        // 3. Advisory only.
-        var finalMustHear = await NumberedList.ReadAsync(writer, cfg.StarredTab);
-        var stale = finalMustHear.Rows
-            .Where(r => !starred.Any(a =>
-                NumberedList.Matches(a.Title, r.Title) && NumberedList.Matches(a.Artist, r.Artist)))
-            .ToList();
-        if (stale.Count > 0)
-        {
-            Console.WriteLine($"\nℹ️  {stale.Count} row(s) on \"{cfg.StarredTab}\" are no longer ⭐ upstream:");
-            foreach (var r in stale.Take(10))
-                Console.WriteLine($"     #{r.Number} {r.Title} — {r.Artist}");
-            Console.WriteLine("   Left in place — remove them by hand if they shouldn't be there.");
-        }
+        // 3. Replacements: drop anything the 1001 list already covers, place loose rows, renumber.
+        var onMaster = master.AllAlbums;
+        var replPlan = await NumberedList.ApplyAsync(writer, cfg.ReplacementsTab,
+            row => onMaster.Any(a => NumberedList.Matches(a.Title, row.Title)
+                                  && NumberedList.Matches(a.Artist, row.Artist)));
+        ReportPlan(cfg.ReplacementsTab, replPlan, "already on the 1001 list");
 
         Console.WriteLine("\n✓ Sync complete.");
+    }
+
+    private static void ReportPlan(string tab, NumberedList.Plan plan, string removalReason)
+    {
+        if (!plan.Changed)
+        {
+            Console.WriteLine($"✓ \"{tab}\": already correct.");
+            return;
+        }
+
+        foreach (var r in plan.Removed)
+            Console.WriteLine($"   − removed #{r.Number} {r.Title} — {r.Artist} ({removalReason})");
+        foreach (var r in plan.Placed)
+            Console.WriteLine($"   ↳ placed “{r.Title}” ({r.Year}) into its year block");
+
+        Console.WriteLine($"✓ \"{tab}\": {plan.Keep.Count} rows, renumbered from 1"
+                        + (plan.Removed.Count > 0 ? $", {plan.Removed.Count} removed" : "") + ".");
     }
 
     /// <summary>Authenticates without the chatty console output, for the startup check.</summary>
