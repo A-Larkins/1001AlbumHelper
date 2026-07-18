@@ -55,26 +55,54 @@ public sealed class GoogleSheetsWriter
     /// <summary>Replaces the entire contents of <paramref name="tabName"/> with <paramref name="rows"/>.</summary>
     public async Task WriteTabAsync(string tabName, IList<IList<object>> rows)
     {
-        await EnsureTabExistsAsync(tabName);
+        int sheetId = await EnsureTabExistsAsync(tabName);
+        string range = QuoteTab(tabName); // A1 notation must quote names with spaces / '*' etc.
 
-        // Clear whatever is currently in the tab, then write from A1.
+        // Clear every value currently in the tab.
         await _service.Spreadsheets.Values
-            .Clear(new ClearValuesRequest(), _spreadsheetId, tabName)
+            .Clear(new ClearValuesRequest(), _spreadsheetId, range)
             .ExecuteAsync();
 
+        // Reset the font size across the whole tab so stale/oversized formatting
+        // (e.g. a leftover big-font row) can't linger under the new values.
+        var normalize = new BatchUpdateSpreadsheetRequest
+        {
+            Requests = new List<Request>
+            {
+                new Request
+                {
+                    RepeatCell = new RepeatCellRequest
+                    {
+                        Range = new GridRange { SheetId = sheetId },
+                        Cell = new CellData
+                        {
+                            UserEnteredFormat = new CellFormat { TextFormat = new TextFormat { FontSize = 10 } }
+                        },
+                        Fields = "userEnteredFormat.textFormat.fontSize"
+                    }
+                }
+            }
+        };
+        await _service.Spreadsheets.BatchUpdate(normalize, _spreadsheetId).ExecuteAsync();
+
+        // Write the new values from A1.
         var update = _service.Spreadsheets.Values.Update(
-            new ValueRange { Values = rows }, _spreadsheetId, $"{tabName}!A1");
+            new ValueRange { Values = rows }, _spreadsheetId, $"{range}!A1");
         update.ValueInputOption =
             SpreadsheetsResource.ValuesResource.UpdateRequest.ValueInputOptionEnum.USERENTERED;
         await update.ExecuteAsync();
     }
 
-    private async Task EnsureTabExistsAsync(string tabName)
+    // Wrap a tab name in single quotes for A1 notation, escaping any embedded quotes.
+    private static string QuoteTab(string tabName) => "'" + tabName.Replace("'", "''") + "'";
+
+    /// <summary>Ensures the tab exists and returns its numeric sheet id.</summary>
+    private async Task<int> EnsureTabExistsAsync(string tabName)
     {
         var spreadsheet = await _service.Spreadsheets.Get(_spreadsheetId).ExecuteAsync();
-        bool exists = spreadsheet.Sheets.Any(
+        var existing = spreadsheet.Sheets.FirstOrDefault(
             s => string.Equals(s.Properties.Title, tabName, StringComparison.Ordinal));
-        if (exists) return;
+        if (existing != null) return existing.Properties.SheetId ?? 0;
 
         var request = new BatchUpdateSpreadsheetRequest
         {
@@ -86,6 +114,7 @@ public sealed class GoogleSheetsWriter
                 }
             }
         };
-        await _service.Spreadsheets.BatchUpdate(request, _spreadsheetId).ExecuteAsync();
+        var response = await _service.Spreadsheets.BatchUpdate(request, _spreadsheetId).ExecuteAsync();
+        return response.Replies[0].AddSheet.Properties.SheetId ?? 0;
     }
 }
