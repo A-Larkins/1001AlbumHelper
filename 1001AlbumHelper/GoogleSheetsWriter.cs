@@ -154,34 +154,68 @@ public sealed class GoogleSheetsWriter
 
     /// <summary>
     /// Inserts a blank row above <paramref name="rowNumber"/> (1-indexed) and fills it in.
-    /// The blank row inherits formatting from the row above, and everything below shifts down —
-    /// so unlike <see cref="WriteTabAsync"/> this preserves the rest of the tab.
+    /// Everything below shifts down — so unlike <see cref="WriteTabAsync"/> this preserves the
+    /// rest of the tab.
+    /// <para>
+    /// <paramref name="formatSourceRow"/> is an existing data row (numbered as it is *after* the
+    /// insert) whose formatting the new row should copy. Row inheritance alone isn't enough: a row
+    /// inserted directly under the header would inherit the header's bold, and one appended at the
+    /// end inherits whatever the final row happened to look like. Copying from a known-good
+    /// neighbour makes the new row match the list instead.
+    /// </para>
     /// </summary>
-    public async Task InsertRowAsync(string tabName, int rowNumber, IList<object> values)
+    public async Task InsertRowAsync(
+        string tabName, int rowNumber, IList<object> values, int? formatSourceRow = null)
     {
         int sheetId = await GetSheetIdAsync(tabName);
 
-        var insert = new BatchUpdateSpreadsheetRequest
+        var requests = new List<Request>
         {
-            Requests = new List<Request>
+            new Request
             {
-                new Request
+                InsertDimension = new InsertDimensionRequest
                 {
-                    InsertDimension = new InsertDimensionRequest
+                    Range = new DimensionRange
                     {
-                        Range = new DimensionRange
-                        {
-                            SheetId = sheetId,
-                            Dimension = "ROWS",
-                            StartIndex = rowNumber - 1, // API is 0-indexed and end-exclusive
-                            EndIndex = rowNumber,
-                        },
-                        InheritFromBefore = true,
-                    }
+                        SheetId = sheetId,
+                        Dimension = "ROWS",
+                        StartIndex = rowNumber - 1, // API is 0-indexed and end-exclusive
+                        EndIndex = rowNumber,
+                    },
+                    // Inherit from below when inserting at the very top of the data, so the
+                    // header's formatting is never picked up.
+                    InheritFromBefore = formatSourceRow is null || formatSourceRow > rowNumber
+                        ? false
+                        : true,
                 }
             }
         };
-        await _service.Spreadsheets.BatchUpdate(insert, _spreadsheetId).ExecuteAsync();
+
+        if (formatSourceRow is int src)
+        {
+            requests.Add(new Request
+            {
+                CopyPaste = new CopyPasteRequest
+                {
+                    Source = new GridRange
+                    {
+                        SheetId = sheetId,
+                        StartRowIndex = src - 1,
+                        EndRowIndex = src,
+                    },
+                    Destination = new GridRange
+                    {
+                        SheetId = sheetId,
+                        StartRowIndex = rowNumber - 1,
+                        EndRowIndex = rowNumber,
+                    },
+                    PasteType = "PASTE_FORMAT",
+                }
+            });
+        }
+
+        await _service.Spreadsheets.BatchUpdate(
+            new BatchUpdateSpreadsheetRequest { Requests = requests }, _spreadsheetId).ExecuteAsync();
 
         var update = _service.Spreadsheets.Values.Update(
             new ValueRange { Values = new List<IList<object>> { values } },

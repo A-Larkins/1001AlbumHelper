@@ -162,6 +162,7 @@ public sealed class RatingSession
 
         string cell = $"B{album.SheetRow}";
         await _writer.UpdateCellAsync(_tab, cell, rating);
+        Console.WriteLine($"{rating} → {cell}  {album.Title} — {album.Artist} ({album.Year})");
 
         // Keep the in-memory copy in step so a rebuild won't offer this album again.
         int at = _all.FindIndex(a => a.SheetRow == album.SheetRow);
@@ -174,13 +175,18 @@ public sealed class RatingSession
         string? note = null;
         if (rating == Starred)
         {
+            Console.WriteLine($"⭐ {album.Title} — adding to \"{_mustHearTab}\"…");
             try
             {
                 note = await AddToMustHearAsync(album);
+                Console.WriteLine($"   {note}");
             }
             catch (Exception ex)
             {
                 note = $"⚠️ rating saved, but adding to Must Hear failed: {ex.Message}";
+                // Log the full exception: the one-line note in the window loses the detail that
+                // makes a failure here diagnosable.
+                Console.WriteLine($"   ✗ Must Hear add failed: {ex}");
             }
         }
 

@@ -14,7 +14,7 @@ public partial class MainWindow : Window
 {
     private static readonly IBrush IdleDot = new SolidColorBrush(Color.Parse("#7c6d60"));
     private static readonly IBrush RunningDot = new SolidColorBrush(Color.Parse("#e6a54b"));
-    private const string LogPlaceholder = "Ready. Hit “Build & sync both lists” — output will stream here live.";
+    private const string LogPlaceholder = "Ready. Pick an action above — output streams here live.";
 
     private readonly SemaphoreSlim _gate = new(1, 1);
     private readonly DispatcherTimer _timer;
