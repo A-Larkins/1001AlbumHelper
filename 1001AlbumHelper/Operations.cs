@@ -378,27 +378,90 @@ public static class Operations
         }
     }
 
+    /// <summary>How an attempt to add a replacement album turned out.</summary>
+    public enum AddOutcome
+    {
+        Added,
+        AlreadyInReplacements,
+        AlreadyIn1001,
+        NotConfigured,
+        Failed,
+    }
+
+    /// <summary><paramref name="Detail"/> explains a rejection; <paramref name="Warning"/> is advisory only.</summary>
+    public sealed record AddResult(AddOutcome Outcome, int? Position, string? Detail, string? Warning = null);
+
     /// <summary>
     /// Adds an album to the replacements tab, slotted in at the end of its year block, and
-    /// renumbers that list. Returns the position it landed at, or null if it couldn't be added.
+    /// renumbers that list.
+    /// <para>
+    /// Refuses if the album is already on the replacements list, or if it's already on the master
+    /// 1001 list — the replacements tab exists for albums the 1001 doesn't cover, so an entry that
+    /// appears on both is a mistake. A same-title-different-artist hit is reported as a warning
+    /// rather than a refusal, since those are often genuinely different albums.
+    /// </para>
     /// </summary>
-    public static async Task<int?> AddReplacementAlbumAsync(string title, string artist, int year)
+    public static async Task<AddResult> AddReplacementAlbumAsync(string title, string artist, int year)
     {
         var cfg = LoadSheetsConfig();
         var writer = await CreateWriterAsync(cfg);
-        if (writer is null) return null;
+        if (writer is null)
+            return new AddResult(AddOutcome.NotConfigured, null,
+                "Google Sheets isn't configured or authentication failed.");
 
-        var contents = await NumberedList.ReadAsync(writer, cfg.ReplacementsTab);
-        if (NumberedList.Contains(contents, title, artist))
+        try
         {
-            Console.WriteLine($"⚠️  “{title}” by {artist} is already on \"{cfg.ReplacementsTab}\".");
-            return null;
-        }
+            // 1. Already a replacement?
+            var replacements = await NumberedList.ReadAsync(writer, cfg.ReplacementsTab);
+            if (NumberedList.Find(replacements, title, artist) is { } dupe)
+            {
+                string detail = $"Already on your replacements list at #{dupe.Number} " +
+                                $"— “{dupe.Title}” by {dupe.Artist} ({dupe.Year}).";
+                Console.WriteLine($"⚠️  {detail}");
+                return new AddResult(AddOutcome.AlreadyInReplacements, null, detail);
+            }
 
-        int position = await NumberedList.InsertByYearAsync(
-            writer, cfg.ReplacementsTab, title, artist, year);
-        Console.WriteLine($"✓ Added “{title}” ({year}) to \"{cfg.ReplacementsTab}\" at #{position}.");
-        return position;
+            // 2. Already on the canonical 1001 list?
+            var master = await RatingSession.LoadAsync(writer, cfg.AlbumsTab, cfg.StarredTab);
+            var onMaster = master.AllAlbums.FirstOrDefault(a =>
+                NumberedList.Matches(a.Title, title) && NumberedList.Matches(a.Artist, artist));
+            if (onMaster is not null)
+            {
+                string rating = string.IsNullOrWhiteSpace(onMaster.Rating)
+                    ? "not yet rated"
+                    : $"rated {onMaster.Rating}";
+                string detail = $"Already on the 1001 list at #{onMaster.Number} ({rating}) " +
+                                $"— “{onMaster.Title}” by {onMaster.Artist} ({onMaster.Year}). " +
+                                "Replacements are for albums the 1001 list doesn't have.";
+                Console.WriteLine($"⚠️  {detail}");
+                return new AddResult(AddOutcome.AlreadyIn1001, null, detail);
+            }
+
+            // 3. Same title, different artist — worth flagging, not worth blocking.
+            var nearReplacements = NumberedList.FindByTitleOnly(replacements, title, artist);
+            var nearMaster = master.AllAlbums
+                .Where(a => NumberedList.Matches(a.Title, title) && !NumberedList.Matches(a.Artist, artist))
+                .Select(a => $"#{a.Number} by {a.Artist} on the 1001 list");
+            var near = nearReplacements
+                .Select(r => $"#{r.Number} by {r.Artist} on your replacements")
+                .Concat(nearMaster)
+                .ToList();
+
+            string? warning = near.Count > 0
+                ? $"Note: “{title}” also appears as {string.Join("; ", near)}."
+                : null;
+            if (warning is not null) Console.WriteLine($"ℹ️  {warning}");
+
+            int position = await NumberedList.InsertByYearAsync(
+                writer, cfg.ReplacementsTab, title, artist, year);
+            Console.WriteLine($"✓ Added “{title}” ({year}) to \"{cfg.ReplacementsTab}\" at #{position}.");
+            return new AddResult(AddOutcome.Added, position, null, warning);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"✗ Couldn't add “{title}”: {ex.Message}");
+            return new AddResult(AddOutcome.Failed, null, ex.Message);
+        }
     }
 
     private static IList<IList<object>> ReadCsvRows(string path)

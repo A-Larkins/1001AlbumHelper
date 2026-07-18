@@ -41,20 +41,34 @@ public partial class AddAlbumWindow : Window
 
         try
         {
-            int? position = await Operations.AddReplacementAlbumAsync(title, artist, year);
-            if (position is null)
+            var result = await Operations.AddReplacementAlbumAsync(title, artist, year);
+            switch (result.Outcome)
             {
-                // Operations already explained why to the log; surface something actionable here.
-                StatusText.Text = $"✗ Couldn't add “{title}” — it may already be on the list, " +
-                                  "or Google Sheets isn't reachable. See the main window's log.";
-            }
-            else
-            {
-                StatusText.Text = $"✓ Added “{title}” ({year}) at #{position}. The list was renumbered.";
-                TitleBox.Text = "";
-                ArtistBox.Text = "";
-                YearBox.Text = "";
-                TitleBox.Focus();
+                case Operations.AddOutcome.Added:
+                    StatusText.Text = $"✓ Added “{title}” ({year}) at #{result.Position}. "
+                                    + "The list was renumbered."
+                                    + (result.Warning is null ? "" : $"\n{result.Warning}");
+                    TitleBox.Text = "";
+                    ArtistBox.Text = "";
+                    YearBox.Text = "";
+                    TitleBox.Focus();
+                    break;
+
+                case Operations.AddOutcome.AlreadyInReplacements:
+                    StatusText.Text = $"⚠️ Not added. {result.Detail}";
+                    break;
+
+                case Operations.AddOutcome.AlreadyIn1001:
+                    StatusText.Text = $"⚠️ Not added. {result.Detail}";
+                    break;
+
+                case Operations.AddOutcome.NotConfigured:
+                    StatusText.Text = $"✗ {result.Detail}";
+                    break;
+
+                default:
+                    StatusText.Text = $"✗ Couldn't add “{title}”: {result.Detail}";
+                    break;
             }
         }
         catch (Exception ex)

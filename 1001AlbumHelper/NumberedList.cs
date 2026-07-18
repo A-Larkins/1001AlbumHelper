@@ -96,7 +96,56 @@ public static class NumberedList
 
     /// <summary>True if an album with the same title and artist is already on the tab.</summary>
     public static bool Contains(Contents contents, string title, string artist) =>
-        contents.Rows.Any(r =>
-            string.Equals(r.Title, title, StringComparison.OrdinalIgnoreCase) &&
-            string.Equals(r.Artist, artist, StringComparison.OrdinalIgnoreCase));
+        Find(contents, title, artist) is not null;
+
+    /// <summary>The matching row, or null. Matching is loose — see <see cref="Normalize"/>.</summary>
+    public static Row? Find(Contents contents, string title, string artist) =>
+        contents.Rows.FirstOrDefault(r =>
+            Matches(r.Title, title) && Matches(r.Artist, artist));
+
+    /// <summary>Rows whose title matches but whose artist doesn't — likely-but-unconfirmed dupes.</summary>
+    public static IReadOnlyList<Row> FindByTitleOnly(Contents contents, string title, string artist) =>
+        contents.Rows.Where(r => Matches(r.Title, title) && !Matches(r.Artist, artist)).ToList();
+
+    public static bool Matches(string a, string b) => Normalize(a) == Normalize(b);
+
+    /// <summary>
+    /// Flattens a title or artist for comparison: case, punctuation, accents, a leading "the"
+    /// and runs of whitespace all stop mattering. Without this, "The Beatles" and "Beatles!"
+    /// read as different artists and duplicates slip through.
+    /// </summary>
+    public static string Normalize(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value)) return "";
+
+        var decomposed = value.Normalize(System.Text.NormalizationForm.FormD);
+        var sb = new System.Text.StringBuilder(decomposed.Length);
+        bool lastWasSpace = false;
+
+        foreach (char c in decomposed)
+        {
+            // Drop the accent marks that decomposition split off.
+            if (System.Globalization.CharUnicodeInfo.GetUnicodeCategory(c)
+                == System.Globalization.UnicodeCategory.NonSpacingMark) continue;
+
+            // Apostrophes are elided rather than treated as separators, so "Pepper's" collapses
+            // to "peppers" instead of splitting into "pepper s".
+            if (c is '\'' or '’' or 'ʼ' or '`') continue;
+
+            if (char.IsLetterOrDigit(c))
+            {
+                sb.Append(char.ToLowerInvariant(c));
+                lastWasSpace = false;
+            }
+            else if (!lastWasSpace && sb.Length > 0)
+            {
+                sb.Append(' ');
+                lastWasSpace = true;
+            }
+        }
+
+        string s = sb.ToString().Trim();
+        if (s.StartsWith("the ", StringComparison.Ordinal)) s = s[4..];
+        return s;
+    }
 }

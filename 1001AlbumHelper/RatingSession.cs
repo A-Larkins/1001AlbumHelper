@@ -65,6 +65,9 @@ public sealed class RatingSession
     /// <summary>Total rows on the master list.</summary>
     public int TotalAlbums => _all.Count;
 
+    /// <summary>Every row on the master list, in sheet order.</summary>
+    public IReadOnlyList<AlbumEntry> AllAlbums => _all;
+
     /// <summary>How many albums are still waiting in the current queue, including the current one.</summary>
     public int Remaining => Math.Max(0, _queue.Count - _index);
 
