@@ -1,12 +1,13 @@
 #!/bin/bash
 #
-# Builds a double-clickable "1001 Albums Helper.app" bundle for macOS.
+# Builds a double-clickable, self-contained "1001 Albums Helper.app" for macOS.
 #
 #   ./build-macos-app.sh
 #
-# The bundle is framework-dependent (it uses the .NET runtime you already have
-# installed). It launches the Avalonia UI and reads/writes the input/ and
-# output/ folders in this project directory.
+# The bundle includes its own copy of the .NET runtime, so it runs even without
+# .NET installed. It launches the Avalonia UI and reads/writes the input/ and
+# output/ folders (and appsettings.json / credentials.json) in this project
+# directory.
 #
 set -euo pipefail
 
@@ -17,9 +18,14 @@ DIST_DIR="$PROJ_DIR/dist"
 APP="$DIST_DIR/$APP_NAME.app"
 PUBLISH_DIR="$PROJ_DIR/obj/appbundle-publish"
 
-echo "▶ Publishing (Release, framework-dependent)…"
+case "$(uname -m)" in
+  arm64) RID="osx-arm64" ;;
+  *)     RID="osx-x64" ;;
+esac
+
+echo "▶ Publishing self-contained ($RID)…"
 rm -rf "$PUBLISH_DIR"
-dotnet publish "$CSPROJ" -c Release -o "$PUBLISH_DIR" \
+dotnet publish "$CSPROJ" -c Release -r "$RID" --self-contained true -o "$PUBLISH_DIR" \
   -p:UseAppHost=true --nologo -v quiet
 
 echo "▶ Assembling $APP_NAME.app…"
