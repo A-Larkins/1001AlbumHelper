@@ -1,7 +1,7 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         x:Class="_1001AlbumHelper.MainWindow"
-        Width="800" Height="580" MinWidth="660" MinHeight="500"
+        Width="860" Height="700" MinWidth="700" MinHeight="600"
         Title="1001 Albums Helper"
         RequestedThemeVariant="Dark">
 
@@ -230,36 +230,43 @@
         </Button>
       </Grid>
 
-      <Button x:Name="ExportButton" Classes="card" Tag="export-pdf" Click="OnRun">
-        <Grid ColumnDefinitions="Auto,*">
-          <Border Grid.Column="0" Classes="badge">
-            <TextBlock Text="📄" />
-          </Border>
-          <StackPanel Grid.Column="1" Margin="13,0,0,0" VerticalAlignment="Center">
-            <TextBlock Classes="title" Text="Export as PDF" />
-            <TextBlock Classes="desc" Text="Must Hear plus your replacements, numbered straight through, in two sections." />
-          </StackPanel>
-        </Grid>
-      </Button>
+      <Grid ColumnDefinitions="*,*">
+        <Button Grid.Column="0" x:Name="ExportButton" Classes="card" Tag="export-pdf" Click="OnRun"
+                Margin="0,0,6,0">
+          <Grid ColumnDefinitions="Auto,*">
+            <Border Grid.Column="0" Classes="badge">
+              <TextBlock Text="📄" />
+            </Border>
+            <StackPanel Grid.Column="1" Margin="13,0,0,0" VerticalAlignment="Center">
+              <TextBlock Classes="title" Text="Export as PDF" />
+              <TextBlock Classes="desc" Text="Both lists, numbered straight through, in two sections." />
+            </StackPanel>
+          </Grid>
+        </Button>
 
-      <Button x:Name="SyncButton" Classes="card" Tag="sync-all" Click="OnRun">
-        <Grid ColumnDefinitions="Auto,*,Auto">
-          <Border Grid.Column="0" Classes="badge">
-            <TextBlock Text="🔄" />
-          </Border>
-          <StackPanel Grid.Column="1" Margin="13,0,0,0" VerticalAlignment="Center">
-            <TextBlock Classes="title" Text="Sync all" />
-            <TextBlock x:Name="SyncDescText" Classes="desc"
-                       Text="Reconciles both lists with the 1001 list — catches edits made in the browser." />
-          </StackPanel>
-          <Border Grid.Column="2" x:Name="SyncBadge" IsVisible="False" VerticalAlignment="Center"
-                  CornerRadius="999" Background="#5a3a12" BorderBrush="#d8a24a" BorderThickness="1"
-                  Padding="10,4" Margin="10,0,0,0">
-            <TextBlock x:Name="SyncBadgeText" Text="" FontSize="11" FontWeight="SemiBold"
-                       Foreground="#f7cf90" />
-          </Border>
-        </Grid>
-      </Button>
+        <Button Grid.Column="1" x:Name="SyncButton" Classes="card" Tag="sync-all" Click="OnRun"
+                Margin="6,0,0,0">
+          <Grid ColumnDefinitions="Auto,*">
+            <Border Grid.Column="0" Classes="badge">
+              <TextBlock Text="🔄" />
+            </Border>
+            <StackPanel Grid.Column="1" Margin="13,0,0,0" VerticalAlignment="Center">
+              <!-- The badge sits beside the title so a half-width card doesn't squeeze it. -->
+              <StackPanel Orientation="Horizontal" Spacing="8">
+                <TextBlock Classes="title" Text="Sync all" VerticalAlignment="Center" />
+                <Border x:Name="SyncBadge" IsVisible="False" VerticalAlignment="Center"
+                        CornerRadius="999" Background="#5a3a12" BorderBrush="#d8a24a"
+                        BorderThickness="1" Padding="8,2">
+                  <TextBlock x:Name="SyncBadgeText" Text="" FontSize="10" FontWeight="Bold"
+                             Foreground="#f7cf90" />
+                </Border>
+              </StackPanel>
+              <TextBlock x:Name="SyncDescText" Classes="desc"
+                         Text="Reconciles both lists with the 1001 list." />
+            </StackPanel>
+          </Grid>
+        </Button>
+      </Grid>
     </StackPanel>
 
     <!-- ===== Log ===== -->

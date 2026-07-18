@@ -54,7 +54,7 @@ public partial class MainWindow : Window
         if (status.NeedsSync)
         {
             SyncDescText.Text = status.Summary();
-            SyncBadgeText.Text = "Sync needed";
+            SyncBadgeText.Text = "NEEDED";
             SyncBadge.IsVisible = true;
         }
         else
