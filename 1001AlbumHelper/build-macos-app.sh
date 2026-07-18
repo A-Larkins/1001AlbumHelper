@@ -35,6 +35,11 @@ mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources/app"
 # Publish output → Resources/app
 cp -R "$PUBLISH_DIR/." "$APP/Contents/Resources/app/"
 
+# App icon (if present)
+if [ -f "$PROJ_DIR/AppIcon.icns" ]; then
+  cp "$PROJ_DIR/AppIcon.icns" "$APP/Contents/Resources/AppIcon.icns"
+fi
+
 # Launcher: point the app at this project's data folder, then run the apphost.
 cat > "$APP/Contents/MacOS/launch" <<LAUNCH
 #!/bin/bash
@@ -56,6 +61,7 @@ cat > "$APP/Contents/Info.plist" <<'PLIST'
   <key>CFBundleVersion</key>           <string>1.0</string>
   <key>CFBundleShortVersionString</key><string>1.0</string>
   <key>CFBundleExecutable</key>        <string>launch</string>
+  <key>CFBundleIconFile</key>          <string>AppIcon</string>
   <key>CFBundlePackageType</key>       <string>APPL</string>
   <key>LSMinimumSystemVersion</key>    <string>11.0</string>
   <key>NSHighResolutionCapable</key>   <true/>
