@@ -1,9 +1,11 @@
+using Microsoft.Extensions.Configuration;
+
 namespace _1001AlbumHelper;
 
 /// <summary>
-/// The five core helper operations, shared by both the console menu and the web UI.
+/// The core helper operations, shared by both the console menu and the desktop UI.
 /// Every operation writes its progress to <see cref="Console"/> so callers can capture
-/// it however they like (the console prints it directly; the web UI streams it to the browser).
+/// it however they like (the console prints it directly; the desktop UI streams it to a log).
 /// </summary>
 public static class Operations
 {
@@ -140,4 +142,174 @@ public static class Operations
 
         processor.MergeRatingsWithDiscogsList(discogsPath, ratedPath, DiscogsOutputFile);
     }
+
+    // ----- Google Sheets sync -------------------------------------------------
+
+    /// <summary>Build the starred list and the renumbered replacements, then push both to Google Sheets.</summary>
+    public static async Task SyncBothToSheetsAsync()
+    {
+        Console.WriteLine("\n=== Build & sync BOTH lists to Google Sheets ===\n");
+
+        var cfg = LoadSheetsConfig();
+        var writer = await CreateWriterAsync(cfg);
+        if (writer is null) return;
+
+        Console.WriteLine("\n— Building 'Must Hear' list —");
+        CreateStarredAlbumsList();
+        await PushToSheetAsync(writer, StarredOutputFile, cfg.StarredTab);
+
+        Console.WriteLine("\n— Renumbering replacement albums —");
+        RenumberReplacementAlbums();
+        await PushToSheetAsync(writer, ReplacementOutputFile, cfg.ReplacementsTab);
+
+        Console.WriteLine("\n✓ Both lists synced to Google Sheets.");
+    }
+
+    /// <summary>Build the starred list and push it to Google Sheets.</summary>
+    public static async Task SyncStarredToSheetAsync()
+    {
+        Console.WriteLine("\n=== Build & sync 'Must Hear' list to Google Sheets ===\n");
+
+        var cfg = LoadSheetsConfig();
+        var writer = await CreateWriterAsync(cfg);
+        if (writer is null) return;
+
+        CreateStarredAlbumsList();
+        await PushToSheetAsync(writer, StarredOutputFile, cfg.StarredTab);
+        Console.WriteLine("\n✓ Synced to Google Sheets.");
+    }
+
+    /// <summary>Renumber the replacement albums and push them to Google Sheets.</summary>
+    public static async Task SyncReplacementsToSheetAsync()
+    {
+        Console.WriteLine("\n=== Renumber & sync replacement albums to Google Sheets ===\n");
+
+        var cfg = LoadSheetsConfig();
+        var writer = await CreateWriterAsync(cfg);
+        if (writer is null) return;
+
+        RenumberReplacementAlbums();
+        await PushToSheetAsync(writer, ReplacementOutputFile, cfg.ReplacementsTab);
+        Console.WriteLine("\n✓ Synced to Google Sheets.");
+    }
+
+    private static async Task<GoogleSheetsWriter?> CreateWriterAsync(GoogleSheetsConfig cfg)
+    {
+        if (string.IsNullOrWhiteSpace(cfg.SpreadsheetId) || cfg.SpreadsheetId.StartsWith("PUT_"))
+        {
+            Console.WriteLine("⚠️  Google Sheets isn't configured yet.");
+            Console.WriteLine("   Set \"GoogleSheets:SpreadsheetId\" in appsettings.json to your test sheet's ID.");
+            return null;
+        }
+
+        string credPath = Path.Combine(ProjectDir, cfg.CredentialsFile);
+        if (!File.Exists(credPath))
+        {
+            Console.WriteLine("⚠️  Google OAuth credentials were not found at:");
+            Console.WriteLine($"     {credPath}");
+            Console.WriteLine("   Download an OAuth 'Desktop app' credentials.json from Google Cloud and place it there.");
+            return null;
+        }
+
+        Console.WriteLine("Authenticating with Google… (a browser window opens the first time — sign in and approve).");
+        try
+        {
+            var writer = await GoogleSheetsWriter.CreateAsync(
+                cfg.SpreadsheetId, credPath, Path.Combine(ProjectDir, ".google-sheets-token"));
+            Console.WriteLine("✓ Authenticated with Google.");
+            return writer;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"✗ Google authentication failed: {ex.Message}");
+            return null;
+        }
+    }
+
+    private static async Task PushToSheetAsync(GoogleSheetsWriter writer, string outputFileName, string tabName)
+    {
+        string path = Path.Combine(OutputDir, outputFileName);
+        if (!File.Exists(path))
+        {
+            Console.WriteLine($"✗ Generated file not found: {path}");
+            return;
+        }
+
+        var rows = ReadCsvRows(path);
+        Console.WriteLine($"Uploading {rows.Count} rows to tab \"{tabName}\"…");
+        try
+        {
+            await writer.WriteTabAsync(tabName, rows);
+            Console.WriteLine($"✓ Wrote {rows.Count} rows to \"{tabName}\".");
+        }
+        catch (Google.GoogleApiException ex) when (ex.HttpStatusCode == System.Net.HttpStatusCode.Forbidden)
+        {
+            Console.WriteLine("✗ The signed-in Google account doesn't have permission to edit this sheet.");
+            Console.WriteLine("   Share the sheet as Editor with the account you approved, or use a sheet that account owns.");
+        }
+        catch (Google.GoogleApiException ex) when (ex.HttpStatusCode == System.Net.HttpStatusCode.NotFound)
+        {
+            Console.WriteLine("✗ Spreadsheet not found. Double-check GoogleSheets:SpreadsheetId in appsettings.json.");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"✗ Failed to write \"{tabName}\": {ex.Message}");
+        }
+    }
+
+    private static GoogleSheetsConfig LoadSheetsConfig()
+    {
+        // Read the copy next to the executable first, then let the live copy in the data
+        // folder override it — so editing appsettings.json takes effect without a rebuild
+        // (matters for the packaged .app, whose baked-in copy would otherwise be stale).
+        var config = new ConfigurationBuilder()
+            .AddJsonFile(Path.Combine(AppContext.BaseDirectory, "appsettings.json"), optional: true)
+            .AddJsonFile(Path.Combine(ProjectDir, "appsettings.json"), optional: true)
+            .Build();
+
+        return new GoogleSheetsConfig(
+            SpreadsheetId: config["GoogleSheets:SpreadsheetId"] ?? "",
+            StarredTab: config["GoogleSheets:StarredTab"] ?? "Must Hear",
+            ReplacementsTab: config["GoogleSheets:ReplacementsTab"] ?? "Replacements",
+            CredentialsFile: config["GoogleSheets:CredentialsFile"] ?? "credentials.json");
+    }
+
+    private static IList<IList<object>> ReadCsvRows(string path)
+    {
+        var rows = new List<IList<object>>();
+        foreach (var line in File.ReadLines(path))
+        {
+            if (string.IsNullOrWhiteSpace(line)) continue;
+            rows.Add(SplitCsvLine(line).Cast<object>().ToList());
+        }
+        return rows;
+    }
+
+    private static string[] SplitCsvLine(string line)
+    {
+        var result = new List<string>();
+        var field = new System.Text.StringBuilder();
+        bool inQuotes = false;
+
+        for (int i = 0; i < line.Length; i++)
+        {
+            char c = line[i];
+            if (c == '"')
+            {
+                if (inQuotes && i + 1 < line.Length && line[i + 1] == '"') { field.Append('"'); i++; }
+                else inQuotes = !inQuotes;
+            }
+            else if (c == ',' && !inQuotes)
+            {
+                result.Add(field.ToString());
+                field.Clear();
+            }
+            else field.Append(c);
+        }
+        result.Add(field.ToString());
+        return result.ToArray();
+    }
+
+    private sealed record GoogleSheetsConfig(
+        string SpreadsheetId, string StarredTab, string ReplacementsTab, string CredentialsFile);
 }

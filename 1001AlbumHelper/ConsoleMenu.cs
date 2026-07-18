@@ -24,7 +24,13 @@ public static class ConsoleMenu
             Console.WriteLine("     Download the official 1001 albums list from Discogs and save as a CSV.\n");
             Console.WriteLine("  5. Merge Discogs list with my existing ratings");
             Console.WriteLine("     Combine the Discogs album list with your ratings to create a merged CSV.\n");
-            Console.WriteLine("Enter your choice (1-5, or 'q' to quit): ");
+
+            Console.WriteLine("Google Sheets sync:");
+            Console.WriteLine("  6. Build & sync BOTH lists to Google Sheets (one click)");
+            Console.WriteLine("     Rebuild the starred list, renumber replacements, and write both into your sheet.\n");
+            Console.WriteLine("  7. Build & sync 'Must Hear' list to Google Sheets\n");
+            Console.WriteLine("  8. Renumber & sync replacement albums to Google Sheets\n");
+            Console.WriteLine("Enter your choice (1-8, or 'q' to quit): ");
 
             string? choice = Console.ReadLine();
 
@@ -46,6 +52,15 @@ public static class ConsoleMenu
                     break;
                 case "5":
                     Operations.MergeRatingsWithDiscogsList();
+                    break;
+                case "6":
+                    await Operations.SyncBothToSheetsAsync();
+                    break;
+                case "7":
+                    await Operations.SyncStarredToSheetAsync();
+                    break;
+                case "8":
+                    await Operations.SyncReplacementsToSheetAsync();
                     break;
                 case "q":
                     Console.WriteLine("\nGoodbye!");

@@ -36,6 +36,14 @@
       <Setter Property="TextWrapping" Value="Wrap" />
       <Setter Property="Margin" Value="0,3,0,0" />
     </Style>
+    <!-- Highlighted "one click" card -->
+    <Style Selector="Button.card.accent">
+      <Setter Property="Background" Value="#33270f" />
+      <Setter Property="BorderBrush" Value="#8a6524" />
+    </Style>
+    <Style Selector="Button.card.accent TextBlock.title">
+      <Setter Property="Foreground" Value="#f2c078" />
+    </Style>
 
     <!-- Small ghost buttons -->
     <Style Selector="Button.ghost">
@@ -135,6 +143,29 @@
             <StackPanel>
               <TextBlock Classes="title" Text="🔀  5 · Merge ratings with Discogs list" />
               <TextBlock Classes="desc" Text="Combine the fresh Discogs list with your existing ratings into a single merged CSV." />
+            </StackPanel>
+          </Button>
+
+          <TextBlock Classes="sectionLabel" Text="GOOGLE SHEETS" />
+
+          <Button Classes="card accent" Tag="sync-both" Click="OnRun">
+            <StackPanel>
+              <TextBlock Classes="title" Text="✅  Build &amp; sync BOTH to Google Sheets" />
+              <TextBlock Classes="desc" Text="One click: rebuild the 'Must Hear' list, renumber the replacements, and write both straight into your Google Sheet." />
+            </StackPanel>
+          </Button>
+
+          <Button Classes="card" Tag="sync-starred" Click="OnRun">
+            <StackPanel>
+              <TextBlock Classes="title" Text="⭐  Build &amp; sync 'Must Hear' list" />
+              <TextBlock Classes="desc" Text="Rebuild the starred list and write it to its Google Sheet tab." />
+            </StackPanel>
+          </Button>
+
+          <Button Classes="card" Tag="sync-replacements" Click="OnRun">
+            <StackPanel>
+              <TextBlock Classes="title" Text="🔢  Renumber &amp; sync replacements" />
+              <TextBlock Classes="desc" Text="Renumber the replacement albums and write them to their Google Sheet tab." />
             </StackPanel>
           </Button>
         </StackPanel>

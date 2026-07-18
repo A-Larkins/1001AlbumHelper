@@ -4,3 +4,8 @@ dist/
 output/
 appsettings.json
 *.xlsx
+
+# Google OAuth secrets / cached token
+credentials.json
+client_secret*.json
+.google-sheets-token/

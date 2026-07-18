@@ -67,6 +67,9 @@ public partial class MainWindow : Window
                     case "renumber": Operations.RenumberReplacementAlbums(); break;
                     case "fetch": await Operations.FetchFreshListAsync(); break;
                     case "merge": Operations.MergeRatingsWithDiscogsList(); break;
+                    case "sync-both": await Operations.SyncBothToSheetsAsync(); break;
+                    case "sync-starred": await Operations.SyncStarredToSheetAsync(); break;
+                    case "sync-replacements": await Operations.SyncReplacementsToSheetAsync(); break;
                 }
                 ok = true;
             }
