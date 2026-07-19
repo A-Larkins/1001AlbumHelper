@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -66,6 +67,10 @@ public partial class CandidatesWindow : Window
     // ---------- Loading ----------
     private void Load()
     {
+        // Reloading rebuilds the list, so drop the old subscriptions or a year edited after two
+        // reloads would write the file three times.
+        foreach (var album in _all) album.PropertyChanged -= OnAlbumChanged;
+
         try
         {
             _all = ReplacementCandidates.Load();
@@ -78,9 +83,30 @@ public partial class CandidatesWindow : Window
         }
 
         // A note is per-attempt feedback, not a fact about the album — start every session clean.
-        foreach (var album in _all) album.Note = "";
+        foreach (var album in _all)
+        {
+            album.Note = "";
+            Watch(album);
+        }
 
         ApplyFilter();
+    }
+
+    /// <summary>
+    /// Persists whenever an album's year changes, from wherever it changed.
+    /// <para>
+    /// A year typed into a row updates the album through its binding and nothing more, so without
+    /// this it would live only as long as the window: closing or reloading would lose it, and the
+    /// next prefetch would go and ask Discogs for a year the user had already supplied. Saving
+    /// centrally means every route to a year — typed, fetched, corrected — is durable by default
+    /// rather than each one having to remember.
+    /// </para>
+    /// </summary>
+    private void Watch(CandidateAlbum album) => album.PropertyChanged += OnAlbumChanged;
+
+    private void OnAlbumChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(CandidateAlbum.Year)) Persist();
     }
 
     // ---------- Filtering ----------
@@ -169,17 +195,10 @@ public partial class CandidatesWindow : Window
                 LookupText.Text = $"Looking up years… {done + 1}/{missing.Count}";
 
                 var year = await LookUpYearAsync(album, token);
-                if (year is not null)
-                {
-                    album.Year = year;
-                    found++;
-
-                    // Saved the moment it resolves rather than in batches. A year costs a second
-                    // of someone else's rate limit to fetch and nothing to keep, so the write is
-                    // worth it: quitting the app mid-run then loses no work at all, where batching
-                    // would throw away everything since the last multiple of ten.
-                    Persist();
-                }
+                // Setting the year is what saves it — see Watch. A year costs a second of someone
+                // else's rate limit to fetch and nothing to keep, so quitting mid-run loses none
+                // of what's already resolved.
+                if (year is not null) { album.Year = year; found++; }
 
                 done++;
 
@@ -343,6 +362,7 @@ public partial class CandidatesWindow : Window
         if (album is not null)
         {
             _all.Add(album);
+            Watch(album);
         }
         else if (form.Reopened is not null)
         {

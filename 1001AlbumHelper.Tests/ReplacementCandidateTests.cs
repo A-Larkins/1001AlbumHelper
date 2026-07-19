@@ -76,6 +76,47 @@ public class ReplacementCandidateTests : IDisposable
         Assert.Equal("", ReplacementCandidates.Load(Path_)[0].Note);
     }
 
+    // ----- Change notification -----
+    // The window saves the shortlist off the back of these, so a year typed into a row is only
+    // durable for as long as the setter keeps announcing itself.
+
+    [Fact]
+    public void Setting_a_year_announces_itself()
+    {
+        var album = new CandidateAlbum { Title = "Messengers", Artist = "August Burns Red" };
+        var heard = new List<string?>();
+        album.PropertyChanged += (_, e) => heard.Add(e.PropertyName);
+
+        album.Year = "2007";
+
+        Assert.Contains(nameof(CandidateAlbum.Year), heard);
+    }
+
+    [Fact]
+    public void Re_setting_the_same_year_stays_quiet()
+    {
+        // Otherwise every no-op assignment would rewrite the file.
+        var album = new CandidateAlbum { Year = "2007" };
+        var heard = new List<string?>();
+        album.PropertyChanged += (_, e) => heard.Add(e.PropertyName);
+
+        album.Year = "2007";
+
+        Assert.Empty(heard);
+    }
+
+    [Fact]
+    public void A_note_is_not_mistaken_for_a_year()
+    {
+        var album = new CandidateAlbum { Title = "Vs.", Artist = "Pearl Jam" };
+        var heard = new List<string?>();
+        album.PropertyChanged += (_, e) => heard.Add(e.PropertyName);
+
+        album.Note = "Already on the 1001 list.";
+
+        Assert.DoesNotContain(nameof(CandidateAlbum.Year), heard);
+    }
+
     // ----- Adding an album that may already be on the shortlist -----
 
     private static readonly CandidateAlbum[] Shortlist =
