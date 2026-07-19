@@ -169,12 +169,19 @@ public partial class CandidatesWindow : Window
                 LookupText.Text = $"Looking up years… {done + 1}/{missing.Count}";
 
                 var year = await LookUpYearAsync(album, token);
-                if (year is not null) { album.Year = year; found++; }
+                if (year is not null)
+                {
+                    album.Year = year;
+                    found++;
+
+                    // Saved the moment it resolves rather than in batches. A year costs a second
+                    // of someone else's rate limit to fetch and nothing to keep, so the write is
+                    // worth it: quitting the app mid-run then loses no work at all, where batching
+                    // would throw away everything since the last multiple of ten.
+                    Persist();
+                }
 
                 done++;
-
-                // Batched so a long prefetch isn't also a few hundred writes.
-                if (found > 0 && found % 10 == 0) Persist();
 
                 await Task.Delay(LookupSpacing, token);
             }
