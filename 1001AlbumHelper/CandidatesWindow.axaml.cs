@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
@@ -31,14 +32,30 @@ public partial class CandidatesWindow : Window
     // Null when no Discogs token is configured: years then have to be typed in by hand.
     private readonly DiscogsApiClient? _discogs = DiscogsApiClient.TryCreate();
 
+    /// <summary>Stops the background year lookup when the window closes.</summary>
+    private readonly CancellationTokenSource _closing = new();
+
     private bool _busy;
+    private bool _prefetching;
+
+    /// <summary>
+    /// Discogs allows 60 requests a minute against a token, so the sustained ceiling is one a
+    /// second however the work is arranged. Spacing them a shade wider than that keeps the
+    /// prefetch clear of a 429, which would otherwise read as "no year found" and stick.
+    /// </summary>
+    private static readonly TimeSpan LookupSpacing = TimeSpan.FromMilliseconds(1100);
 
     public CandidatesWindow()
     {
         InitializeComponent();
         RowsList.ItemsSource = _shown;
         SearchBox.TextChanged += (_, _) => ApplyFilter();
-        Opened += (_, _) => Load();
+        Opened += async (_, _) =>
+        {
+            Load();
+            await PrefetchYearsAsync();
+        };
+        Closed += (_, _) => _closing.Cancel();
     }
 
     // ---------- Loading ----------
@@ -104,6 +121,91 @@ public partial class CandidatesWindow : Window
         }
     }
 
+    // ---------- Year lookup ----------
+
+    /// <summary>
+    /// Fills in the missing years from Discogs in the background, top down, saving as it goes.
+    /// <para>
+    /// Runs on the UI thread — every await here is network or a timer, so nothing is blocked — and
+    /// works in list order because that's the order they'll be decided in: by the time the first
+    /// few rows have been ruled on, the ones below have their years. The results are written to the
+    /// shortlist file, so this is a one-time cost rather than something paid on every open.
+    /// </para>
+    /// </summary>
+    private async Task PrefetchYearsAsync()
+    {
+        // A reload during a prefetch would otherwise start a second loop and double the request
+        // rate, which is exactly what the spacing exists to avoid.
+        if (_discogs is null || _prefetching) return;
+        _prefetching = true;
+
+        var missing = _all
+            .Where(a => a.Status == CandidateStatus.Pending && a.Year.Trim().Length == 0)
+            .ToList();
+        if (missing.Count == 0) return;
+
+        int done = 0, found = 0;
+        var token = _closing.Token;
+
+        try
+        {
+            foreach (var album in missing)
+            {
+                if (token.IsCancellationRequested) break;
+
+                // The user may have typed one in while this was working down the list.
+                if (album.Year.Trim().Length > 0) { done++; continue; }
+
+                LookupText.Text = $"Looking up years… {done + 1}/{missing.Count}";
+
+                var year = await LookUpYearAsync(album, token);
+                if (year is not null) { album.Year = year; found++; }
+
+                done++;
+
+                // Batched so a long prefetch isn't also a few hundred writes.
+                if (found > 0 && found % 10 == 0) Persist();
+
+                await Task.Delay(LookupSpacing, token);
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // Window closed mid-prefetch: keep whatever was resolved.
+        }
+        finally
+        {
+            _prefetching = false;
+            if (found > 0) Persist();
+            if (!token.IsCancellationRequested)
+            {
+                int stillMissing = _all.Count(a =>
+                    a.Status == CandidateStatus.Pending && a.Year.Trim().Length == 0);
+                LookupText.Text = stillMissing == 0
+                    ? ""
+                    : $"{stillMissing} without a year — type those in";
+            }
+        }
+    }
+
+    /// <summary>The album's release year according to Discogs, or null if it couldn't be found.</summary>
+    private async Task<string?> LookUpYearAsync(CandidateAlbum album, CancellationToken token)
+    {
+        try
+        {
+            var matches = await _discogs!.SearchAlbumsAsync(album.Title, album.Artist, token);
+            return matches.FirstOrDefault(m => m.Year.Length > 0)?.Year;
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch
+        {
+            return null; // One album failing to resolve isn't a reason to stop the rest.
+        }
+    }
+
     // ---------- Keep ----------
     private async void OnKeepRow(object? sender, RoutedEventArgs e)
     {
@@ -116,14 +218,32 @@ public partial class CandidatesWindow : Window
         if (_busy) return;
 
         string year = album.Year.Trim();
+        string? lookedUp = null;
 
-        // No year yet: fill it in from Discogs and stop there. Adding on the back of a lookup the
-        // user never saw would quietly bake a wrong year into the sheet, so the second press
-        // confirms it.
+        // Usually already filled in by the prefetch. This covers a row reached before the prefetch
+        // got to it: look it up now and carry straight on, rather than making them press twice.
         if (year.Length == 0)
         {
-            await FillYearAsync(album);
-            return;
+            SetBusy(true, $"Looking up “{album.Title}” on Discogs…");
+            try
+            {
+                lookedUp = await LookUpYearAsync(album, _closing.Token);
+            }
+            finally
+            {
+                SetBusy(false);
+            }
+
+            if (lookedUp is null)
+            {
+                album.Note = _discogs is null
+                    ? "No year — type one in (Discogs lookup is off; add a token to appsettings.json)."
+                    : "Discogs didn't find a year — type one in.";
+                return;
+            }
+
+            album.Year = lookedUp;
+            year = lookedUp;
         }
 
         if (!int.TryParse(year, out int parsed) || parsed < 1900 || parsed > DateTime.Now.Year + 1)
@@ -132,7 +252,7 @@ public partial class CandidatesWindow : Window
             return;
         }
 
-        SetBusy(true, $"Adding “{album.Title}”…");
+        SetBusy(true, $"Adding “{album.Title}” ({parsed})…");
         album.Note = "";
 
         try
@@ -142,7 +262,10 @@ public partial class CandidatesWindow : Window
             {
                 case Operations.AddOutcome.Added:
                     Decide(album, CandidateStatus.Added);
+                    // Name the year when it was looked up rather than seen — it's the one part of
+                    // the row they didn't get a chance to eye before it went in.
                     StatusText.Text = $"✓ “{album.Title}” added at #{result.Position} — the list was renumbered."
+                                    + (lookedUp is null ? "" : $" Year {parsed} came from Discogs.")
                                     + (result.Warning is null ? "" : $"\n{result.Warning}");
                     break;
 
@@ -171,46 +294,6 @@ public partial class CandidatesWindow : Window
         catch (Exception ex)
         {
             StatusText.Text = $"✗ {ex.Message}";
-        }
-        finally
-        {
-            SetBusy(false);
-        }
-    }
-
-    /// <summary>
-    /// Looks the album's year up on Discogs and puts it in the box without adding anything, so the
-    /// user sees what they're about to commit to.
-    /// </summary>
-    private async Task FillYearAsync(CandidateAlbum album)
-    {
-        if (_discogs is null)
-        {
-            album.Note = "No year — type one in (Discogs lookup is off; add a token to appsettings.json).";
-            return;
-        }
-
-        SetBusy(true, $"Looking up “{album.Title}” on Discogs…");
-        try
-        {
-            var matches = await _discogs.SearchAlbumsAsync(album.Title, album.Artist);
-            var hit = matches.FirstOrDefault(m => m.Year.Length > 0);
-
-            if (hit is null)
-            {
-                album.Note = "Discogs didn't find a year — type one in.";
-                StatusText.Text = $"No year found for “{album.Title}”.";
-                return;
-            }
-
-            album.Year = hit.Year;
-            album.Note = $"Discogs says {hit.Year} ({hit.Artist}) — press Keep again to add it.";
-            StatusText.Text = $"Filled in {hit.Year} for “{album.Title}”. Check it, then press Keep again.";
-        }
-        catch (Exception ex)
-        {
-            album.Note = "Lookup failed — type the year in.";
-            StatusText.Text = $"✗ Discogs lookup failed: {ex.Message}";
         }
         finally
         {
@@ -287,13 +370,16 @@ public partial class CandidatesWindow : Window
         CountText.Text = "";
     }
 
-    private void OnReload(object? sender, RoutedEventArgs e)
+    private async void OnReload(object? sender, RoutedEventArgs e)
     {
         if (_busy) return;
         _lastDropped = null;
         UndoButton.IsEnabled = false;
         Load();
         StatusText.Text = "Reloaded from disk.";
+
+        // Picks up years for anything newly added to the file by hand.
+        await PrefetchYearsAsync();
     }
 
     private void OnClose(object? sender, RoutedEventArgs e) => Close();

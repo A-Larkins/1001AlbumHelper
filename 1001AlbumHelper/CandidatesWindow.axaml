@@ -118,10 +118,12 @@
     </StackPanel>
 
     <!-- Search -->
-    <Grid Grid.Row="1" ColumnDefinitions="*,Auto" Margin="0,0,0,10">
+    <Grid Grid.Row="1" ColumnDefinitions="*,Auto,Auto" Margin="0,0,0,10">
       <TextBox Grid.Column="0" x:Name="SearchBox" Classes="search"
                Watermark="Search album, artist or genre…" />
-      <TextBlock Grid.Column="1" x:Name="CountText" Text="" FontSize="12" Foreground="#9c8b7c"
+      <TextBlock Grid.Column="1" x:Name="LookupText" Text="" FontSize="12" Foreground="#d8a24a"
+                 VerticalAlignment="Center" Margin="12,2,0,0" />
+      <TextBlock Grid.Column="2" x:Name="CountText" Text="" FontSize="12" Foreground="#9c8b7c"
                  VerticalAlignment="Center" Margin="12,2,2,0" />
     </Grid>
 
