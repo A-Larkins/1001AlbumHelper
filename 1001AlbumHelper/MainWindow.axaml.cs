@@ -137,6 +137,7 @@ public partial class MainWindow : Window
         BackfillButton.IsEnabled = !on;
         AddAlbumButton.IsEnabled = !on;
         BrowseButton.IsEnabled = !on;
+        CandidatesButton.IsEnabled = !on;
         SyncButton.IsEnabled = !on;
         ExportButton.IsEnabled = !on;
     }
@@ -169,15 +170,28 @@ public partial class MainWindow : Window
     private async void OnAddAlbum(object? sender, RoutedEventArgs e)
     {
         if (!AddAlbumButton.IsEnabled) return;
+        await ShowLoggingDialogAsync(new AddAlbumWindow());
+    }
 
-        // The dialog writes via Operations, whose progress goes to Console — capture it into the
-        // log the same way a run does, so the main window still shows what happened.
+    private async void OnCandidates(object? sender, RoutedEventArgs e)
+    {
+        if (!CandidatesButton.IsEnabled) return;
+        await ShowLoggingDialogAsync(new CandidatesWindow());
+    }
+
+    /// <summary>
+    /// Shows a dialog that writes to the sheet. Those writes go through Operations, whose progress
+    /// goes to Console — capture it into the log the same way a run does, so the main window still
+    /// shows what happened once the dialog is closed.
+    /// </summary>
+    private async Task ShowLoggingDialogAsync(Window dialog)
+    {
         var writer = new UiLogWriter(line => Dispatcher.UIThread.Post(() => AppendLine(line)));
         var previousOut = Console.Out;
         Console.SetOut(writer);
         try
         {
-            await new AddAlbumWindow().ShowDialog(this);
+            await dialog.ShowDialog(this);
         }
         finally
         {
