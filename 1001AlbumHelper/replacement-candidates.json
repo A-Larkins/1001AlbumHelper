@@ -1,155 +1,1073 @@
 [
-  { "title": "Away from the Sun", "artist": "3 Doors Down", "year": "", "genre": "Rock", "status": "pending" },
-  { "title": "The Better Life", "artist": "3 Doors Down", "year": "", "genre": "Rock", "status": "pending" },
-  { "title": "The Beautiful Letdown", "artist": "Switchfoot", "year": "", "genre": "Pop", "status": "pending" },
-  { "title": "The Avalanche", "artist": "Owen", "year": "", "genre": "Alternative", "status": "pending" },
-  { "title": "Trapt", "artist": "Trapt", "year": "", "genre": "Hard Rock", "status": "pending" },
-  { "title": "Back Into Your System", "artist": "Saliva", "year": "", "genre": "Rock", "status": "pending" },
-  { "title": "Leave a Whisper", "artist": "Shinedown", "year": "", "genre": "Hard Rock", "status": "pending" },
-  { "title": "Break the Cycle", "artist": "Staind", "year": "", "genre": "Hard Rock", "status": "pending" },
-  { "title": "Come Clean", "artist": "Puddle of Mudd", "year": "", "genre": "Rock", "status": "pending" },
-  { "title": "Tonight the Stars Revolt", "artist": "Powerman 5000", "year": "", "genre": "Hard Rock", "status": "pending" },
-  { "title": "Far Beyond Driven", "artist": "Pantera", "year": "", "genre": "Metal", "status": "pending" },
-  { "title": "The Great Southern Trendkill", "artist": "Pantera", "year": "", "genre": "Metal", "status": "pending" },
-  { "title": "Reinventing the Steel", "artist": "Pantera", "year": "", "genre": "Metal", "status": "pending" },
-  { "title": "The Grand Illusion", "artist": "Styx", "year": "", "genre": "Rock", "status": "pending" },
-  { "title": "Paradise Theatre", "artist": "Styx", "year": "", "genre": "Rock", "status": "pending" },
-  { "title": "Dangerous: The Double Album", "artist": "Morgan Wallen", "year": "", "genre": "Country", "status": "pending" },
-  { "title": "One Thing At A Time", "artist": "Morgan Wallen", "year": "", "genre": "Country", "status": "pending" },
-  { "title": "Hello Rockview", "artist": "Less Than Jake", "year": "", "genre": "Rock", "status": "pending" },
-  { "title": "Anthem", "artist": "Less Than Jake", "year": "", "genre": "Rock", "status": "pending" },
-  { "title": "Why Do They Rock So Hard", "artist": "Reel Big Fish", "year": "", "genre": "Rock", "status": "pending" },
-  { "title": "Turn the Radio Off", "artist": "Reel Big Fish", "year": "", "genre": "Rock", "status": "pending" },
-  { "title": "Let's Face It", "artist": "The Mighty Mighty Bosstones", "year": "", "genre": "Rock", "status": "pending" },
-  { "title": "...and out Come the Wolves", "artist": "Rancid", "year": "", "genre": "Rock", "status": "pending" },
-  { "title": "The War On Errorism", "artist": "NOFX", "year": "", "genre": "Alternative", "status": "pending" },
-  { "title": "Fresh Fruit for Rotting Vegetables", "artist": "Dead Kennedys", "year": "", "genre": "Punk", "status": "pending" },
-  { "title": "In The Court Of The Dragon", "artist": "Trivium", "year": "", "genre": "Metal", "status": "pending" },
-  { "title": "In Waves", "artist": "Trivium", "year": "", "genre": "Metal", "status": "pending" },
-  { "title": "What the Dead Men Say", "artist": "Trivium", "year": "", "genre": "Metal", "status": "pending" },
-  { "title": "This Consequence", "artist": "Killswitch Engage", "year": "", "genre": "Metal", "status": "pending" },
-  { "title": "Emperor of Sand", "artist": "Mastodon", "year": "", "genre": "Metal", "status": "pending" },
-  { "title": "The War Within", "artist": "Shadows Fall", "year": "", "genre": "Metal", "status": "pending" },
-  { "title": "Constellations", "artist": "August Burns Red", "year": "", "genre": "Metal", "status": "pending" },
-  { "title": "Messengers", "artist": "August Burns Red", "year": "", "genre": "Metal", "status": "pending" },
-  { "title": "Phantom Anthem", "artist": "August Burns Red", "year": "", "genre": "Metal", "status": "pending" },
-  { "title": "With Roots Above and Branches Below", "artist": "The Devil Wears Prada", "year": "", "genre": "Metal", "status": "pending" },
-  { "title": "Dead Throne", "artist": "The Devil Wears Prada", "year": "", "genre": "Metal", "status": "pending" },
-  { "title": "Color Decay", "artist": "The Devil Wears Prada", "year": "", "genre": "Metal", "status": "pending" },
-  { "title": "El Camino", "artist": "The Black Keys", "year": "", "genre": "Alternative", "status": "pending" },
-  { "title": "Riot!", "artist": "Paramore", "year": "", "genre": "Alternative", "status": "pending" },
-  { "title": "Brand New Eyes", "artist": "Paramore", "year": "", "genre": "Alternative", "status": "pending" },
-  { "title": "Sigh No More", "artist": "Mumford & Sons", "year": "", "genre": "Alternative", "status": "pending" },
-  { "title": "Babel", "artist": "Mumford & Sons", "year": "", "genre": "Alternative", "status": "pending" },
-  { "title": "Youth And Young Manhood", "artist": "Kings of Leon", "year": "", "genre": "Rock", "status": "pending" },
-  { "title": "Only By the Night", "artist": "Kings of Leon", "year": "", "genre": "Alternative", "status": "pending" },
-  { "title": "Hozier", "artist": "Hozier", "year": "", "genre": "Alternative", "status": "pending" },
-  { "title": "The Lumineers", "artist": "The Lumineers", "year": "", "genre": "Folk", "status": "pending" },
-  { "title": "DeAnn", "artist": "Zach Bryan", "year": "", "genre": "Singer/Songwriter", "status": "pending" },
-  { "title": "American Heartbreak", "artist": "Zach Bryan", "year": "", "genre": "Country", "status": "pending" },
-  { "title": "Zach Bryan", "artist": "Zach Bryan", "year": "", "genre": "Country", "status": "pending" },
-  { "title": "Surfing with the Alien", "artist": "Joe Satriani", "year": "", "genre": "Rock", "status": "pending" },
-  { "title": "Flying In a Blue Dream", "artist": "Joe Satriani", "year": "", "genre": "Rock", "status": "pending" },
-  { "title": "The Extremist", "artist": "Joe Satriani", "year": "", "genre": "Rock", "status": "pending" },
-  { "title": "Not of This Earth", "artist": "Joe Satriani", "year": "", "genre": "Rock", "status": "pending" },
-  { "title": "What's the 411?", "artist": "Mary J. Blige", "year": "", "genre": "R&B/Soul", "status": "pending" },
-  { "title": "My Life", "artist": "Mary J. Blige", "year": "", "genre": "R&B/Soul", "status": "pending" },
-  { "title": "Faith", "artist": "Faith Evans", "year": "", "genre": "R&B/Soul", "status": "pending" },
-  { "title": "Brandy", "artist": "Brandy", "year": "", "genre": "R&B/Soul", "status": "pending" },
-  { "title": "Never Say Never", "artist": "Brandy", "year": "", "genre": "Pop", "status": "pending" },
-  { "title": "Mariah Carey", "artist": "Mariah Carey", "year": "", "genre": "R&B/Soul", "status": "pending" },
-  { "title": "The Emancipation Of Mimi", "artist": "Mariah Carey", "year": "", "genre": "Pop", "status": "pending" },
-  { "title": "Silver Side Up", "artist": "Nickelback", "year": "", "genre": "Rock", "status": "pending" },
-  { "title": "L.D. 50", "artist": "Mudvayne", "year": "", "genre": "Metal", "status": "pending" },
-  { "title": "The Foundation", "artist": "Zac Brown Band", "year": "", "genre": "Country", "status": "pending" },
-  { "title": "You Get What You Give", "artist": "Zac Brown Band", "year": "", "genre": "Country", "status": "pending" },
-  { "title": "No Shoes, No Shirt, No Problems", "artist": "Kenny Chesney", "year": "", "genre": "Country", "status": "pending" },
-  { "title": "When the Sun Goes Down", "artist": "Kenny Chesney", "year": "", "genre": "Country", "status": "pending" },
-  { "title": "The Road and the Radio", "artist": "Kenny Chesney", "year": "", "genre": "Country", "status": "pending" },
-  { "title": "Live Like You Were Dying", "artist": "Tim McGraw", "year": "", "genre": "Country", "status": "pending" },
-  { "title": "Tim McGraw and The Dancehall Doctors", "artist": "Tim McGraw", "year": "", "genre": "Country", "status": "pending" },
-  { "title": "Set This Circus Down", "artist": "Tim McGraw", "year": "", "genre": "Country", "status": "pending" },
-  { "title": "A Place in the Sun", "artist": "Tim McGraw", "year": "", "genre": "Country", "status": "pending" },
-  { "title": "Everywhere", "artist": "Tim McGraw", "year": "", "genre": "Country", "status": "pending" },
-  { "title": "All I Want", "artist": "Tim McGraw", "year": "", "genre": "Country", "status": "pending" },
-  { "title": "Not a Moment Too Soon", "artist": "Tim McGraw", "year": "", "genre": "Country", "status": "pending" },
-  { "title": "Red River Blue", "artist": "Blake Shelton", "year": "", "genre": "Country", "status": "pending" },
-  { "title": "Tailgates & Tanlines", "artist": "Luke Bryan", "year": "", "genre": "Country", "status": "pending" },
-  { "title": "Crash My Party", "artist": "Luke Bryan", "year": "", "genre": "Country", "status": "pending" },
-  { "title": "This One's for You Too", "artist": "Luke Combs", "year": "", "genre": "Country", "status": "pending" },
-  { "title": "What You See Ain't Always What You Get", "artist": "Luke Combs", "year": "", "genre": "Country", "status": "pending" },
-  { "title": "Who Needs Pictures", "artist": "Brad Paisley", "year": "", "genre": "Country", "status": "pending" },
-  { "title": "Mud On the Tires", "artist": "Brad Paisley", "year": "", "genre": "Country", "status": "pending" },
-  { "title": "Time Well Wasted", "artist": "Brad Paisley", "year": "", "genre": "Country", "status": "pending" },
-  { "title": "5th Gear", "artist": "Brad Paisley", "year": "", "genre": "Country", "status": "pending" },
-  { "title": "Unleashed", "artist": "Toby Keith", "year": "", "genre": "Country", "status": "pending" },
-  { "title": "Zen Arcade", "artist": "Hüsker Dü", "year": "", "genre": "Alternative", "status": "pending" },
-  { "title": "New Day Rising", "artist": "Hüsker Dü", "year": "", "genre": "Alternative", "status": "pending" },
-  { "title": "Normal Isn't", "artist": "Puscifer", "year": "", "genre": "Rock", "status": "pending" },
-  { "title": "When I Woke", "artist": "Rusted Root", "year": "", "genre": "Pop", "status": "pending" },
-  { "title": "Matters of the Heart", "artist": "Bob Bennett", "year": "", "genre": "Gospel", "status": "pending" },
-  { "title": "Nobody Knows Me Like You", "artist": "Benny Hester", "year": "", "genre": "Gospel", "status": "pending" },
-  { "title": "The Gospel Harmonettes of Demopolis, Alabama", "artist": "The Gospel Harmonettes", "year": "", "genre": "Gospel", "status": "pending" },
-  { "title": "Kirk Franklin and the Family (Live)", "artist": "Kirk Franklin", "year": "", "genre": "Christian", "status": "pending" },
-  { "title": "Tramaine Hawkins (Live)", "artist": "Tramaine Hawkins", "year": "", "genre": "Christian", "status": "pending" },
-  { "title": "In the Gospel Light", "artist": "Clarence Fountain", "year": "", "genre": "R&B/Soul", "status": "pending" },
-  { "title": "Black Nativity: Gospel On Broadway!", "artist": "Original Cast Of 'Black Nativity'", "year": "", "genre": "Soundtrack", "status": "pending" },
-  { "title": "Thirsty", "artist": "Marvin Sapp", "year": "", "genre": "Christian", "status": "pending" },
-  { "title": "No Shame", "artist": "Pepper", "year": "", "genre": "Reggae", "status": "pending" },
-  { "title": "Kona Town", "artist": "Pepper", "year": "", "genre": "Reggae", "status": "pending" },
-  { "title": "Everything You Need", "artist": "Slightly Stoopid", "year": "", "genre": "Rock", "status": "pending" },
-  { "title": "Closer to the Sun", "artist": "Slightly Stoopid", "year": "", "genre": "Alternative", "status": "pending" },
-  { "title": "Reckoning", "artist": "R.E.M.", "year": "", "genre": "Alternative", "status": "pending" },
-  { "title": "Out of Time", "artist": "R.E.M.", "year": "", "genre": "Alternative", "status": "pending" },
-  { "title": "New Adventures In Hi-Fi", "artist": "R.E.M.", "year": "", "genre": "Alternative", "status": "pending" },
-  { "title": "Vs.", "artist": "Pearl Jam", "year": "", "genre": "Alternative", "status": "pending" },
-  { "title": "Vitalogy", "artist": "Pearl Jam", "year": "", "genre": "Alternative", "status": "pending" },
-  { "title": "Yield", "artist": "Pearl Jam", "year": "", "genre": "Alternative", "status": "pending" },
-  { "title": "Ukulele Songs", "artist": "Eddie Vedder", "year": "", "genre": "Rock", "status": "pending" },
-  { "title": "Earthling", "artist": "Eddie Vedder", "year": "", "genre": "Rock", "status": "pending" },
-  { "title": "Them Crooked Vultures", "artist": "Them Crooked Vultures", "year": "", "genre": "Alternative", "status": "pending" },
-  { "title": "Rated R", "artist": "Queens of the Stone Age", "year": "", "genre": "Rock", "status": "pending" },
-  { "title": "Songs for the Deaf", "artist": "Queens of the Stone Age", "year": "", "genre": "Rock", "status": "pending" },
-  { "title": "Lullabies to Paralyze", "artist": "Queens of the Stone Age", "year": "", "genre": "Rock", "status": "pending" },
-  { "title": "Era Vulgaris", "artist": "Queens of the Stone Age", "year": "", "genre": "Rock", "status": "pending" },
-  { "title": "...Like Clockwork", "artist": "Queens of the Stone Age", "year": "", "genre": "Alternative", "status": "pending" },
-  { "title": "Villains", "artist": "Queens of the Stone Age", "year": "", "genre": "Rock", "status": "pending" },
-  { "title": "In Times New Roman...", "artist": "Queens of the Stone Age", "year": "", "genre": "Alternative", "status": "pending" },
-  { "title": "Royal Blood", "artist": "Royal Blood", "year": "", "genre": "Alternative", "status": "pending" },
-  { "title": "Maroon", "artist": "Barenaked Ladies", "year": "", "genre": "Pop", "status": "pending" },
-  { "title": "Stunt", "artist": "Barenaked Ladies", "year": "", "genre": "Pop", "status": "pending" },
-  { "title": "Blues Traveler", "artist": "Blues Traveler", "year": "", "genre": "Rock", "status": "pending" },
-  { "title": "Four", "artist": "Blues Traveler", "year": "", "genre": "Rock", "status": "pending" },
-  { "title": "Cracked Rear View", "artist": "Hootie & The Blowfish", "year": "", "genre": "Pop", "status": "pending" },
-  { "title": "August and Everything After", "artist": "Counting Crows", "year": "", "genre": "Rock", "status": "pending" },
-  { "title": "Recovering the Satellites", "artist": "Counting Crows", "year": "", "genre": "Rock", "status": "pending" },
-  { "title": "Throwing Copper", "artist": "LIVE", "year": "", "genre": "Alternative", "status": "pending" },
-  { "title": "Purple", "artist": "Stone Temple Pilots", "year": "", "genre": "Rock", "status": "pending" },
-  { "title": "Core", "artist": "Stone Temple Pilots", "year": "", "genre": "Hard Rock", "status": "pending" },
-  { "title": "Tiny Music...Songs from the Vatican Gift Shop", "artist": "Stone Temple Pilots", "year": "", "genre": "Hard Rock", "status": "pending" },
-  { "title": "Lifestylez ov da Poor & Dangerous", "artist": "Big L", "year": "", "genre": "Hip-Hop/Rap", "status": "pending" },
-  { "title": "The Big Picture", "artist": "Big L", "year": "", "genre": "Hip-Hop/Rap", "status": "pending" },
-  { "title": "Brushfire Fairytales", "artist": "Jack Johnson", "year": "", "genre": "Rock", "status": "pending" },
-  { "title": "In Between Dreams", "artist": "Jack Johnson", "year": "", "genre": "Rock", "status": "pending" },
-  { "title": "Sing-A-Longs and Lullabies for the Film Curious George", "artist": "Jack Johnson", "year": "", "genre": "Rock", "status": "pending" },
-  { "title": "Walk Under Ladders", "artist": "Joan Armatrading", "year": "", "genre": "Pop", "status": "pending" },
-  { "title": "Zuma", "artist": "Neil Young & Crazy Horse", "year": "", "genre": "Rock", "status": "pending" },
-  { "title": "Homecoming", "artist": "America", "year": "", "genre": "Rock", "status": "pending" },
-  { "title": "Whitney", "artist": "Whitney Houston", "year": "", "genre": "R&B/Soul", "status": "pending" },
-  { "title": "Making Movies", "artist": "Dire Straits", "year": "", "genre": "Rock", "status": "pending" },
-  { "title": "Communique", "artist": "Dire Straits", "year": "", "genre": "Pop", "status": "pending" },
-  { "title": "boygenius", "artist": "boygenius", "year": "", "genre": "Alternative", "status": "pending" },
-  { "title": "the record", "artist": "boygenius", "year": "", "genre": "Alternative", "status": "pending" },
-  { "title": "King of America", "artist": "Elvis Costello", "year": "", "genre": "Rock", "status": "pending" },
-  { "title": "Shot of Love", "artist": "Bob Dylan", "year": "", "genre": "Rock", "status": "pending" },
-  { "title": "Carney", "artist": "Leon Russell", "year": "", "genre": "Rock", "status": "pending" },
-  { "title": "The Story", "artist": "Brandi Carlile", "year": "", "genre": "Singer/Songwriter", "status": "pending" },
-  { "title": "Maria Muldaur", "artist": "Maria Muldaur", "year": "", "genre": "Pop", "status": "pending" },
-  { "title": "Come Away with Me", "artist": "Norah Jones", "year": "", "genre": "Pop", "status": "pending" },
-  { "title": "Special Forces", "artist": "38 Special", "year": "", "genre": "Rock", "status": "pending" },
-  { "title": "At Yankee Stadium", "artist": "NRBQ", "year": "", "genre": "Rock", "status": "pending" },
-  { "title": "Kick Me Hard", "artist": "NRBQ", "year": "", "genre": "Rock", "status": "pending" },
-  { "title": "Tiddlywinks", "artist": "NRBQ", "year": "", "genre": "Rock", "status": "pending" },
-  { "title": "All Hopped Up", "artist": "NRBQ", "year": "", "genre": "Rock", "status": "pending" },
-  { "title": "Northern Lights-Southern Cross", "artist": "The Band", "year": "", "genre": "Rock", "status": "pending" }
+  {
+    "title": "Away from the Sun",
+    "artist": "3 Doors Down",
+    "genre": "Rock",
+    "status": "pending",
+    "year": "2002"
+  },
+  {
+    "title": "The Better Life",
+    "artist": "3 Doors Down",
+    "genre": "Rock",
+    "status": "pending",
+    "year": "2000"
+  },
+  {
+    "title": "The Beautiful Letdown",
+    "artist": "Switchfoot",
+    "genre": "Pop",
+    "status": "pending",
+    "year": "2003"
+  },
+  {
+    "title": "The Avalanche",
+    "artist": "Owen",
+    "genre": "Alternative",
+    "status": "pending",
+    "year": "2020"
+  },
+  {
+    "title": "Trapt",
+    "artist": "Trapt",
+    "genre": "Hard Rock",
+    "status": "pending",
+    "year": "2002"
+  },
+  {
+    "title": "Back Into Your System",
+    "artist": "Saliva",
+    "genre": "Rock",
+    "status": "pending",
+    "year": "2002"
+  },
+  {
+    "title": "Leave a Whisper",
+    "artist": "Shinedown",
+    "genre": "Hard Rock",
+    "status": "pending",
+    "year": "2003"
+  },
+  {
+    "title": "Break the Cycle",
+    "artist": "Staind",
+    "genre": "Hard Rock",
+    "status": "pending",
+    "year": "2001"
+  },
+  {
+    "title": "Come Clean",
+    "artist": "Puddle of Mudd",
+    "genre": "Rock",
+    "status": "pending",
+    "year": "2001"
+  },
+  {
+    "title": "Tonight the Stars Revolt",
+    "artist": "Powerman 5000",
+    "genre": "Hard Rock",
+    "status": "pending",
+    "year": "1999"
+  },
+  {
+    "title": "Far Beyond Driven",
+    "artist": "Pantera",
+    "genre": "Metal",
+    "status": "pending",
+    "year": "1994"
+  },
+  {
+    "title": "The Great Southern Trendkill",
+    "artist": "Pantera",
+    "genre": "Metal",
+    "status": "pending",
+    "year": "1996"
+  },
+  {
+    "title": "Reinventing the Steel",
+    "artist": "Pantera",
+    "genre": "Metal",
+    "status": "pending",
+    "year": "2000"
+  },
+  {
+    "title": "The Grand Illusion",
+    "artist": "Styx",
+    "genre": "Rock",
+    "status": "pending",
+    "year": "1977"
+  },
+  {
+    "title": "Paradise Theatre",
+    "artist": "Styx",
+    "genre": "Rock",
+    "status": "pending",
+    "year": "1981"
+  },
+  {
+    "title": "Dangerous: The Double Album",
+    "artist": "Morgan Wallen",
+    "genre": "Country",
+    "status": "pending",
+    "year": "2021"
+  },
+  {
+    "title": "One Thing At A Time",
+    "artist": "Morgan Wallen",
+    "genre": "Country",
+    "status": "pending",
+    "year": "2023"
+  },
+  {
+    "title": "Hello Rockview",
+    "artist": "Less Than Jake",
+    "genre": "Rock",
+    "status": "pending",
+    "year": "1998"
+  },
+  {
+    "title": "Anthem",
+    "artist": "Less Than Jake",
+    "genre": "Rock",
+    "status": "pending",
+    "year": "2003"
+  },
+  {
+    "title": "Why Do They Rock So Hard",
+    "artist": "Reel Big Fish",
+    "genre": "Rock",
+    "status": "pending",
+    "year": "1998"
+  },
+  {
+    "title": "Turn the Radio Off",
+    "artist": "Reel Big Fish",
+    "genre": "Rock",
+    "status": "pending",
+    "year": "1996"
+  },
+  {
+    "title": "Let\u0027s Face It",
+    "artist": "The Mighty Mighty Bosstones",
+    "genre": "Rock",
+    "status": "pending",
+    "year": "1997"
+  },
+  {
+    "title": "...and out Come the Wolves",
+    "artist": "Rancid",
+    "genre": "Rock",
+    "status": "pending",
+    "year": "1995"
+  },
+  {
+    "title": "The War On Errorism",
+    "artist": "NOFX",
+    "genre": "Alternative",
+    "status": "pending",
+    "year": "2003"
+  },
+  {
+    "title": "Fresh Fruit for Rotting Vegetables",
+    "artist": "Dead Kennedys",
+    "genre": "Punk",
+    "status": "pending",
+    "year": "1980"
+  },
+  {
+    "title": "In The Court Of The Dragon",
+    "artist": "Trivium",
+    "genre": "Metal",
+    "status": "pending",
+    "year": "2021"
+  },
+  {
+    "title": "In Waves",
+    "artist": "Trivium",
+    "genre": "Metal",
+    "status": "pending",
+    "year": ""
+  },
+  {
+    "title": "What the Dead Men Say",
+    "artist": "Trivium",
+    "genre": "Metal",
+    "status": "pending",
+    "year": ""
+  },
+  {
+    "title": "This Consequence",
+    "artist": "Killswitch Engage",
+    "genre": "Metal",
+    "status": "pending",
+    "year": ""
+  },
+  {
+    "title": "Emperor of Sand",
+    "artist": "Mastodon",
+    "genre": "Metal",
+    "status": "pending",
+    "year": ""
+  },
+  {
+    "title": "The War Within",
+    "artist": "Shadows Fall",
+    "genre": "Metal",
+    "status": "pending",
+    "year": ""
+  },
+  {
+    "title": "Constellations",
+    "artist": "August Burns Red",
+    "genre": "Metal",
+    "status": "pending",
+    "year": ""
+  },
+  {
+    "title": "Messengers",
+    "artist": "August Burns Red",
+    "genre": "Metal",
+    "status": "pending",
+    "year": ""
+  },
+  {
+    "title": "Phantom Anthem",
+    "artist": "August Burns Red",
+    "genre": "Metal",
+    "status": "pending",
+    "year": ""
+  },
+  {
+    "title": "With Roots Above and Branches Below",
+    "artist": "The Devil Wears Prada",
+    "genre": "Metal",
+    "status": "pending",
+    "year": ""
+  },
+  {
+    "title": "Dead Throne",
+    "artist": "The Devil Wears Prada",
+    "genre": "Metal",
+    "status": "pending",
+    "year": ""
+  },
+  {
+    "title": "Color Decay",
+    "artist": "The Devil Wears Prada",
+    "genre": "Metal",
+    "status": "pending",
+    "year": ""
+  },
+  {
+    "title": "El Camino",
+    "artist": "The Black Keys",
+    "genre": "Alternative",
+    "status": "pending",
+    "year": ""
+  },
+  {
+    "title": "Riot!",
+    "artist": "Paramore",
+    "genre": "Alternative",
+    "status": "pending",
+    "year": ""
+  },
+  {
+    "title": "Brand New Eyes",
+    "artist": "Paramore",
+    "genre": "Alternative",
+    "status": "pending",
+    "year": ""
+  },
+  {
+    "title": "Sigh No More",
+    "artist": "Mumford \u0026 Sons",
+    "genre": "Alternative",
+    "status": "pending",
+    "year": ""
+  },
+  {
+    "title": "Babel",
+    "artist": "Mumford \u0026 Sons",
+    "genre": "Alternative",
+    "status": "pending",
+    "year": ""
+  },
+  {
+    "title": "Youth And Young Manhood",
+    "artist": "Kings of Leon",
+    "genre": "Rock",
+    "status": "pending",
+    "year": ""
+  },
+  {
+    "title": "Only By the Night",
+    "artist": "Kings of Leon",
+    "genre": "Alternative",
+    "status": "pending",
+    "year": ""
+  },
+  {
+    "title": "Hozier",
+    "artist": "Hozier",
+    "genre": "Alternative",
+    "status": "pending",
+    "year": ""
+  },
+  {
+    "title": "The Lumineers",
+    "artist": "The Lumineers",
+    "genre": "Folk",
+    "status": "pending",
+    "year": ""
+  },
+  {
+    "title": "DeAnn",
+    "artist": "Zach Bryan",
+    "genre": "Singer/Songwriter",
+    "status": "pending",
+    "year": ""
+  },
+  {
+    "title": "American Heartbreak",
+    "artist": "Zach Bryan",
+    "genre": "Country",
+    "status": "pending",
+    "year": ""
+  },
+  {
+    "title": "Zach Bryan",
+    "artist": "Zach Bryan",
+    "genre": "Country",
+    "status": "pending",
+    "year": ""
+  },
+  {
+    "title": "Surfing with the Alien",
+    "artist": "Joe Satriani",
+    "genre": "Rock",
+    "status": "pending",
+    "year": ""
+  },
+  {
+    "title": "Flying In a Blue Dream",
+    "artist": "Joe Satriani",
+    "genre": "Rock",
+    "status": "pending",
+    "year": ""
+  },
+  {
+    "title": "The Extremist",
+    "artist": "Joe Satriani",
+    "genre": "Rock",
+    "status": "pending",
+    "year": ""
+  },
+  {
+    "title": "Not of This Earth",
+    "artist": "Joe Satriani",
+    "genre": "Rock",
+    "status": "pending",
+    "year": ""
+  },
+  {
+    "title": "What\u0027s the 411?",
+    "artist": "Mary J. Blige",
+    "genre": "R\u0026B/Soul",
+    "status": "pending",
+    "year": ""
+  },
+  {
+    "title": "My Life",
+    "artist": "Mary J. Blige",
+    "genre": "R\u0026B/Soul",
+    "status": "pending",
+    "year": ""
+  },
+  {
+    "title": "Faith",
+    "artist": "Faith Evans",
+    "genre": "R\u0026B/Soul",
+    "status": "pending",
+    "year": ""
+  },
+  {
+    "title": "Brandy",
+    "artist": "Brandy",
+    "genre": "R\u0026B/Soul",
+    "status": "pending",
+    "year": ""
+  },
+  {
+    "title": "Never Say Never",
+    "artist": "Brandy",
+    "genre": "Pop",
+    "status": "pending",
+    "year": ""
+  },
+  {
+    "title": "Mariah Carey",
+    "artist": "Mariah Carey",
+    "genre": "R\u0026B/Soul",
+    "status": "pending",
+    "year": ""
+  },
+  {
+    "title": "The Emancipation Of Mimi",
+    "artist": "Mariah Carey",
+    "genre": "Pop",
+    "status": "pending",
+    "year": ""
+  },
+  {
+    "title": "Silver Side Up",
+    "artist": "Nickelback",
+    "genre": "Rock",
+    "status": "pending",
+    "year": ""
+  },
+  {
+    "title": "L.D. 50",
+    "artist": "Mudvayne",
+    "genre": "Metal",
+    "status": "pending",
+    "year": ""
+  },
+  {
+    "title": "The Foundation",
+    "artist": "Zac Brown Band",
+    "genre": "Country",
+    "status": "pending",
+    "year": ""
+  },
+  {
+    "title": "You Get What You Give",
+    "artist": "Zac Brown Band",
+    "genre": "Country",
+    "status": "pending",
+    "year": ""
+  },
+  {
+    "title": "No Shoes, No Shirt, No Problems",
+    "artist": "Kenny Chesney",
+    "genre": "Country",
+    "status": "pending",
+    "year": ""
+  },
+  {
+    "title": "When the Sun Goes Down",
+    "artist": "Kenny Chesney",
+    "genre": "Country",
+    "status": "pending",
+    "year": ""
+  },
+  {
+    "title": "The Road and the Radio",
+    "artist": "Kenny Chesney",
+    "genre": "Country",
+    "status": "pending",
+    "year": ""
+  },
+  {
+    "title": "Live Like You Were Dying",
+    "artist": "Tim McGraw",
+    "genre": "Country",
+    "status": "pending",
+    "year": ""
+  },
+  {
+    "title": "Tim McGraw and The Dancehall Doctors",
+    "artist": "Tim McGraw",
+    "genre": "Country",
+    "status": "pending",
+    "year": ""
+  },
+  {
+    "title": "Set This Circus Down",
+    "artist": "Tim McGraw",
+    "genre": "Country",
+    "status": "pending",
+    "year": ""
+  },
+  {
+    "title": "A Place in the Sun",
+    "artist": "Tim McGraw",
+    "genre": "Country",
+    "status": "pending",
+    "year": ""
+  },
+  {
+    "title": "Everywhere",
+    "artist": "Tim McGraw",
+    "genre": "Country",
+    "status": "pending",
+    "year": ""
+  },
+  {
+    "title": "All I Want",
+    "artist": "Tim McGraw",
+    "genre": "Country",
+    "status": "pending",
+    "year": ""
+  },
+  {
+    "title": "Not a Moment Too Soon",
+    "artist": "Tim McGraw",
+    "genre": "Country",
+    "status": "pending",
+    "year": ""
+  },
+  {
+    "title": "Red River Blue",
+    "artist": "Blake Shelton",
+    "genre": "Country",
+    "status": "pending",
+    "year": ""
+  },
+  {
+    "title": "Tailgates \u0026 Tanlines",
+    "artist": "Luke Bryan",
+    "genre": "Country",
+    "status": "pending",
+    "year": ""
+  },
+  {
+    "title": "Crash My Party",
+    "artist": "Luke Bryan",
+    "genre": "Country",
+    "status": "pending",
+    "year": ""
+  },
+  {
+    "title": "This One\u0027s for You Too",
+    "artist": "Luke Combs",
+    "genre": "Country",
+    "status": "pending",
+    "year": ""
+  },
+  {
+    "title": "What You See Ain\u0027t Always What You Get",
+    "artist": "Luke Combs",
+    "genre": "Country",
+    "status": "pending",
+    "year": ""
+  },
+  {
+    "title": "Who Needs Pictures",
+    "artist": "Brad Paisley",
+    "genre": "Country",
+    "status": "pending",
+    "year": ""
+  },
+  {
+    "title": "Mud On the Tires",
+    "artist": "Brad Paisley",
+    "genre": "Country",
+    "status": "pending",
+    "year": ""
+  },
+  {
+    "title": "Time Well Wasted",
+    "artist": "Brad Paisley",
+    "genre": "Country",
+    "status": "pending",
+    "year": ""
+  },
+  {
+    "title": "5th Gear",
+    "artist": "Brad Paisley",
+    "genre": "Country",
+    "status": "pending",
+    "year": ""
+  },
+  {
+    "title": "Unleashed",
+    "artist": "Toby Keith",
+    "genre": "Country",
+    "status": "pending",
+    "year": ""
+  },
+  {
+    "title": "Zen Arcade",
+    "artist": "H\u00FCsker D\u00FC",
+    "genre": "Alternative",
+    "status": "pending",
+    "year": ""
+  },
+  {
+    "title": "New Day Rising",
+    "artist": "H\u00FCsker D\u00FC",
+    "genre": "Alternative",
+    "status": "pending",
+    "year": ""
+  },
+  {
+    "title": "Normal Isn\u0027t",
+    "artist": "Puscifer",
+    "genre": "Rock",
+    "status": "pending",
+    "year": ""
+  },
+  {
+    "title": "When I Woke",
+    "artist": "Rusted Root",
+    "genre": "Pop",
+    "status": "pending",
+    "year": ""
+  },
+  {
+    "title": "Matters of the Heart",
+    "artist": "Bob Bennett",
+    "genre": "Gospel",
+    "status": "pending",
+    "year": ""
+  },
+  {
+    "title": "Nobody Knows Me Like You",
+    "artist": "Benny Hester",
+    "genre": "Gospel",
+    "status": "pending",
+    "year": ""
+  },
+  {
+    "title": "The Gospel Harmonettes of Demopolis, Alabama",
+    "artist": "The Gospel Harmonettes",
+    "genre": "Gospel",
+    "status": "pending",
+    "year": ""
+  },
+  {
+    "title": "Kirk Franklin and the Family (Live)",
+    "artist": "Kirk Franklin",
+    "genre": "Christian",
+    "status": "pending",
+    "year": ""
+  },
+  {
+    "title": "Tramaine Hawkins (Live)",
+    "artist": "Tramaine Hawkins",
+    "genre": "Christian",
+    "status": "pending",
+    "year": ""
+  },
+  {
+    "title": "In the Gospel Light",
+    "artist": "Clarence Fountain",
+    "genre": "R\u0026B/Soul",
+    "status": "pending",
+    "year": ""
+  },
+  {
+    "title": "Black Nativity: Gospel On Broadway!",
+    "artist": "Original Cast Of \u0027Black Nativity\u0027",
+    "genre": "Soundtrack",
+    "status": "pending",
+    "year": ""
+  },
+  {
+    "title": "Thirsty",
+    "artist": "Marvin Sapp",
+    "genre": "Christian",
+    "status": "pending",
+    "year": ""
+  },
+  {
+    "title": "No Shame",
+    "artist": "Pepper",
+    "genre": "Reggae",
+    "status": "pending",
+    "year": ""
+  },
+  {
+    "title": "Kona Town",
+    "artist": "Pepper",
+    "genre": "Reggae",
+    "status": "pending",
+    "year": ""
+  },
+  {
+    "title": "Everything You Need",
+    "artist": "Slightly Stoopid",
+    "genre": "Rock",
+    "status": "pending",
+    "year": ""
+  },
+  {
+    "title": "Closer to the Sun",
+    "artist": "Slightly Stoopid",
+    "genre": "Alternative",
+    "status": "pending",
+    "year": ""
+  },
+  {
+    "title": "Reckoning",
+    "artist": "R.E.M.",
+    "genre": "Alternative",
+    "status": "pending",
+    "year": ""
+  },
+  {
+    "title": "Out of Time",
+    "artist": "R.E.M.",
+    "genre": "Alternative",
+    "status": "pending",
+    "year": ""
+  },
+  {
+    "title": "New Adventures In Hi-Fi",
+    "artist": "R.E.M.",
+    "genre": "Alternative",
+    "status": "pending",
+    "year": ""
+  },
+  {
+    "title": "Vs.",
+    "artist": "Pearl Jam",
+    "genre": "Alternative",
+    "status": "pending",
+    "year": ""
+  },
+  {
+    "title": "Vitalogy",
+    "artist": "Pearl Jam",
+    "genre": "Alternative",
+    "status": "pending",
+    "year": ""
+  },
+  {
+    "title": "Yield",
+    "artist": "Pearl Jam",
+    "genre": "Alternative",
+    "status": "pending",
+    "year": ""
+  },
+  {
+    "title": "Ukulele Songs",
+    "artist": "Eddie Vedder",
+    "genre": "Rock",
+    "status": "pending",
+    "year": ""
+  },
+  {
+    "title": "Earthling",
+    "artist": "Eddie Vedder",
+    "genre": "Rock",
+    "status": "pending",
+    "year": ""
+  },
+  {
+    "title": "Them Crooked Vultures",
+    "artist": "Them Crooked Vultures",
+    "genre": "Alternative",
+    "status": "pending",
+    "year": ""
+  },
+  {
+    "title": "Rated R",
+    "artist": "Queens of the Stone Age",
+    "genre": "Rock",
+    "status": "pending",
+    "year": ""
+  },
+  {
+    "title": "Songs for the Deaf",
+    "artist": "Queens of the Stone Age",
+    "genre": "Rock",
+    "status": "pending",
+    "year": ""
+  },
+  {
+    "title": "Lullabies to Paralyze",
+    "artist": "Queens of the Stone Age",
+    "genre": "Rock",
+    "status": "pending",
+    "year": ""
+  },
+  {
+    "title": "Era Vulgaris",
+    "artist": "Queens of the Stone Age",
+    "genre": "Rock",
+    "status": "pending",
+    "year": ""
+  },
+  {
+    "title": "...Like Clockwork",
+    "artist": "Queens of the Stone Age",
+    "genre": "Alternative",
+    "status": "pending",
+    "year": ""
+  },
+  {
+    "title": "Villains",
+    "artist": "Queens of the Stone Age",
+    "genre": "Rock",
+    "status": "pending",
+    "year": ""
+  },
+  {
+    "title": "In Times New Roman...",
+    "artist": "Queens of the Stone Age",
+    "genre": "Alternative",
+    "status": "pending",
+    "year": ""
+  },
+  {
+    "title": "Royal Blood",
+    "artist": "Royal Blood",
+    "genre": "Alternative",
+    "status": "pending",
+    "year": ""
+  },
+  {
+    "title": "Maroon",
+    "artist": "Barenaked Ladies",
+    "genre": "Pop",
+    "status": "pending",
+    "year": ""
+  },
+  {
+    "title": "Stunt",
+    "artist": "Barenaked Ladies",
+    "genre": "Pop",
+    "status": "pending",
+    "year": ""
+  },
+  {
+    "title": "Blues Traveler",
+    "artist": "Blues Traveler",
+    "genre": "Rock",
+    "status": "pending",
+    "year": ""
+  },
+  {
+    "title": "Four",
+    "artist": "Blues Traveler",
+    "genre": "Rock",
+    "status": "pending",
+    "year": ""
+  },
+  {
+    "title": "Cracked Rear View",
+    "artist": "Hootie \u0026 The Blowfish",
+    "genre": "Pop",
+    "status": "pending",
+    "year": ""
+  },
+  {
+    "title": "August and Everything After",
+    "artist": "Counting Crows",
+    "genre": "Rock",
+    "status": "pending",
+    "year": ""
+  },
+  {
+    "title": "Recovering the Satellites",
+    "artist": "Counting Crows",
+    "genre": "Rock",
+    "status": "pending",
+    "year": ""
+  },
+  {
+    "title": "Throwing Copper",
+    "artist": "LIVE",
+    "genre": "Alternative",
+    "status": "pending",
+    "year": ""
+  },
+  {
+    "title": "Purple",
+    "artist": "Stone Temple Pilots",
+    "genre": "Rock",
+    "status": "pending",
+    "year": ""
+  },
+  {
+    "title": "Core",
+    "artist": "Stone Temple Pilots",
+    "genre": "Hard Rock",
+    "status": "pending",
+    "year": ""
+  },
+  {
+    "title": "Tiny Music...Songs from the Vatican Gift Shop",
+    "artist": "Stone Temple Pilots",
+    "genre": "Hard Rock",
+    "status": "pending",
+    "year": ""
+  },
+  {
+    "title": "Lifestylez ov da Poor \u0026 Dangerous",
+    "artist": "Big L",
+    "genre": "Hip-Hop/Rap",
+    "status": "pending",
+    "year": ""
+  },
+  {
+    "title": "The Big Picture",
+    "artist": "Big L",
+    "genre": "Hip-Hop/Rap",
+    "status": "pending",
+    "year": ""
+  },
+  {
+    "title": "Brushfire Fairytales",
+    "artist": "Jack Johnson",
+    "genre": "Rock",
+    "status": "pending",
+    "year": ""
+  },
+  {
+    "title": "In Between Dreams",
+    "artist": "Jack Johnson",
+    "genre": "Rock",
+    "status": "pending",
+    "year": ""
+  },
+  {
+    "title": "Sing-A-Longs and Lullabies for the Film Curious George",
+    "artist": "Jack Johnson",
+    "genre": "Rock",
+    "status": "pending",
+    "year": ""
+  },
+  {
+    "title": "Walk Under Ladders",
+    "artist": "Joan Armatrading",
+    "genre": "Pop",
+    "status": "pending",
+    "year": ""
+  },
+  {
+    "title": "Zuma",
+    "artist": "Neil Young \u0026 Crazy Horse",
+    "genre": "Rock",
+    "status": "pending",
+    "year": ""
+  },
+  {
+    "title": "Homecoming",
+    "artist": "America",
+    "genre": "Rock",
+    "status": "pending",
+    "year": ""
+  },
+  {
+    "title": "Whitney",
+    "artist": "Whitney Houston",
+    "genre": "R\u0026B/Soul",
+    "status": "pending",
+    "year": ""
+  },
+  {
+    "title": "Making Movies",
+    "artist": "Dire Straits",
+    "genre": "Rock",
+    "status": "pending",
+    "year": ""
+  },
+  {
+    "title": "Communique",
+    "artist": "Dire Straits",
+    "genre": "Pop",
+    "status": "pending",
+    "year": ""
+  },
+  {
+    "title": "boygenius",
+    "artist": "boygenius",
+    "genre": "Alternative",
+    "status": "pending",
+    "year": ""
+  },
+  {
+    "title": "the record",
+    "artist": "boygenius",
+    "genre": "Alternative",
+    "status": "pending",
+    "year": ""
+  },
+  {
+    "title": "King of America",
+    "artist": "Elvis Costello",
+    "genre": "Rock",
+    "status": "pending",
+    "year": ""
+  },
+  {
+    "title": "Shot of Love",
+    "artist": "Bob Dylan",
+    "genre": "Rock",
+    "status": "pending",
+    "year": ""
+  },
+  {
+    "title": "Carney",
+    "artist": "Leon Russell",
+    "genre": "Rock",
+    "status": "pending",
+    "year": ""
+  },
+  {
+    "title": "The Story",
+    "artist": "Brandi Carlile",
+    "genre": "Singer/Songwriter",
+    "status": "pending",
+    "year": ""
+  },
+  {
+    "title": "Maria Muldaur",
+    "artist": "Maria Muldaur",
+    "genre": "Pop",
+    "status": "pending",
+    "year": ""
+  },
+  {
+    "title": "Come Away with Me",
+    "artist": "Norah Jones",
+    "genre": "Pop",
+    "status": "pending",
+    "year": ""
+  },
+  {
+    "title": "Special Forces",
+    "artist": "38 Special",
+    "genre": "Rock",
+    "status": "pending",
+    "year": ""
+  },
+  {
+    "title": "At Yankee Stadium",
+    "artist": "NRBQ",
+    "genre": "Rock",
+    "status": "pending",
+    "year": ""
+  },
+  {
+    "title": "Kick Me Hard",
+    "artist": "NRBQ",
+    "genre": "Rock",
+    "status": "pending",
+    "year": ""
+  },
+  {
+    "title": "Tiddlywinks",
+    "artist": "NRBQ",
+    "genre": "Rock",
+    "status": "pending",
+    "year": ""
+  },
+  {
+    "title": "All Hopped Up",
+    "artist": "NRBQ",
+    "genre": "Rock",
+    "status": "pending",
+    "year": ""
+  },
+  {
+    "title": "Northern Lights-Southern Cross",
+    "artist": "The Band",
+    "genre": "Rock",
+    "status": "pending",
+    "year": ""
+  }
 ]

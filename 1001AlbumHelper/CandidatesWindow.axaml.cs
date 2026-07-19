@@ -6,6 +6,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
+using Avalonia.Threading;
 
 namespace _1001AlbumHelper;
 
@@ -52,7 +53,11 @@ public partial class CandidatesWindow : Window
         SearchBox.TextChanged += (_, _) => ApplyFilter();
         Opened += async (_, _) =>
         {
+            // Rows come from the local file, so the modal is populated and interactive straight
+            // away. Only then does the year fetch start, behind the ticker — yielding at
+            // Background priority so the first paint is finished rather than merely likely.
             Load();
+            await Dispatcher.UIThread.InvokeAsync(() => { }, DispatcherPriority.Background);
             await PrefetchYearsAsync();
         };
         Closed += (_, _) => _closing.Cancel();
