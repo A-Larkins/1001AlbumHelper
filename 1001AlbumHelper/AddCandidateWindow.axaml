@@ -1,0 +1,165 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="clr-namespace:_1001AlbumHelper"
+        x:Class="_1001AlbumHelper.AddCandidateWindow"
+        Width="520" Height="470" MinWidth="440" MinHeight="440"
+        Title="Add a potential"
+        WindowStartupLocation="CenterOwner"
+        RequestedThemeVariant="Dark">
+
+  <Window.Background>
+    <LinearGradientBrush StartPoint="0%,0%" EndPoint="30%,100%">
+      <GradientStop Color="#151020" Offset="0" />
+      <GradientStop Color="#0e0b09" Offset="0.45" />
+      <GradientStop Color="#0b0807" Offset="1" />
+    </LinearGradientBrush>
+  </Window.Background>
+
+  <Window.Styles>
+    <Style Selector="TextBlock.field">
+      <Setter Property="Foreground" Value="#9c8b7c" />
+      <Setter Property="FontSize" Value="11.5" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Margin" Value="2,0,0,5" />
+    </Style>
+    <Style Selector="TextBox">
+      <Setter Property="Background" Value="#141010" />
+      <Setter Property="BorderBrush" Value="#3a2e25" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="9" />
+      <Setter Property="Padding" Value="11,9" />
+      <Setter Property="Foreground" Value="#f3e9df" />
+      <Setter Property="FontSize" Value="13.5" />
+    </Style>
+    <Style Selector="TextBox:focus /template/ Border#PART_BorderElement">
+      <Setter Property="BorderBrush" Value="#b3852f" />
+    </Style>
+
+    <Style Selector="Button.primary">
+      <Setter Property="Background">
+        <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,100%">
+          <GradientStop Color="#4a3411" Offset="0" />
+          <GradientStop Color="#302510" Offset="1" />
+        </LinearGradientBrush>
+      </Setter>
+      <Setter Property="BorderBrush" Value="#b3852f" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="10" />
+      <Setter Property="Padding" Value="18,10" />
+      <Setter Property="Foreground" Value="#f5c985" />
+      <Setter Property="FontSize" Value="13" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Cursor" Value="Hand" />
+    </Style>
+    <Style Selector="Button.primary:pointerover /template/ ContentPresenter">
+      <Setter Property="BorderBrush" Value="#d8a24a" />
+    </Style>
+    <Style Selector="Button.primary:disabled /template/ ContentPresenter">
+      <Setter Property="Opacity" Value="0.45" />
+    </Style>
+
+    <Style Selector="Button.ghost">
+      <Setter Property="Background" Value="#241d18" />
+      <Setter Property="BorderBrush" Value="#362b23" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="10" />
+      <Setter Property="Padding" Value="16,10" />
+      <Setter Property="Foreground" Value="#d8ccc0" />
+      <Setter Property="FontSize" Value="13" />
+      <Setter Property="Cursor" Value="Hand" />
+    </Style>
+
+    <!-- The lookup dropdown, matched to the window's dark/amber palette. -->
+    <Style Selector="AutoCompleteBox">
+      <Setter Property="FontSize" Value="13.5" />
+    </Style>
+    <Style Selector="AutoCompleteBox /template/ Popup#PART_Popup ListBox">
+      <Setter Property="Background" Value="#161110" />
+      <Setter Property="BorderBrush" Value="#3a2e25" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="9" />
+      <Setter Property="Padding" Value="4" />
+    </Style>
+    <Style Selector="AutoCompleteBox /template/ Popup#PART_Popup ListBoxItem">
+      <Setter Property="Padding" Value="9,7" />
+      <Setter Property="CornerRadius" Value="6" />
+      <Setter Property="Foreground" Value="#f3e9df" />
+    </Style>
+    <Style Selector="AutoCompleteBox /template/ Popup#PART_Popup ListBoxItem:pointerover /template/ ContentPresenter">
+      <Setter Property="Background" Value="#2c2114" />
+    </Style>
+    <Style Selector="AutoCompleteBox /template/ Popup#PART_Popup ListBoxItem:selected /template/ ContentPresenter">
+      <Setter Property="Background" Value="#3d2c15" />
+    </Style>
+
+    <Style Selector="TextBlock.suggestTitle">
+      <Setter Property="Foreground" Value="#f3e9df" />
+      <Setter Property="FontSize" Value="13" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+    <Style Selector="TextBlock.suggestMeta">
+      <Setter Property="Foreground" Value="#a8968a" />
+      <Setter Property="FontSize" Value="11.5" />
+    </Style>
+  </Window.Styles>
+
+  <Grid Margin="24,20,24,18" RowDefinitions="Auto,Auto,*,Auto">
+
+    <StackPanel Grid.Row="0" Spacing="3" Margin="0,0,0,16">
+      <TextBlock Text="Add a potential" FontSize="19" FontWeight="Bold" Foreground="#f3e9df" />
+      <TextBlock Text="Puts an album on the shortlist to decide on later. Nothing is written to the sheet until you keep it."
+                 FontSize="12" Foreground="#b3a394" TextWrapping="Wrap" />
+    </StackPanel>
+
+    <StackPanel Grid.Row="1" Spacing="13">
+      <StackPanel>
+        <TextBlock Classes="field" Text="ALBUM" />
+        <!-- IsTextCompletionEnabled="False": inline completion rewrites what you're typing
+             using whichever result came back first, which fights every keystroke. -->
+        <AutoCompleteBox x:Name="TitleBox" Watermark="e.g. Blue Train"
+                         FilterMode="None" MinimumPrefixLength="2"
+                         IsTextCompletionEnabled="False"
+                         MinimumPopulateDelay="0:0:0.35">
+          <AutoCompleteBox.ItemTemplate>
+            <DataTemplate DataType="local:AlbumSuggestion">
+              <StackPanel Spacing="1">
+                <TextBlock Classes="suggestTitle" Text="{Binding Title}" />
+                <TextBlock Classes="suggestMeta">
+                  <Run Text="{Binding Artist}" /><Run Text=" · " /><Run Text="{Binding Year}" />
+                </TextBlock>
+              </StackPanel>
+            </DataTemplate>
+          </AutoCompleteBox.ItemTemplate>
+        </AutoCompleteBox>
+      </StackPanel>
+      <StackPanel>
+        <TextBlock Classes="field" Text="ARTIST" />
+        <AutoCompleteBox x:Name="ArtistBox" Watermark="e.g. John Coltrane"
+                         FilterMode="None" MinimumPrefixLength="2"
+                         IsTextCompletionEnabled="False"
+                         MinimumPopulateDelay="0:0:0.35" />
+      </StackPanel>
+      <Grid ColumnDefinitions="140,*">
+        <StackPanel Grid.Column="0" Margin="0,0,13,0">
+          <TextBlock Classes="field" Text="YEAR (OPTIONAL)" />
+          <TextBox x:Name="YearBox" Watermark="e.g. 1958" MaxLength="4" />
+        </StackPanel>
+        <StackPanel Grid.Column="1">
+          <TextBlock Classes="field" Text="GENRE (OPTIONAL)" />
+          <TextBox x:Name="GenreBox" Watermark="e.g. Jazz" />
+        </StackPanel>
+      </Grid>
+      <TextBlock x:Name="LookupHint" Text="" FontSize="11.5" Foreground="#8a7a6c"
+                 TextWrapping="Wrap" Margin="2,-4,0,0" />
+    </StackPanel>
+
+    <TextBlock x:Name="StatusText" Grid.Row="2" Text="" FontSize="12" Foreground="#8a7a6c"
+               TextWrapping="Wrap" VerticalAlignment="Bottom" Margin="2,14,2,0" />
+
+    <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="9"
+                Margin="0,14,0,0">
+      <Button Classes="ghost" Content="Cancel" Click="OnCancel" />
+      <Button x:Name="AddButton" Classes="primary" Content="Add to shortlist" Click="OnAdd" />
+    </StackPanel>
+  </Grid>
+</Window>

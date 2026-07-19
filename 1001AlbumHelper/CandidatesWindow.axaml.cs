@@ -331,6 +331,47 @@ public partial class CandidatesWindow : Window
         StatusText.Text = $"Dropped “{album.Title}” — it won't be offered again.";
     }
 
+    // ---------- Adding a potential ----------
+    private async void OnAddCandidate(object? sender, RoutedEventArgs e)
+    {
+        if (_busy) return;
+
+        var form = new AddCandidateWindow(_all);
+        await form.ShowDialog(this);
+
+        var album = form.Result;
+        if (album is not null)
+        {
+            _all.Add(album);
+        }
+        else if (form.Reopened is not null)
+        {
+            album = form.Reopened;
+            album.Status = CandidateStatus.Pending;
+            album.Note = "";
+        }
+        else
+        {
+            return; // Cancelled.
+        }
+
+        Persist();
+        SearchBox.Text = "";   // Clear the filter, or the new row may be hidden by it.
+        ApplyFilter();
+
+        // Appended to the end of a long list, so show the user where it went.
+        RowsList.ScrollIntoView(album);
+        RowsList.SelectedItem = album;
+
+        StatusText.Text = form.Reopened is not null
+            ? $"“{album.Title}” is back on the shortlist."
+            : $"Added “{album.Title}” to the shortlist"
+              + (album.Year.Length > 0 ? $" ({album.Year})." : " — its year will be looked up.");
+
+        // A new row with no year is exactly what the prefetch exists for.
+        await PrefetchYearsAsync();
+    }
+
     private void OnUndo(object? sender, RoutedEventArgs e)
     {
         if (_busy || _lastDropped is null) return;
@@ -377,6 +418,7 @@ public partial class CandidatesWindow : Window
         RowsList.IsEnabled = !on;
         SearchBox.IsEnabled = !on;
         ReloadButton.IsEnabled = !on;
+        AddCandidateButton.IsEnabled = !on;
         UndoButton.IsEnabled = !on && _lastDropped is not null;
         if (message is not null) StatusText.Text = message;
     }

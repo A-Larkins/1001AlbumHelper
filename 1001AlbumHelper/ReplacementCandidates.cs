@@ -62,6 +62,22 @@ public sealed class CandidateAlbum : INotifyPropertyChanged
     public bool HasNote => _note.Length > 0;
 }
 
+/// <summary>What adding an album to the shortlist would mean, given what's already on it.</summary>
+public enum CandidateAddOutcome
+{
+    /// <summary>Not on the shortlist — append it.</summary>
+    New,
+
+    /// <summary>Already there and still undecided, so adding it again would just duplicate a row.</summary>
+    AlreadyPending,
+
+    /// <summary>Already kept, so it's on the replacements list and nothing is owed.</summary>
+    AlreadyKept,
+
+    /// <summary>Dropped before and now wanted back — a decision reversed, not a new album.</summary>
+    Reopen,
+}
+
 /// <summary>
 /// The local shortlist of albums that might earn a place on the replacements list, stored as JSON
 /// beside the app's other data.
@@ -83,6 +99,30 @@ public static class ReplacementCandidates
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
         Converters = { new JsonStringEnumConverter(JsonNamingPolicy.CamelCase) },
     };
+
+    /// <summary>
+    /// Works out what adding <paramref name="title"/> by <paramref name="artist"/> would mean.
+    /// <para>
+    /// Matching is the same loose comparison the sheet uses, so punctuation and a leading "the"
+    /// don't let a second row for the same album through. The album is returned alongside the
+    /// outcome whenever one was matched, since the caller needs it to act or to name it.
+    /// </para>
+    /// </summary>
+    public static (CandidateAddOutcome Outcome, CandidateAlbum? Match) Classify(
+        IEnumerable<CandidateAlbum> shortlist, string title, string artist)
+    {
+        var match = shortlist.FirstOrDefault(a =>
+            NumberedList.Matches(a.Title, title) && NumberedList.Matches(a.Artist, artist));
+
+        if (match is null) return (CandidateAddOutcome.New, null);
+
+        return match.Status switch
+        {
+            CandidateStatus.Pending => (CandidateAddOutcome.AlreadyPending, match),
+            CandidateStatus.Added => (CandidateAddOutcome.AlreadyKept, match),
+            _ => (CandidateAddOutcome.Reopen, match),
+        };
+    }
 
     /// <summary>Everything in the file, in file order. Returns an empty list when there's no file.</summary>
     public static List<CandidateAlbum> Load() => Load(FilePath);

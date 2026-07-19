@@ -76,6 +76,59 @@ public class ReplacementCandidateTests : IDisposable
         Assert.Equal("", ReplacementCandidates.Load(Path_)[0].Note);
     }
 
+    // ----- Adding an album that may already be on the shortlist -----
+
+    private static readonly CandidateAlbum[] Shortlist =
+    {
+        new() { Title = "Vs.", Artist = "Pearl Jam", Status = CandidateStatus.Pending },
+        new() { Title = "Zuma", Artist = "Neil Young", Status = CandidateStatus.Added },
+        new() { Title = "Purple", Artist = "Stone Temple Pilots", Status = CandidateStatus.Declined },
+    };
+
+    [Fact]
+    public void An_album_not_on_the_shortlist_is_new()
+    {
+        var (outcome, match) = ReplacementCandidates.Classify(Shortlist, "Core", "Stone Temple Pilots");
+
+        Assert.Equal(CandidateAddOutcome.New, outcome);
+        Assert.Null(match);
+    }
+
+    [Fact]
+    public void One_still_waiting_is_not_added_twice()
+    {
+        var (outcome, _) = ReplacementCandidates.Classify(Shortlist, "Vs.", "Pearl Jam");
+        Assert.Equal(CandidateAddOutcome.AlreadyPending, outcome);
+    }
+
+    [Fact]
+    public void One_already_kept_is_reported_rather_than_re_added()
+    {
+        var (outcome, _) = ReplacementCandidates.Classify(Shortlist, "Zuma", "Neil Young");
+        Assert.Equal(CandidateAddOutcome.AlreadyKept, outcome);
+    }
+
+    [Fact]
+    public void One_dropped_before_reopens_its_own_row()
+    {
+        // A second row for the same album would let it be decided on twice.
+        var (outcome, match) = ReplacementCandidates.Classify(
+            Shortlist, "Purple", "Stone Temple Pilots");
+
+        Assert.Equal(CandidateAddOutcome.Reopen, outcome);
+        Assert.Equal("Purple", match!.Title);
+    }
+
+    [Theory]
+    [InlineData("vs.", "pearl jam")]              // case
+    [InlineData("Vs", "Pearl Jam")]               // punctuation
+    [InlineData("  Vs.  ", "  Pearl Jam  ")]      // padding
+    public void Matching_is_loose_enough_to_catch_a_near_duplicate(string title, string artist)
+    {
+        var (outcome, _) = ReplacementCandidates.Classify(Shortlist, title, artist);
+        Assert.Equal(CandidateAddOutcome.AlreadyPending, outcome);
+    }
+
     /// <summary>
     /// The shipped file, found via the source tree rather than <see cref="Operations.ProjectDir"/>
     /// — under the test host that resolves to the test project, not the app's.
