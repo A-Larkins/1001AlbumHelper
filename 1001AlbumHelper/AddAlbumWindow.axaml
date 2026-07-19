@@ -1,5 +1,6 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="clr-namespace:_1001AlbumHelper"
         x:Class="_1001AlbumHelper.AddAlbumWindow"
         Width="520" Height="400" MinWidth="440" MinHeight="380"
         Title="Add an album"
@@ -67,6 +68,39 @@
       <Setter Property="FontSize" Value="13" />
       <Setter Property="Cursor" Value="Hand" />
     </Style>
+
+    <!-- The lookup dropdown, matched to the window's dark/amber palette. -->
+    <Style Selector="AutoCompleteBox">
+      <Setter Property="FontSize" Value="13.5" />
+    </Style>
+    <Style Selector="AutoCompleteBox /template/ Popup#PART_Popup ListBox">
+      <Setter Property="Background" Value="#161110" />
+      <Setter Property="BorderBrush" Value="#3a2e25" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="9" />
+      <Setter Property="Padding" Value="4" />
+    </Style>
+    <Style Selector="AutoCompleteBox /template/ Popup#PART_Popup ListBoxItem">
+      <Setter Property="Padding" Value="9,7" />
+      <Setter Property="CornerRadius" Value="6" />
+      <Setter Property="Foreground" Value="#f3e9df" />
+    </Style>
+    <Style Selector="AutoCompleteBox /template/ Popup#PART_Popup ListBoxItem:pointerover /template/ ContentPresenter">
+      <Setter Property="Background" Value="#2c2114" />
+    </Style>
+    <Style Selector="AutoCompleteBox /template/ Popup#PART_Popup ListBoxItem:selected /template/ ContentPresenter">
+      <Setter Property="Background" Value="#3d2c15" />
+    </Style>
+
+    <Style Selector="TextBlock.suggestTitle">
+      <Setter Property="Foreground" Value="#f3e9df" />
+      <Setter Property="FontSize" Value="13" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+    <Style Selector="TextBlock.suggestMeta">
+      <Setter Property="Foreground" Value="#a8968a" />
+      <Setter Property="FontSize" Value="11.5" />
+    </Style>
   </Window.Styles>
 
   <Grid Margin="24,20,24,18" RowDefinitions="Auto,Auto,*,Auto">
@@ -80,17 +114,38 @@
     <StackPanel Grid.Row="1" Spacing="13">
       <StackPanel>
         <TextBlock Classes="field" Text="ALBUM" />
-        <TextBox x:Name="TitleBox" Watermark="e.g. Blue Train" />
+        <!-- IsTextCompletionEnabled="False": inline completion rewrites what you're typing
+             using whichever result came back first, which fights every keystroke. -->
+        <AutoCompleteBox x:Name="TitleBox" Watermark="e.g. Blue Train"
+                         FilterMode="None" MinimumPrefixLength="2"
+                         IsTextCompletionEnabled="False"
+                         MinimumPopulateDelay="0:0:0.35">
+          <AutoCompleteBox.ItemTemplate>
+            <DataTemplate DataType="local:AlbumSuggestion">
+              <StackPanel Spacing="1">
+                <TextBlock Classes="suggestTitle" Text="{Binding Title}" />
+                <TextBlock Classes="suggestMeta">
+                  <Run Text="{Binding Artist}" /><Run Text=" · " /><Run Text="{Binding Year}" />
+                </TextBlock>
+              </StackPanel>
+            </DataTemplate>
+          </AutoCompleteBox.ItemTemplate>
+        </AutoCompleteBox>
       </StackPanel>
       <StackPanel>
         <TextBlock Classes="field" Text="ARTIST" />
-        <TextBox x:Name="ArtistBox" Watermark="e.g. John Coltrane" />
+        <AutoCompleteBox x:Name="ArtistBox" Watermark="e.g. John Coltrane"
+                         FilterMode="None" MinimumPrefixLength="2"
+                         IsTextCompletionEnabled="False"
+                         MinimumPopulateDelay="0:0:0.35" />
       </StackPanel>
       <StackPanel>
         <TextBlock Classes="field" Text="YEAR" />
         <TextBox x:Name="YearBox" Watermark="e.g. 1958" MaxLength="4" Width="120"
                  HorizontalAlignment="Left" />
       </StackPanel>
+      <TextBlock x:Name="LookupHint" Text="" FontSize="11.5" Foreground="#8a7a6c"
+                 TextWrapping="Wrap" Margin="2,-4,0,0" />
     </StackPanel>
 
     <TextBlock x:Name="StatusText" Grid.Row="2" Text="" FontSize="12" Foreground="#8a7a6c"
