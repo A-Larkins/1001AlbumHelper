@@ -230,6 +230,18 @@
         </Button>
       </Grid>
 
+      <Button x:Name="CandidatesButton" Classes="card" Click="OnCandidates">
+        <Grid ColumnDefinitions="Auto,*">
+          <Border Grid.Column="0" Classes="badge">
+            <TextBlock Text="🗂" />
+          </Border>
+          <StackPanel Grid.Column="1" Margin="16,0,0,0" VerticalAlignment="Center">
+            <TextBlock Classes="title" Text="Potential replacements" />
+            <TextBlock Classes="desc" Text="Work through your shortlist one album at a time — keep it and it slots into the replacements list by year, or drop it for good." />
+          </StackPanel>
+        </Grid>
+      </Button>
+
       <Grid ColumnDefinitions="*,*">
         <Button Grid.Column="0" x:Name="ExportButton" Classes="card" Tag="export-pdf" Click="OnRun"
                 Margin="0,0,6,0">

@@ -1,0 +1,194 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="_1001AlbumHelper.CandidatesWindow"
+        xmlns:local="clr-namespace:_1001AlbumHelper"
+        Width="960" Height="700" MinWidth="760" MinHeight="500"
+        Title="Potential replacements"
+        WindowStartupLocation="CenterOwner"
+        RequestedThemeVariant="Dark">
+
+  <Window.Background>
+    <LinearGradientBrush StartPoint="0%,0%" EndPoint="30%,100%">
+      <GradientStop Color="#151020" Offset="0" />
+      <GradientStop Color="#0e0b09" Offset="0.45" />
+      <GradientStop Color="#0b0807" Offset="1" />
+    </LinearGradientBrush>
+  </Window.Background>
+
+  <Window.Styles>
+    <Style Selector="Button.ghost">
+      <Setter Property="Background" Value="#221b16" />
+      <Setter Property="BorderBrush" Value="#3a2e25" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="8" />
+      <Setter Property="Padding" Value="12,7" />
+      <Setter Property="Foreground" Value="#cbbdb0" />
+      <Setter Property="FontSize" Value="12" />
+      <Setter Property="Cursor" Value="Hand" />
+    </Style>
+    <Style Selector="Button.ghost:pointerover /template/ ContentPresenter">
+      <Setter Property="BorderBrush" Value="#54453a" />
+      <Setter Property="Foreground" Value="#f0e5da" />
+    </Style>
+    <Style Selector="Button.ghost:disabled /template/ ContentPresenter">
+      <Setter Property="Opacity" Value="0.4" />
+    </Style>
+
+    <!-- Row action: keep -->
+    <Style Selector="Button.add">
+      <Setter Property="Background" Value="#3a2b12" />
+      <Setter Property="BorderBrush" Value="#b3852f" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="7" />
+      <Setter Property="Padding" Value="11,5" />
+      <Setter Property="Foreground" Value="#f5c985" />
+      <Setter Property="FontSize" Value="11.5" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Cursor" Value="Hand" />
+    </Style>
+    <Style Selector="Button.add:pointerover /template/ ContentPresenter">
+      <Setter Property="Background" Value="#4e3a17" />
+      <Setter Property="BorderBrush" Value="#e0aa54" />
+    </Style>
+    <Style Selector="Button.add:disabled /template/ ContentPresenter">
+      <Setter Property="Opacity" Value="0.4" />
+    </Style>
+
+    <!-- Row action: drop -->
+    <Style Selector="Button.nah">
+      <Setter Property="Background" Value="#1d1714" />
+      <Setter Property="BorderBrush" Value="#3f2c2c" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="7" />
+      <Setter Property="Padding" Value="11,5" />
+      <Setter Property="Foreground" Value="#a58b83" />
+      <Setter Property="FontSize" Value="11.5" />
+      <Setter Property="Cursor" Value="Hand" />
+    </Style>
+    <Style Selector="Button.nah:pointerover /template/ ContentPresenter">
+      <Setter Property="Background" Value="#2c1d1b" />
+      <Setter Property="BorderBrush" Value="#6d4038" />
+      <Setter Property="Foreground" Value="#e6b3a6" />
+    </Style>
+    <Style Selector="Button.nah:disabled /template/ ContentPresenter">
+      <Setter Property="Opacity" Value="0.4" />
+    </Style>
+
+    <Style Selector="TextBox.search">
+      <Setter Property="Background" Value="#141010" />
+      <Setter Property="BorderBrush" Value="#3a2e25" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="9" />
+      <Setter Property="Padding" Value="11,8" />
+      <Setter Property="Foreground" Value="#f3e9df" />
+      <Setter Property="FontSize" Value="13" />
+    </Style>
+    <Style Selector="TextBox.search:focus /template/ Border#PART_BorderElement">
+      <Setter Property="BorderBrush" Value="#b3852f" />
+    </Style>
+
+    <Style Selector="TextBox.year">
+      <Setter Property="Background" Value="#171313" />
+      <Setter Property="BorderBrush" Value="#3a2e25" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="6" />
+      <Setter Property="Padding" Value="7,4" />
+      <Setter Property="Foreground" Value="#f0e5da" />
+      <Setter Property="FontSize" Value="12" />
+      <Setter Property="FontFamily" Value="Menlo,Consolas,monospace" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="TextBox.year:focus /template/ Border#PART_BorderElement">
+      <Setter Property="BorderBrush" Value="#b3852f" />
+    </Style>
+
+    <Style Selector="ListBoxItem">
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="MinHeight" Value="0" />
+    </Style>
+  </Window.Styles>
+
+  <Grid Margin="20,18,20,16" RowDefinitions="Auto,Auto,Auto,*,Auto,Auto">
+
+    <!-- Intro -->
+    <StackPanel Grid.Row="0" Spacing="3" Margin="2,0,0,12">
+      <TextBlock Text="Potential replacements" FontSize="18" FontWeight="Bold" Foreground="#f3e9df" />
+      <TextBlock Text="Albums from your playlist that could join the replacements list. Keep one and it slots into its year block and renumbers the sheet; drop one and it won't be offered again."
+                 FontSize="12" Foreground="#a99884" TextWrapping="Wrap" />
+    </StackPanel>
+
+    <!-- Search -->
+    <Grid Grid.Row="1" ColumnDefinitions="*,Auto" Margin="0,0,0,10">
+      <TextBox Grid.Column="0" x:Name="SearchBox" Classes="search"
+               Watermark="Search album, artist or genre…" />
+      <TextBlock Grid.Column="1" x:Name="CountText" Text="" FontSize="12" Foreground="#9c8b7c"
+                 VerticalAlignment="Center" Margin="12,2,2,0" />
+    </Grid>
+
+    <!-- Column headings -->
+    <Grid Grid.Row="2" ColumnDefinitions="*,210,120,74,168" Margin="12,0,16,6">
+      <TextBlock Grid.Column="0" Text="ALBUM" FontSize="10.5" FontWeight="Bold" Foreground="#6f6053" />
+      <TextBlock Grid.Column="1" Text="ARTIST" FontSize="10.5" FontWeight="Bold" Foreground="#6f6053" />
+      <TextBlock Grid.Column="2" Text="GENRE" FontSize="10.5" FontWeight="Bold" Foreground="#6f6053" />
+      <TextBlock Grid.Column="3" Text="YEAR" FontSize="10.5" FontWeight="Bold" Foreground="#6f6053" />
+    </Grid>
+
+    <Border Grid.Row="3" CornerRadius="12" Background="#120f0e" BorderBrush="#282019" BorderThickness="1">
+      <Panel>
+        <ListBox x:Name="RowsList" Background="Transparent" BorderThickness="0" Padding="4"
+                 SelectionMode="Single">
+          <ListBox.ItemTemplate>
+            <DataTemplate x:DataType="local:CandidateAlbum">
+              <Grid ColumnDefinitions="*,210,120,74,168" Margin="8,7" VerticalAlignment="Center">
+                <StackPanel Grid.Column="0" Spacing="2" VerticalAlignment="Center" Margin="0,0,10,0">
+                  <TextBlock Text="{Binding Title}" FontSize="13" Foreground="#f0e5da"
+                             TextTrimming="CharacterEllipsis" />
+                  <!-- Per-row feedback: only takes up space once there's something to say. -->
+                  <TextBlock Text="{Binding Note}" IsVisible="{Binding HasNote}"
+                             FontSize="11" Foreground="#d8a24a" TextWrapping="Wrap" />
+                </StackPanel>
+
+                <TextBlock Grid.Column="1" Text="{Binding Artist}" FontSize="12.5"
+                           Foreground="#b9a894" TextTrimming="CharacterEllipsis"
+                           VerticalAlignment="Center" Margin="0,0,10,0" />
+
+                <TextBlock Grid.Column="2" Text="{Binding Genre}" FontSize="11.5"
+                           Foreground="#7f7164" TextTrimming="CharacterEllipsis"
+                           VerticalAlignment="Center" Margin="0,0,10,0" />
+
+                <TextBox Grid.Column="3" Classes="year" Width="60" HorizontalAlignment="Left"
+                         Text="{Binding Year, Mode=TwoWay}" Watermark="—"
+                         ToolTip.Tip="Leave blank and Keep will look the year up on Discogs." />
+
+                <StackPanel Grid.Column="4" Orientation="Horizontal" Spacing="7"
+                            HorizontalAlignment="Right" VerticalAlignment="Center">
+                  <Button Classes="add" Content="＋  Keep" Click="OnKeepRow"
+                          ToolTip.Tip="Add to the replacements list, placed by year." />
+                  <Button Classes="nah" Content="Nah" Click="OnDropRow"
+                          ToolTip.Tip="Drop it from this shortlist." />
+                </StackPanel>
+              </Grid>
+            </DataTemplate>
+          </ListBox.ItemTemplate>
+        </ListBox>
+
+        <TextBlock x:Name="MessageText" Text="Loading…" FontSize="14" Foreground="#a99884"
+                   HorizontalAlignment="Center" VerticalAlignment="Center" TextWrapping="Wrap"
+                   TextAlignment="Center" Margin="40" />
+      </Panel>
+    </Border>
+
+    <TextBlock Grid.Row="4" x:Name="StatusText" Text="" FontSize="12" Foreground="#a99884"
+               TextWrapping="Wrap" Margin="2,12,2,0" />
+
+    <Grid Grid.Row="5" ColumnDefinitions="Auto,*,Auto" Margin="0,12,0,0">
+      <Button Grid.Column="0" x:Name="UndoButton" Classes="ghost" Content="Undo last"
+              Click="OnUndo" IsEnabled="False"
+              ToolTip.Tip="Put the album you just dropped back on the shortlist." />
+      <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8">
+        <Button x:Name="ReloadButton" Classes="ghost" Content="Reload" Click="OnReload" />
+        <Button Classes="ghost" Content="Close" Click="OnClose" />
+      </StackPanel>
+    </Grid>
+  </Grid>
+</Window>
