@@ -137,12 +137,17 @@ public partial class CandidatesWindow : Window
         // A reload during a prefetch would otherwise start a second loop and double the request
         // rate, which is exactly what the spacing exists to avoid.
         if (_discogs is null || _prefetching) return;
-        _prefetching = true;
 
         var missing = _all
             .Where(a => a.Status == CandidateStatus.Pending && a.Year.Trim().Length == 0)
             .ToList();
+
+        // Nothing to do is the normal case once the years have been cached — claim the flag and
+        // start the spinner only past this point, or that path would leave both stuck on.
         if (missing.Count == 0) return;
+
+        _prefetching = true;
+        LookupSpinner.IsVisible = true;
 
         int done = 0, found = 0;
         var token = _closing.Token;
@@ -176,6 +181,7 @@ public partial class CandidatesWindow : Window
         finally
         {
             _prefetching = false;
+            LookupSpinner.IsVisible = false;
             if (found > 0) Persist();
             if (!token.IsCancellationRequested)
             {
@@ -355,6 +361,7 @@ public partial class CandidatesWindow : Window
     private void SetBusy(bool on, string? message = null)
     {
         _busy = on;
+        BusySpinner.IsVisible = on;
         RowsList.IsEnabled = !on;
         SearchBox.IsEnabled = !on;
         ReloadButton.IsEnabled = !on;
