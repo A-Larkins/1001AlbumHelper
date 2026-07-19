@@ -1,4 +1,7 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
@@ -10,10 +13,63 @@ public partial class AddAlbumWindow : Window
 {
     private bool _busy;
 
+    // Null when no Discogs token is configured: the form still works, just without lookup.
+    private readonly DiscogsApiClient? _discogs = DiscogsApiClient.TryCreate();
+
     public AddAlbumWindow()
     {
         InitializeComponent();
         Opened += (_, _) => TitleBox.Focus();
+
+        if (_discogs is null)
+        {
+            LookupHint.Text = "Album lookup is off — add a Discogs token to appsettings.json to "
+                            + "have the artist and year filled in for you.";
+            return;
+        }
+
+        LookupHint.Text = "Start typing an album and pick a match — the artist and year fill "
+                        + "themselves in. Naming the artist first narrows the search to them.";
+
+        TitleBox.AsyncPopulator = PopulateAlbumsAsync;
+        TitleBox.SelectionChanged += OnAlbumSuggestionPicked;
+        // Keep the box holding just the album name, not the "Title — Artist (Year)" label.
+        TitleBox.ItemSelector = (_, item) => item is AlbumSuggestion s ? s.Title : item?.ToString() ?? "";
+
+        ArtistBox.AsyncPopulator = PopulateArtistsAsync;
+    }
+
+    // ----- Discogs lookup ----------------------------------------------------
+
+    private async Task<IEnumerable<object>> PopulateAlbumsAsync(string? query, CancellationToken ct)
+    {
+        // Whatever is in the artist box narrows the search to that artist, so "ok" with
+        // "Radiohead" named finds OK Computer rather than every album starting "ok".
+        string artist = ArtistBox.Text?.Trim() ?? "";
+        if (string.IsNullOrWhiteSpace(query) && artist.Length == 0)
+            return Array.Empty<object>();
+
+        var matches = await _discogs!.SearchAlbumsAsync(query ?? "", artist, ct);
+        return matches;
+    }
+
+    private async Task<IEnumerable<object>> PopulateArtistsAsync(string? query, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(query)) return Array.Empty<object>();
+        var names = await _discogs!.SearchArtistsAsync(query, ct);
+        return names.Cast<object>();
+    }
+
+    /// <summary>Picking an album fills in the two fields you'd otherwise have to go look up.</summary>
+    private void OnAlbumSuggestionPicked(object? sender, SelectionChangedEventArgs e)
+    {
+        if (TitleBox.SelectedItem is not AlbumSuggestion pick) return;
+
+        ArtistBox.Text = pick.Artist;
+        YearBox.Text = pick.Year;
+        LookupHint.Text = string.IsNullOrEmpty(pick.Year)
+            ? $"Discogs has no year for “{pick.Title}” — fill it in yourself."
+            : $"Filled in from Discogs: {pick.Artist}, {pick.Year}.";
     }
 
     private async void OnAdd(object? sender, RoutedEventArgs e) => await AddAsync();
@@ -48,6 +104,9 @@ public partial class AddAlbumWindow : Window
                     StatusText.Text = $"✓ Added “{title}” ({year}) at #{result.Position}. "
                                     + "The list was renumbered."
                                     + (result.Warning is null ? "" : $"\n{result.Warning}");
+                    // Clear the pick first: without it, choosing the same album again wouldn't
+                    // register as a change and the artist/year would never refill.
+                    TitleBox.SelectedItem = null;
                     TitleBox.Text = "";
                     ArtistBox.Text = "";
                     YearBox.Text = "";
