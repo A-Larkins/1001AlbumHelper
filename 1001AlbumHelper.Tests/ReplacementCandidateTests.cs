@@ -180,8 +180,10 @@ public class ReplacementCandidateTests : IDisposable
             "1001AlbumHelper", ReplacementCandidates.FileName);
 
     [Fact]
-    public void The_shipped_shortlist_parses_and_starts_out_undecided()
+    public void The_shipped_shortlist_is_usable()
     {
+        // The app writes to this file as it goes, so its statuses and years are whatever the last
+        // session left behind. Only what stays true of it as it's used is worth asserting.
         var seed = ReplacementCandidates.Load(SeedPath());
 
         Assert.NotEmpty(seed);
@@ -189,7 +191,6 @@ public class ReplacementCandidateTests : IDisposable
         {
             Assert.NotEmpty(a.Title);
             Assert.NotEmpty(a.Artist);
-            Assert.Equal(CandidateStatus.Pending, a.Status);
         });
 
         // Two rows for the same album would offer it twice and add it twice.

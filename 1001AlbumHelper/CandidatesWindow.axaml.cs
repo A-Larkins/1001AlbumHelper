@@ -230,8 +230,7 @@ public partial class CandidatesWindow : Window
     {
         try
         {
-            var matches = await _discogs!.SearchAlbumsAsync(album.Title, album.Artist, token);
-            return matches.FirstOrDefault(m => m.Year.Length > 0)?.Year;
+            return (await _discogs!.FindAlbumAsync(album.Title, album.Artist, token))?.Year;
         }
         catch (OperationCanceledException)
         {

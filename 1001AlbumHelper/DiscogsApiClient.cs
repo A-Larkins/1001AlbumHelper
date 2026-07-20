@@ -176,6 +176,158 @@ public class DiscogsApiClient
             .Take(take)
             .ToList();
 
+    /// <summary>
+    /// The one album that best answers "what year is this?", trying progressively looser searches
+    /// until one produces a match that verifies.
+    /// <para>
+    /// <see cref="SearchAlbumsAsync"/> is built for a dropdown someone is watching, so it asks
+    /// Discogs a single precise question and shows whatever comes back. That precision is wrong
+    /// for an unattended lookup, where each filter is its own way to find nothing: <c>format=album</c>
+    /// excludes EPs outright, <c>artist=</c> misses records credited to a stage name or a one-off
+    /// billing, and <c>release_title=</c> wants the edition's exact name rather than the album's.
+    /// Each rung below drops one of those constraints.
+    /// </para>
+    /// <para>
+    /// Loosening a search is only safe if the answer is checked, so every rung verifies what came
+    /// back — see <see cref="TitlesLineUp"/> — and the last, which searches on title alone, also
+    /// requires the artist to be recognisable. Without that it would happily date your album from
+    /// an unrelated record that happens to share its name.
+    /// </para>
+    /// </summary>
+    public async Task<AlbumSuggestion?> FindAlbumAsync(
+        string title, string artist, CancellationToken ct = default)
+    {
+        title = title.Trim();
+        artist = artist.Trim();
+        if (title.Length == 0) return null;
+
+        string t = Uri.EscapeDataString(title);
+        string a = Uri.EscapeDataString(artist);
+
+        // Discogs has already constrained these to the artist, so the title is the open question.
+        bool ByTitle(AlbumSuggestion s) => TitlesLineUp(s.Title, title);
+
+        // A general query is not bound to the artist, and a title alone cannot tell an edition of
+        // an album from a different record that merely starts the same way — "Purple" is as much a
+        // prefix of "Purple Rain" as "This One's For You" is of that album's deluxe. Checking the
+        // artist too is what separates the two cases.
+        bool ByBoth(AlbumSuggestion s) => ByTitle(s) && ArtistsOverlap(s.Artist, artist);
+
+        var rungs = new (string Url, Func<AlbumSuggestion, bool> Accept)[]
+        {
+            // As before: the precise question, which answers most albums on the first ask.
+            ($"&format=album&release_title={t}&artist={a}", ByTitle),
+
+            // Without format: EPs, mini-albums and anything Discogs doesn't file as an album.
+            ($"&release_title={t}&artist={a}", ByTitle),
+
+            // A general query rather than field matches — forgiving of punctuation and of an
+            // edition's name differing from the album's. Naming the artist steers the search
+            // without binding it, so the result still has to be checked against them.
+            ($"&q={t}+{a}", ByBoth),
+
+            // Title alone, for records credited to a name the playlist doesn't use.
+            ($"&q={t}", ByBoth),
+        };
+
+        // A playlist names the pressing it holds; Discogs catalogues the album. When the two
+        // differ it's usually edition furniture, so ask again without it.
+        string bare = BareTitle(title);
+        if (!string.Equals(bare, title, StringComparison.Ordinal))
+        {
+            string b = Uri.EscapeDataString(bare);
+            rungs = rungs.Append(($"&release_title={b}&artist={a}", ByTitle))
+                         .Append(($"&q={b}+{a}", ByBoth))
+                         .ToArray();
+        }
+
+        for (int i = 0; i < rungs.Length; i++)
+        {
+            // Every rung spends from the same 60-a-minute budget as the caller's own pacing, so a
+            // hard-to-find album doesn't get to burn four requests in one second.
+            if (i > 0) await Task.Delay(TimeSpan.FromMilliseconds(350), ct);
+
+            var url = $"https://api.discogs.com/database/search?type=master&per_page=50"
+                    + $"&token={_token}{rungs[i].Url}";
+
+            var found = RankAlbumResults(await GetSearchResultsAsync(url, ct))
+                .FirstOrDefault(s => s.Year.Length > 0 && rungs[i].Accept(s));
+
+            if (found is not null) return found;
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Whether two album titles name the same record, allowing for one being an edition of the
+    /// other: the shorter title has to run as a whole-word prefix of the longer.
+    /// <para>
+    /// That accepts "This One's For You" for "This One's for You Too" while refusing "Four" for
+    /// "Fourty Licks", which a plain substring test would wave through — prefixes are compared a
+    /// word at a time, so a title can only be extended, never cut mid-word.
+    /// </para>
+    /// </summary>
+    public static bool TitlesLineUp(string a, string b)
+    {
+        var x = TitleWords(a);
+        var y = TitleWords(b);
+        if (x.Length == 0 || y.Length == 0) return false;
+
+        var (shorter, longer) = x.Length <= y.Length ? (x, y) : (y, x);
+        return shorter.SequenceEqual(longer.Take(shorter.Length));
+    }
+
+    /// <summary>
+    /// A title reduced to the words that identify it.
+    /// <para>
+    /// "and" and "the" come and go between catalogues — Discogs presses "Kirk Franklin &amp; The
+    /// Family" where a playlist writes "Kirk Franklin and the Family" — and normalising drops the
+    /// ampersand entirely, leaving a stray "and" to knock every later word out of step. Since they
+    /// carry no identity, they go.
+    /// </para>
+    /// </summary>
+    private static string[] TitleWords(string title) =>
+        NumberedList.Normalize(title)
+            .Split(' ', StringSplitOptions.RemoveEmptyEntries)
+            .Where(w => w is not ("and" or "the"))
+            .ToArray();
+
+    /// <summary>
+    /// A title with its edition furniture removed: a trailing "(Live)" or "[Remastered]", and any
+    /// subtitle after a colon. Used to ask Discogs about the album rather than the pressing.
+    /// </summary>
+    public static string BareTitle(string title)
+    {
+        var bare = Regex.Replace(title, @"\s*[\(\[][^\)\]]*[\)\]]\s*$", "").Trim();
+
+        // Only cut at a colon when something substantial survives, so "Vs." and ": Reprise" keep
+        // whatever name they have.
+        int colon = bare.IndexOf(':');
+        if (colon > 2) bare = bare[..colon].Trim();
+
+        return bare.Length > 0 ? bare : title.Trim();
+    }
+
+    /// <summary>
+    /// Whether two artist credits plausibly name the same act, by sharing a substantial word.
+    /// <para>
+    /// Discogs bills albums as they were pressed, which is often not what a playlist calls them:
+    /// King of America is credited to "The Costello Show Featuring The Attractions And
+    /// Confederates". Sharing "costello" is the signal. Short words are ignored so that "and",
+    /// "the" or a stray initial can't make two unrelated acts look related.
+    /// </para>
+    /// </summary>
+    public static bool ArtistsOverlap(string a, string b)
+    {
+        var x = NumberedList.Normalize(a).Split(' ', StringSplitOptions.RemoveEmptyEntries)
+            .Where(w => w.Length >= 4).ToHashSet();
+        var y = NumberedList.Normalize(b).Split(' ', StringSplitOptions.RemoveEmptyEntries)
+            .Where(w => w.Length >= 4);
+
+        return x.Count > 0 && y.Any(x.Contains);
+    }
+
     /// <summary>Artist names matching <paramref name="query"/>, most-collected first.</summary>
     public async Task<List<string>> SearchArtistsAsync(string query, CancellationToken ct = default)
     {
