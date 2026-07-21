@@ -228,7 +228,7 @@
     "artist": "August Burns Red",
     "genre": "Metal",
     "status": "pending",
-    "year": ""
+    "year": "2007"
   },
   {
     "title": "Phantom Anthem",
@@ -543,14 +543,14 @@
     "artist": "Luke Combs",
     "genre": "Country",
     "status": "pending",
-    "year": ""
+    "year": "2017"
   },
   {
     "title": "What You See Ain\u0027t Always What You Get",
     "artist": "Luke Combs",
     "genre": "Country",
     "status": "pending",
-    "year": ""
+    "year": "2019"
   },
   {
     "title": "Who Needs Pictures",
@@ -633,7 +633,7 @@
     "title": "The Gospel Harmonettes of Demopolis, Alabama",
     "artist": "The Gospel Harmonettes",
     "genre": "Gospel",
-    "status": "pending",
+    "status": "declined",
     "year": ""
   },
   {
@@ -641,7 +641,7 @@
     "artist": "Kirk Franklin",
     "genre": "Christian",
     "status": "pending",
-    "year": ""
+    "year": "1993"
   },
   {
     "title": "Tramaine Hawkins (Live)",
@@ -661,7 +661,7 @@
     "title": "Black Nativity: Gospel On Broadway!",
     "artist": "Original Cast Of \u0027Black Nativity\u0027",
     "genre": "Soundtrack",
-    "status": "pending",
+    "status": "declined",
     "year": ""
   },
   {
@@ -690,7 +690,7 @@
     "artist": "Slightly Stoopid",
     "genre": "Rock",
     "status": "pending",
-    "year": ""
+    "year": "2003"
   },
   {
     "title": "Closer to the Sun",
@@ -977,7 +977,7 @@
     "artist": "boygenius",
     "genre": "Alternative",
     "status": "pending",
-    "year": ""
+    "year": "2018"
   },
   {
     "title": "the record",
@@ -991,7 +991,7 @@
     "artist": "Elvis Costello",
     "genre": "Rock",
     "status": "pending",
-    "year": ""
+    "year": "1986"
   },
   {
     "title": "Shot of Love",
