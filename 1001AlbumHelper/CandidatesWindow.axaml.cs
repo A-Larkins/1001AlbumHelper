@@ -31,6 +31,10 @@ public partial class CandidatesWindow : Window
     /// <summary>The last album dropped, so a mis-click is one button away from being undone.</summary>
     private CandidateAlbum? _lastDropped;
 
+    /// <summary>Which column the list is sorted by, or null for the file's own order.</summary>
+    private CandidateSortColumn? _sortColumn;
+    private bool _sortDescending;
+
     // Null when no Discogs token is configured: years then have to be typed in by hand.
     private readonly DiscogsApiClient? _discogs = DiscogsApiClient.TryCreate();
 
@@ -133,6 +137,11 @@ public partial class CandidatesWindow : Window
             }).ToList();
         }
 
+        // Sorting is a view concern only: _all stays in file order, which is the order the prefetch
+        // fills years in and the order rows are decided in by default.
+        if (_sortColumn is { } column)
+            shown = ReplacementCandidates.Sort(shown, column, _sortDescending);
+
         _shown.Clear();
         foreach (var album in shown) _shown.Add(album);
 
@@ -149,6 +158,44 @@ public partial class CandidatesWindow : Window
                     ? $"No shortlist yet.\n\nAdd albums to {ReplacementCandidates.FileName} beside the app."
                     : "Every album on the shortlist has been decided. 🎉"
                 : $"Nothing matches “{query}”.";
+        }
+    }
+
+    // ---------- Sorting ----------
+
+    /// <summary>
+    /// A column heading was clicked: sort by it ascending, or flip the direction if it was already
+    /// the sort column. The choice sticks across filtering and reloads until another heading is
+    /// picked — it's a view preference, not something written to the file.
+    /// </summary>
+    private void OnSortHeader(object? sender, RoutedEventArgs e)
+    {
+        if (sender is not Button { Tag: string tag } ||
+            !Enum.TryParse(tag, out CandidateSortColumn column)) return;
+
+        if (_sortColumn == column) _sortDescending = !_sortDescending;
+        else { _sortColumn = column; _sortDescending = false; }
+
+        UpdateSortIndicators();
+        ApplyFilter();
+    }
+
+    /// <summary>Marks the active heading and points its arrow the way the column is running.</summary>
+    private void UpdateSortIndicators()
+    {
+        (CandidateSortColumn Column, Button Header, TextBlock Arrow)[] headers =
+        {
+            (CandidateSortColumn.Title, HeaderTitle, ArrowTitle),
+            (CandidateSortColumn.Artist, HeaderArtist, ArrowArtist),
+            (CandidateSortColumn.Genre, HeaderGenre, ArrowGenre),
+            (CandidateSortColumn.Year, HeaderYear, ArrowYear),
+        };
+
+        foreach (var (column, header, arrow) in headers)
+        {
+            bool active = _sortColumn == column;
+            header.Classes.Set("active", active);
+            arrow.Text = active ? (_sortDescending ? "▼" : "▲") : "";
         }
     }
 

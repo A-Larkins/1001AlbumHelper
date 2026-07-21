@@ -170,6 +170,72 @@ public class ReplacementCandidateTests : IDisposable
         Assert.Equal(CandidateAddOutcome.AlreadyPending, outcome);
     }
 
+    // ----- Sorting the shortlist for display -----
+
+    private static readonly CandidateAlbum[] ToSort =
+    {
+        new() { Title = "Zuma", Artist = "Neil Young", Genre = "Rock", Year = "1975" },
+        new() { Title = "The Bends", Artist = "Radiohead", Genre = "Alternative", Year = "1995" },
+        new() { Title = "Aja", Artist = "Steely Dan", Genre = "Jazz Rock", Year = "1977" },
+        new() { Title = "Debut", Artist = "Björk", Genre = "Electronic", Year = "" },
+    };
+
+    [Fact]
+    public void Sorts_titles_ignoring_a_leading_the()
+    {
+        // "The Bends" files under B, so it lands before "Debut" and "Zuma", not up at the top.
+        var order = ReplacementCandidates.Sort(ToSort, CandidateSortColumn.Title, descending: false)
+            .Select(a => a.Title);
+
+        Assert.Equal(new[] { "Aja", "The Bends", "Debut", "Zuma" }, order);
+    }
+
+    [Fact]
+    public void Descending_flips_the_order()
+    {
+        var order = ReplacementCandidates.Sort(ToSort, CandidateSortColumn.Title, descending: true)
+            .Select(a => a.Title);
+
+        Assert.Equal(new[] { "Zuma", "Debut", "The Bends", "Aja" }, order);
+    }
+
+    [Fact]
+    public void Sorts_years_numerically()
+    {
+        var order = ReplacementCandidates.Sort(ToSort, CandidateSortColumn.Year, descending: false)
+            .Where(a => a.Year.Length > 0)
+            .Select(a => a.Year);
+
+        Assert.Equal(new[] { "1975", "1977", "1995" }, order);
+    }
+
+    [Fact]
+    public void A_missing_year_always_sorts_last()
+    {
+        // Ascending or descending, the album with no year yet is least useful at the top.
+        Assert.Equal("Debut",
+            ReplacementCandidates.Sort(ToSort, CandidateSortColumn.Year, descending: false)[^1].Title);
+        Assert.Equal("Debut",
+            ReplacementCandidates.Sort(ToSort, CandidateSortColumn.Year, descending: true)[^1].Title);
+    }
+
+    [Fact]
+    public void Ties_keep_their_file_order()
+    {
+        // A stable sort means re-sorting the same column never reshuffles equal rows.
+        var sameGenre = new[]
+        {
+            new CandidateAlbum { Title = "First", Artist = "A", Genre = "Rock" },
+            new CandidateAlbum { Title = "Second", Artist = "B", Genre = "Rock" },
+            new CandidateAlbum { Title = "Third", Artist = "C", Genre = "Rock" },
+        };
+
+        var order = ReplacementCandidates.Sort(sameGenre, CandidateSortColumn.Genre, descending: false)
+            .Select(a => a.Title);
+
+        Assert.Equal(new[] { "First", "Second", "Third" }, order);
+    }
+
     /// <summary>
     /// The shipped file, found via the source tree rather than <see cref="Operations.ProjectDir"/>
     /// — under the test host that resolves to the test project, not the app's.

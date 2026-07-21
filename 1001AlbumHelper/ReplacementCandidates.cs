@@ -62,6 +62,15 @@ public sealed class CandidateAlbum : INotifyPropertyChanged
     public bool HasNote => _note.Length > 0;
 }
 
+/// <summary>Which column the shortlist is ordered by when the user sorts it.</summary>
+public enum CandidateSortColumn
+{
+    Title,
+    Artist,
+    Genre,
+    Year,
+}
+
 /// <summary>What adding an album to the shortlist would mean, given what's already on it.</summary>
 public enum CandidateAddOutcome
 {
@@ -123,6 +132,47 @@ public static class ReplacementCandidates
             _ => (CandidateAddOutcome.Reopen, match),
         };
     }
+
+    /// <summary>
+    /// Orders the shortlist by one column for display, leaving the underlying list untouched.
+    /// <para>
+    /// Titles and artists sort the way the sheet compares them — case, punctuation and a leading
+    /// "the" set aside — so "The Band" files under B. A blank cell always trails, whichever way the
+    /// column runs: an absent year or genre isn't small or large, it's just missing, and it's least
+    /// in the way at the bottom. The sort is stable, so rows that tie keep their file order and
+    /// re-sorting the same column doesn't reshuffle them.
+    /// </para>
+    /// </summary>
+    public static List<CandidateAlbum> Sort(
+        IEnumerable<CandidateAlbum> albums, CandidateSortColumn column, bool descending)
+    {
+        if (column == CandidateSortColumn.Year)
+        {
+            var keyed = albums.Select(a => (album: a, has: int.TryParse(a.Year.Trim(), out int y), year: y));
+            var byPresence = keyed.OrderBy(x => !x.has); // rows without a year sink to the bottom
+            var ordered = descending
+                ? byPresence.ThenByDescending(x => x.year)
+                : byPresence.ThenBy(x => x.year);
+            return ordered.Select(x => x.album).ToList();
+        }
+        else
+        {
+            var keyed = albums.Select(a => (album: a, key: SortKey(a, column)));
+            var byPresence = keyed.OrderBy(x => x.key.Length == 0); // blanks sink to the bottom
+            var ordered = descending
+                ? byPresence.ThenByDescending(x => x.key, StringComparer.Ordinal)
+                : byPresence.ThenBy(x => x.key, StringComparer.Ordinal);
+            return ordered.Select(x => x.album).ToList();
+        }
+    }
+
+    private static string SortKey(CandidateAlbum a, CandidateSortColumn column) => column switch
+    {
+        CandidateSortColumn.Title => NumberedList.Normalize(a.Title),
+        CandidateSortColumn.Artist => NumberedList.Normalize(a.Artist),
+        CandidateSortColumn.Genre => NumberedList.Normalize(a.Genre),
+        _ => "",
+    };
 
     /// <summary>Everything in the file, in file order. Returns an empty list when there's no file.</summary>
     public static List<CandidateAlbum> Load() => Load(FilePath);
