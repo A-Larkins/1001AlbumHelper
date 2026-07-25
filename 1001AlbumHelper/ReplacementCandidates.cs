@@ -181,12 +181,14 @@ public static class ReplacementCandidates
     public static List<CandidateAlbum> Load(string path)
     {
         if (!File.Exists(path)) return new List<CandidateAlbum>();
+        return Parse(File.ReadAllText(path));
+    }
 
-        var json = File.ReadAllText(path);
+    /// <summary>Deserializes the shortlist from JSON text (used to load the embedded mobile snapshot).</summary>
+    public static List<CandidateAlbum> Parse(string json)
+    {
         if (string.IsNullOrWhiteSpace(json)) return new List<CandidateAlbum>();
-
-        var loaded = JsonSerializer.Deserialize<List<CandidateAlbum>>(json, Options);
-        return loaded ?? new List<CandidateAlbum>();
+        return JsonSerializer.Deserialize<List<CandidateAlbum>>(json, Options) ?? new List<CandidateAlbum>();
     }
 
     /// <summary>

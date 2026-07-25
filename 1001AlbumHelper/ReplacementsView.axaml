@@ -1,0 +1,28 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:_1001AlbumHelper"
+             x:Class="_1001AlbumHelper.ReplacementsView">
+  <DockPanel Margin="12,8">
+    <StackPanel DockPanel.Dock="Top" Spacing="6" Margin="0,0,0,8">
+      <TextBlock Text="Potential replacements" FontSize="22" FontWeight="SemiBold" />
+      <TextBox x:Name="SearchBox" Watermark="Search title or artist…" />
+      <TextBlock x:Name="CountText" Opacity="0.55" FontSize="12" />
+    </StackPanel>
+
+    <ListBox x:Name="Rows">
+      <ListBox.ItemTemplate>
+        <DataTemplate x:DataType="local:CandidateAlbum">
+          <Grid ColumnDefinitions="*,Auto" Margin="0,4">
+            <StackPanel Grid.Column="0" VerticalAlignment="Center" Spacing="1">
+              <TextBlock Text="{Binding Title}" FontWeight="SemiBold" TextWrapping="Wrap" />
+              <TextBlock Text="{Binding Artist}" Opacity="0.65" FontSize="12" TextWrapping="Wrap" />
+              <TextBlock Text="{Binding Year}" Opacity="0.45" FontSize="11" />
+            </StackPanel>
+            <Button Grid.Column="1" Content="＋ P2" Click="OnAddToPlaylist2"
+                    VerticalAlignment="Center" Margin="8,0,0,0" />
+          </Grid>
+        </DataTemplate>
+      </ListBox.ItemTemplate>
+    </ListBox>
+  </DockPanel>
+</UserControl>

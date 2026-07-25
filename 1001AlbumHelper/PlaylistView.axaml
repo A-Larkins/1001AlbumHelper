@@ -1,0 +1,27 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:_1001AlbumHelper"
+             x:Class="_1001AlbumHelper.PlaylistView">
+  <DockPanel Margin="12,8">
+    <StackPanel DockPanel.Dock="Top" Spacing="6" Margin="0,0,0,8">
+      <TextBlock x:Name="TitleText" FontSize="22" FontWeight="SemiBold" />
+      <TextBlock x:Name="CountText" Opacity="0.55" FontSize="12" />
+      <Button x:Name="AppleMusicButton" Content="Add all to Apple Music"
+              Click="OnAddAllToAppleMusic" HorizontalAlignment="Stretch" />
+      <TextBlock x:Name="StatusText" Opacity="0.7" FontSize="12" TextWrapping="Wrap" IsVisible="False" />
+    </StackPanel>
+
+    <ListBox x:Name="Rows">
+      <ListBox.ItemTemplate>
+        <DataTemplate x:DataType="local:PlaylistEntry">
+          <Grid ColumnDefinitions="*,Auto" Margin="0,4">
+            <TextBlock Grid.Column="0" Text="{Binding Display}" VerticalAlignment="Center"
+                       TextWrapping="Wrap" />
+            <Button Grid.Column="1" Content="✕" Click="OnRemove" VerticalAlignment="Center"
+                    Margin="8,0,0,0" />
+          </Grid>
+        </DataTemplate>
+      </ListBox.ItemTemplate>
+    </ListBox>
+  </DockPanel>
+</UserControl>

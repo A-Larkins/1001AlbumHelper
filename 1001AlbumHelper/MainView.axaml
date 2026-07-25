@@ -1,18 +1,38 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:_1001AlbumHelper"
              x:Class="_1001AlbumHelper.MainView">
   <!--
-    The root view for mobile (single-view) platforms such as iOS.
-    Placeholder for now: Phase 3 moves the real screens (currently the desktop
-    windows) into navigable views that render here on the phone.
+    Mobile root: a bottom tab bar over the four screens. The UniformGrid item panel
+    makes the four tabs share the width evenly in a single row. Playlist tabs get their
+    id/title and a refresh from the code-behind so they reflect albums added elsewhere.
   -->
-  <Border Padding="24">
-    <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="12">
-      <TextBlock Text="1001 Albums Helper"
-                 FontSize="24" FontWeight="SemiBold"
-                 HorizontalAlignment="Center" />
-      <TextBlock Text="Mobile build — screens coming soon."
-                 Opacity="0.7" HorizontalAlignment="Center" />
-    </StackPanel>
-  </Border>
+  <TabControl x:Name="Tabs" TabStripPlacement="Bottom">
+    <TabControl.ItemsPanel>
+      <ItemsPanelTemplate>
+        <UniformGrid Rows="1" />
+      </ItemsPanelTemplate>
+    </TabControl.ItemsPanel>
+    <TabControl.Styles>
+      <Style Selector="TabItem">
+        <Setter Property="FontSize" Value="13" />
+        <Setter Property="HorizontalContentAlignment" Value="Center" />
+        <Setter Property="Padding" Value="4,8" />
+        <Setter Property="MinHeight" Value="0" />
+      </Style>
+    </TabControl.Styles>
+
+    <TabItem Header="List">
+      <local:AlbumListView />
+    </TabItem>
+    <TabItem Header="Replacements">
+      <local:ReplacementsView />
+    </TabItem>
+    <TabItem Header="Playlist 1">
+      <local:PlaylistView x:Name="Playlist1View" />
+    </TabItem>
+    <TabItem Header="Playlist 2">
+      <local:PlaylistView x:Name="Playlist2View" />
+    </TabItem>
+  </TabControl>
 </UserControl>

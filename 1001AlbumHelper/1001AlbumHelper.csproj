@@ -36,4 +36,20 @@
     </None>
   </ItemGroup>
 
+  <!--
+    Data snapshots embedded into the assembly so the mobile app has the lists offline
+    (the desktop app still reads the live copies from its data folder). LogicalName
+    gives each a clean resource name for MobileData to load by.
+  -->
+  <ItemGroup>
+    <None Remove="input\**\*.csv" />
+    <None Remove="replacement-candidates.json" />
+    <EmbeddedResource Include="input\1001 Albums You Must Hear Before You Die - 1001 albums.csv">
+      <LogicalName>albums-1001.csv</LogicalName>
+    </EmbeddedResource>
+    <EmbeddedResource Include="replacement-candidates.json">
+      <LogicalName>candidates.json</LogicalName>
+    </EmbeddedResource>
+  </ItemGroup>
+
 </Project>

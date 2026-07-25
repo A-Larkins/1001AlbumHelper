@@ -1,0 +1,29 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:_1001AlbumHelper"
+             x:Class="_1001AlbumHelper.AlbumListView">
+  <DockPanel Margin="12,8">
+    <StackPanel DockPanel.Dock="Top" Spacing="6" Margin="0,0,0,8">
+      <TextBlock Text="The 1001" FontSize="22" FontWeight="SemiBold" />
+      <TextBox x:Name="SearchBox" Watermark="Search title or artist…" />
+      <TextBlock x:Name="CountText" Opacity="0.55" FontSize="12" />
+    </StackPanel>
+
+    <ListBox x:Name="Rows">
+      <ListBox.ItemTemplate>
+        <DataTemplate x:DataType="local:ViewRow">
+          <Grid ColumnDefinitions="34,*,Auto" Margin="0,4">
+            <TextBlock Grid.Column="0" Text="{Binding Number}" Opacity="0.45"
+                       VerticalAlignment="Center" FontSize="12" />
+            <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="1">
+              <TextBlock Text="{Binding Title}" FontWeight="SemiBold" TextWrapping="Wrap" />
+              <TextBlock Text="{Binding Artist}" Opacity="0.65" FontSize="12" TextWrapping="Wrap" />
+            </StackPanel>
+            <Button Grid.Column="2" Content="＋ P1" Click="OnAddToPlaylist1"
+                    VerticalAlignment="Center" Margin="8,0,0,0" />
+          </Grid>
+        </DataTemplate>
+      </ListBox.ItemTemplate>
+    </ListBox>
+  </DockPanel>
+</UserControl>

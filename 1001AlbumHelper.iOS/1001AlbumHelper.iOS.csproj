@@ -6,9 +6,11 @@
     1001AlbumHelper project for all the real code.
 
     Building this needs the iOS workload (`dotnet workload install ios`) and a
-    full Xcode install, so it is intentionally NOT part of 1001AlbumHelper.sln
-    yet — that keeps `dotnet build`, the tests, and the Mac app working without
-    the toolchain. It gets added to the solution in Phase 2.
+    full Xcode install.
+
+    Launching standalone (no attached debugger) needs `-p:MtouchDebug=false`, or the
+    Debug agent aborts the app at startup when it can't reach a debugger. The SDK
+    overrides this property from the .csproj, so it must be passed on the command line.
   -->
   <PropertyGroup>
     <TargetFramework>net10.0-ios</TargetFramework>
@@ -17,6 +19,13 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <SupportedOSPlatformVersion>13.0</SupportedOSPlatformVersion>
+    <!--
+      The installed .NET-for-iOS pack targets Xcode 26.4, but a newer Xcode
+      (26.6+) is fine to build with — Xcode ships ahead of the workload. Skip the
+      strict equality check. Remove this once `dotnet workload update` ships a
+      pack that matches the installed Xcode.
+    -->
+    <ValidateXcodeVersion>false</ValidateXcodeVersion>
   </PropertyGroup>
 
   <ItemGroup>
