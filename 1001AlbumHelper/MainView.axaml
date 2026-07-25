@@ -1,0 +1,18 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="_1001AlbumHelper.MainView">
+  <!--
+    The root view for mobile (single-view) platforms such as iOS.
+    Placeholder for now: Phase 3 moves the real screens (currently the desktop
+    windows) into navigable views that render here on the phone.
+  -->
+  <Border Padding="24">
+    <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="12">
+      <TextBlock Text="1001 Albums Helper"
+                 FontSize="24" FontWeight="SemiBold"
+                 HorizontalAlignment="Center" />
+      <TextBlock Text="Mobile build — screens coming soon."
+                 Opacity="0.7" HorizontalAlignment="Center" />
+    </StackPanel>
+  </Border>
+</UserControl>
