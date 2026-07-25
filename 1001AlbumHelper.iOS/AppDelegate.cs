@@ -10,8 +10,13 @@ namespace _1001AlbumHelper;
 [Register("AppDelegate")]
 public partial class AppDelegate : AvaloniaAppDelegate<App>
 {
-    protected override AppBuilder CustomizeAppBuilder(AppBuilder builder) =>
-        base.CustomizeAppBuilder(builder)
+    protected override AppBuilder CustomizeAppBuilder(AppBuilder builder)
+    {
+        // Give the shared mobile views a way to push playlists into Apple Music (iOS only).
+        AppleMusic.Writer = new MediaPlayerPlaylistWriter();
+
+        return base.CustomizeAppBuilder(builder)
             .WithInterFont()
             .LogToTrace();
+    }
 }

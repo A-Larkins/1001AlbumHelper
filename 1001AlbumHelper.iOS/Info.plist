@@ -7,6 +7,9 @@
   <key>CFBundleIdentifier</key>          <string>com.larkins.albumhelper</string>
   <key>CFBundleVersion</key>             <string>1.0</string>
   <key>CFBundleShortVersionString</key>  <string>1.0</string>
+  <!-- Shown when the app first asks to add albums to the user's Apple Music library. -->
+  <key>NSAppleMusicUsageDescription</key>
+  <string>1001 Albums adds the albums you pick to your Apple Music playlists.</string>
   <key>LSRequiresIPhoneOS</key>          <true/>
   <key>MinimumOSVersion</key>            <string>13.0</string>
   <key>UIDeviceFamily</key>
