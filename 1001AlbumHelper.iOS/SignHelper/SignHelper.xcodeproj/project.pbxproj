@@ -1,0 +1,51 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 56;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		1A0000000000000000000005 /* App.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A0000000000000000000004 /* App.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		1A0000000000000000000003 /* SignHelper.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SignHelper.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		1A0000000000000000000004 /* App.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = App.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		1A0000000000000000000007 /* Frameworks */ = {isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		1A0000000000000000000009 = {isa = PBXGroup; children = (1A000000000000000000000B /* SignHelper */, 1A000000000000000000000A /* Products */, ); sourceTree = "<group>"; };
+		1A000000000000000000000A /* Products */ = {isa = PBXGroup; children = (1A0000000000000000000003 /* SignHelper.app */, ); name = Products; sourceTree = "<group>"; };
+		1A000000000000000000000B /* SignHelper */ = {isa = PBXGroup; children = (1A0000000000000000000004 /* App.swift */, ); path = SignHelper; sourceTree = "<group>"; };
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		1A0000000000000000000002 /* SignHelper */ = {isa = PBXNativeTarget; buildConfigurationList = 1A000000000000000000000C /* Build configuration list for PBXNativeTarget "SignHelper" */; buildPhases = (1A0000000000000000000006 /* Sources */, 1A0000000000000000000007 /* Frameworks */, ); buildRules = (); dependencies = (); name = SignHelper; productName = SignHelper; productReference = 1A0000000000000000000003 /* SignHelper.app */; productType = "com.apple.product-type.application"; };
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		1A0000000000000000000001 /* Project object */ = {isa = PBXProject; attributes = {BuildIndependentTargetsInParallel = 1; LastSwiftUpdateCheck = 1600; LastUpgradeCheck = 1600; TargetAttributes = {1A0000000000000000000002 = {CreatedOnToolsVersion = 16.0; }; }; }; buildConfigurationList = 1A000000000000000000000F /* Build configuration list for PBXProject "SignHelper" */; compatibilityVersion = "Xcode 14.0"; developmentRegion = en; hasScannedForEncodings = 0; knownRegions = (en, Base, ); mainGroup = 1A0000000000000000000009; productRefGroup = 1A000000000000000000000A /* Products */; projectDirPath = ""; projectRoot = ""; targets = (1A0000000000000000000002 /* SignHelper */, ); };
+/* End PBXProject section */
+
+/* Begin PBXSourcesBuildPhase section */
+		1A0000000000000000000006 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (1A0000000000000000000005 /* App.swift in Sources */, ); runOnlyForDeploymentPostprocessing = 0; };
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		1A000000000000000000000D /* Debug */ = {isa = XCBuildConfiguration; buildSettings = {ASSETCATALOG_COMPILER_GENERATE_ASSET_SYMBOLS = NO; CODE_SIGN_STYLE = Automatic; DEVELOPMENT_TEAM = FCSUH87SVL; GENERATE_INFOPLIST_FILE = YES; INFOPLIST_KEY_UILaunchScreen_Generation = YES; IPHONEOS_DEPLOYMENT_TARGET = 15.0; PRODUCT_BUNDLE_IDENTIFIER = com.larkins.albumhelper; PRODUCT_NAME = "$(TARGET_NAME)"; SDKROOT = iphoneos; SWIFT_VERSION = 5.0; TARGETED_DEVICE_FAMILY = "1,2"; }; name = Debug; };
+		1A0000000000000000000010 /* Debug */ = {isa = XCBuildConfiguration; buildSettings = {ALWAYS_SEARCH_USER_PATHS = NO; CLANG_ENABLE_MODULES = YES; SDKROOT = iphoneos; }; name = Debug; };
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		1A000000000000000000000C /* Build configuration list for PBXNativeTarget "SignHelper" */ = {isa = XCConfigurationList; buildConfigurations = (1A000000000000000000000D /* Debug */, ); defaultConfigurationIsVisible = 0; defaultConfigurationName = Debug; };
+		1A000000000000000000000F /* Build configuration list for PBXProject "SignHelper" */ = {isa = XCConfigurationList; buildConfigurations = (1A0000000000000000000010 /* Debug */, ); defaultConfigurationIsVisible = 0; defaultConfigurationName = Debug; };
+/* End XCConfigurationList section */
+	};
+	rootObject = 1A0000000000000000000001 /* Project object */;
+}

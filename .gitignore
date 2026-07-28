@@ -16,3 +16,7 @@ service-account*.json
 
 # macOS finder metadata
 .DS_Store
+
+# Xcode per-user state (from the SignHelper signing stub)
+xcuserdata/
+*.xcuserstate
