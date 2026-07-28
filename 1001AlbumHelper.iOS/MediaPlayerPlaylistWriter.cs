@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
-using System.Security.Cryptography;
-using System.Text;
+using System.Linq;
 using System.Threading.Tasks;
 using Foundation;
 using MediaPlayer;
@@ -9,78 +8,88 @@ using MediaPlayer;
 namespace _1001AlbumHelper;
 
 /// <summary>
-/// iOS implementation of <see cref="IApplePlaylistWriter"/>. Finds each album in the Apple Music
-/// catalogue (via <see cref="AppleMusicCatalog"/>) and adds it, by store id, to a library playlist
-/// created/reused under a name-derived UUID so re-syncing tops up the same playlist.
+/// iOS implementation of <see cref="IApplePlaylistWriter"/> over the MediaPlayer framework.
+/// Finds an existing library playlist by name and adds albums to it (by Apple Music store id,
+/// looked up via <see cref="AppleMusicCatalog"/>), and reads a playlist's albums back.
 ///
 /// Requires an Apple Music subscription and the media-library permission
-/// (NSAppleMusicUsageDescription in Info.plist). Uses the MediaPlayer framework's MPMediaLibrary,
-/// which does NOT need the paid MusicKit entitlement.
+/// (NSAppleMusicUsageDescription in Info.plist). MediaPlayer is add-only, so there is no remove.
 ///
-/// NOTE: written against the MediaPlayer API but not yet exercised on a device — the simulator on
-/// this toolchain is too unstable to run. First real run is the device deploy; adjust here if the
-/// add-by-album-id behaviour needs to become add-by-track-id.
+/// NOTE: exercised on-device (the simulator on this toolchain is too unstable to run).
 /// </summary>
 public sealed class MediaPlayerPlaylistWriter : IApplePlaylistWriter
 {
-    public async Task<PlaylistSyncResult> AddAlbumsAsync(
-        string playlistName, IReadOnlyList<PlaylistEntry> albums, IProgress<string>? progress = null)
+    public async Task<PlaylistOpResult> AddAlbumAsync(string playlistName, PlaylistEntry album)
     {
-        var status = await RequestAuthorizationAsync();
-        if (status != MPMediaLibraryAuthorizationStatus.Authorized)
-            return new PlaylistSyncResult(0, 0, 0,
-                "Apple Music access wasn't granted. Enable it in Settings › Privacy › Media & Apple Music.");
+        if (await RequestAuthorizationAsync() != MPMediaLibraryAuthorizationStatus.Authorized)
+            return new PlaylistOpResult(false, "Apple Music access wasn't granted (Settings ▸ Privacy ▸ Media & Apple Music).");
 
-        MPMediaPlaylist playlist;
+        var playlist = FindPlaylistByName(playlistName);
+        if (playlist is null)
+            return new PlaylistOpResult(false, $"No Apple Music playlist named “{playlistName}” — create it in Apple Music first.");
+
+        AppleMusicAlbum? match;
+        try { match = await AppleMusicCatalog.FindAlbumAsync(album.Artist, album.Title); }
+        catch (Exception ex) { return new PlaylistOpResult(false, $"Lookup failed: {ex.Message}"); }
+
+        if (match is null)
+            return new PlaylistOpResult(false, $"Not on Apple Music: {album.Title}");
+
         try
         {
-            playlist = await GetOrCreatePlaylistAsync(playlistName);
+            await AddItemAsync(playlist, match.CollectionId.ToString());
+            return new PlaylistOpResult(true, $"Added to {playlistName}");
         }
         catch (Exception ex)
         {
-            return new PlaylistSyncResult(0, 0, 0, $"Couldn't open the Apple Music playlist: {ex.Message}");
+            return new PlaylistOpResult(false, $"Couldn't add: {ex.Message}");
         }
-
-        int added = 0, notFound = 0, failed = 0;
-        foreach (var album in albums)
-        {
-            progress?.Report($"Adding {album.Title}…");
-
-            AppleMusicAlbum? match;
-            try { match = await AppleMusicCatalog.FindAlbumAsync(album.Artist, album.Title); }
-            catch { match = null; }
-
-            if (match is null) { notFound++; continue; }
-
-            try
-            {
-                await AddItemAsync(playlist, match.CollectionId.ToString());
-                added++;
-            }
-            catch { failed++; }
-        }
-
-        return new PlaylistSyncResult(added, notFound, failed);
     }
 
-    // MediaPlayer's APIs are callback-based; wrap them as tasks.
+    public async Task<IReadOnlyList<PlaylistEntry>> ReadAlbumsAsync(string playlistName)
+    {
+        if (await RequestAuthorizationAsync() != MPMediaLibraryAuthorizationStatus.Authorized)
+            return Array.Empty<PlaylistEntry>();
+
+        var playlist = FindPlaylistByName(playlistName);
+        if (playlist is null) return Array.Empty<PlaylistEntry>();
+
+        // One MPMediaItem per track; collapse to one entry per album (title+artist), in first-seen order.
+        var seen = new HashSet<string>();
+        var albums = new List<PlaylistEntry>();
+        foreach (var item in playlist.Items ?? Array.Empty<MPMediaItem>())
+        {
+            string title = item.AlbumTitle ?? "";
+            string artist = item.AlbumArtist ?? item.Artist ?? "";
+            if (title.Length == 0) continue;
+
+            string key = $"{NumberedList.Normalize(title)}|{NumberedList.Normalize(artist)}";
+            if (seen.Add(key))
+                albums.Add(new PlaylistEntry(title, artist, ""));
+        }
+        return albums;
+    }
+
+    // ---- MediaPlayer plumbing (its APIs are callback-based; wrap them as tasks) ----
+
+    private MPMediaPlaylist? FindPlaylistByName(string name)
+    {
+        var query = MPMediaQuery.PlaylistsQuery;
+        foreach (var collection in query.Collections ?? Array.Empty<MPMediaItemCollection>())
+        {
+            if (collection is MPMediaPlaylist playlist
+                && string.Equals(playlist.Name, name, StringComparison.OrdinalIgnoreCase))
+            {
+                return playlist;
+            }
+        }
+        return null;
+    }
 
     private static Task<MPMediaLibraryAuthorizationStatus> RequestAuthorizationAsync()
     {
         var tcs = new TaskCompletionSource<MPMediaLibraryAuthorizationStatus>();
         MPMediaLibrary.RequestAuthorization(status => tcs.TrySetResult(status));
-        return tcs.Task;
-    }
-
-    private static Task<MPMediaPlaylist> GetOrCreatePlaylistAsync(string name)
-    {
-        var tcs = new TaskCompletionSource<MPMediaPlaylist>();
-        var metadata = new MPMediaPlaylistCreationMetadata(name);
-        MPMediaLibrary.DefaultMediaLibrary.GetPlaylist(StableUuid(name), metadata, (playlist, error) =>
-        {
-            if (error is not null) tcs.TrySetException(new Exception(error.LocalizedDescription));
-            else tcs.TrySetResult(playlist);
-        });
         return tcs.Task;
     }
 
@@ -93,12 +102,5 @@ public sealed class MediaPlayerPlaylistWriter : IApplePlaylistWriter
             else tcs.TrySetResult(true);
         });
         return tcs.Task;
-    }
-
-    /// <summary>A stable UUID per playlist name, so the same library playlist is reused each sync.</summary>
-    private static NSUuid StableUuid(string name)
-    {
-        byte[] hash = MD5.HashData(Encoding.UTF8.GetBytes("1001albums:" + name));
-        return new NSUuid(new Guid(hash).ToString());
     }
 }

@@ -6,8 +6,14 @@
     <StackPanel DockPanel.Dock="Top" Spacing="6" Margin="0,0,0,8">
       <TextBlock x:Name="TitleText" FontSize="22" FontWeight="SemiBold" />
       <TextBlock x:Name="CountText" Opacity="0.55" FontSize="12" />
-      <Button x:Name="AppleMusicButton" Content="Add all to Apple Music"
-              Click="OnAddAllToAppleMusic" HorizontalAlignment="Stretch" />
+      <Grid ColumnDefinitions="*,*" ColumnSpacing="6">
+        <Button x:Name="ImportButton" Grid.Column="0" Content="⬇ Import from Apple Music"
+                Click="OnImportFromAppleMusic" HorizontalAlignment="Stretch"
+                HorizontalContentAlignment="Center" FontSize="12" />
+        <Button x:Name="PushButton" Grid.Column="1" Content="⬆ Push all to Apple Music"
+                Click="OnPushToAppleMusic" HorizontalAlignment="Stretch"
+                HorizontalContentAlignment="Center" FontSize="12" />
+      </Grid>
       <TextBlock x:Name="StatusText" Opacity="0.7" FontSize="12" TextWrapping="Wrap" IsVisible="False" />
     </StackPanel>
 

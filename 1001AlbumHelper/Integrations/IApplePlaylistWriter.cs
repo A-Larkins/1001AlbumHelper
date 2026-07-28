@@ -1,31 +1,29 @@
 namespace _1001AlbumHelper;
 
-/// <summary>The outcome of pushing a set of albums into an Apple Music playlist.</summary>
-public sealed record PlaylistSyncResult(int Added, int NotFound, int Failed, string? Error = null)
-{
-    public bool IsError => Error is not null;
-
-    public string Summary => IsError
-        ? Error!
-        : $"Added {Added}" +
-          (NotFound > 0 ? $", {NotFound} not found on Apple Music" : "") +
-          (Failed > 0 ? $", {Failed} failed" : "") + ".";
-}
+/// <summary>The outcome of a single Apple Music playlist operation.</summary>
+public sealed record PlaylistOpResult(bool Ok, string Message);
 
 /// <summary>
-/// Adds albums to a named Apple Music library playlist. Implemented per-platform: the iOS head
-/// provides a MediaPlayer-backed writer; other platforms have none (the button just reports that).
+/// Talks to the user's Apple Music library: adds an album to an existing playlist (found by name),
+/// and reads a playlist's albums back. Implemented per-platform — the iOS head provides a
+/// MediaPlayer-backed writer; other platforms have none (the mobile views guard on availability).
+/// <para>
+/// Note: Apple's MediaPlayer framework is add-only — there is no API to remove items from a
+/// playlist, so "remove" happens in the app's own working list, not in Apple Music.
+/// </para>
 /// </summary>
 public interface IApplePlaylistWriter
 {
-    Task<PlaylistSyncResult> AddAlbumsAsync(
-        string playlistName, IReadOnlyList<PlaylistEntry> albums, IProgress<string>? progress = null);
+    /// <summary>Adds one album to the Apple Music playlist named <paramref name="playlistName"/>.</summary>
+    Task<PlaylistOpResult> AddAlbumAsync(string playlistName, PlaylistEntry album);
+
+    /// <summary>The albums currently in the Apple Music playlist named <paramref name="playlistName"/>.</summary>
+    Task<IReadOnlyList<PlaylistEntry>> ReadAlbumsAsync(string playlistName);
 }
 
 /// <summary>
 /// Where the mobile UI finds the Apple Music writer. The iOS app sets <see cref="Writer"/> at
-/// startup; it stays null on platforms without Apple Music, which the playlist view treats as
-/// "not available here."
+/// startup; it stays null on platforms without Apple Music, which the views treat as "not available."
 /// </summary>
 public static class AppleMusic
 {

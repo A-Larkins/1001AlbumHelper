@@ -6,9 +6,10 @@ using Avalonia.Interactivity;
 namespace _1001AlbumHelper;
 
 /// <summary>
-/// Shows one on-device playlist (1 = from the 1001, 2 = potential replacements) and lets the user
-/// remove entries or push the whole thing to an Apple Music library playlist. Reloaded each time its
-/// tab is shown so it reflects albums added over on the List / Replacements tabs.
+/// One playlist "working list" (1 = from the 1001, 2 = potential replacements). This is the clean,
+/// fully add/remove list the user manages; it maps to an Apple Music playlist by name for listening.
+/// "Import" seeds it from what's already in that Apple Music playlist; "Push all" adds the working
+/// list into Apple Music (add-only — Apple has no remove, so cleanup happens here in the app).
 /// </summary>
 public partial class PlaylistView : UserControl
 {
@@ -27,14 +28,15 @@ public partial class PlaylistView : UserControl
         Refresh();
     }
 
-    /// <summary>Re-reads the playlist from disk so newly added albums show up.</summary>
+    /// <summary>Re-reads the working list from disk so newly added albums show up.</summary>
     public void Refresh()
     {
         if (_playlistId == 0) return;
         _store = PlaylistStore.Open(_playlistId);
         Rows.ItemsSource = _store.Entries;
         CountText.Text = _store.Entries.Count == 1 ? "1 album" : $"{_store.Entries.Count} albums";
-        AppleMusicButton.IsEnabled = _store.Entries.Count > 0;
+        ImportButton.IsEnabled = AppleMusic.IsAvailable;
+        PushButton.IsEnabled = AppleMusic.IsAvailable && _store.Entries.Count > 0;
     }
 
     private void OnRemove(object? sender, RoutedEventArgs e)
@@ -44,35 +46,53 @@ public partial class PlaylistView : UserControl
         Refresh();
     }
 
-    private async void OnAddAllToAppleMusic(object? sender, RoutedEventArgs e)
+    /// <summary>Reads the existing Apple Music playlist and merges anything new into the working list.</summary>
+    private async void OnImportFromAppleMusic(object? sender, RoutedEventArgs e)
     {
         if (_store is null) return;
-        var albums = _store.Entries.ToList();
-        if (albums.Count == 0) return;
+        if (!AppleMusic.IsAvailable) { Note("Apple Music is only available in the iPhone app."); return; }
 
-        StatusText.IsVisible = true;
-
-        // On desktop there's no Apple Music writer; only the iPhone app registers one.
-        if (!AppleMusic.IsAvailable)
-        {
-            StatusText.Text = "Adding to Apple Music works in the iPhone app.";
-            return;
-        }
-
-        AppleMusicButton.IsEnabled = false;
-        var progress = new Progress<string>(message => StatusText.Text = message);
+        SetBusy(true, $"Reading “{_appleMusicName}” from Apple Music…");
         try
         {
-            var result = await AppleMusic.Writer!.AddAlbumsAsync(_appleMusicName, albums, progress);
-            StatusText.Text = result.Summary;
+            var albums = await AppleMusic.Writer!.ReadAlbumsAsync(_appleMusicName);
+            int added = albums.Count(a => _store.Add(a.Title, a.Artist, a.Year));
+            Refresh();
+            Note($"Imported {added} new ({albums.Count} in “{_appleMusicName}”).");
         }
-        catch (Exception ex)
+        catch (Exception ex) { Note($"Couldn't read “{_appleMusicName}”: {ex.Message}"); }
+        finally { SetBusy(false); }
+    }
+
+    /// <summary>Adds every album in the working list to the Apple Music playlist (skips ones already there is up to Apple Music).</summary>
+    private async void OnPushToAppleMusic(object? sender, RoutedEventArgs e)
+    {
+        if (_store is null || _store.Entries.Count == 0) return;
+        if (!AppleMusic.IsAvailable) { Note("Apple Music is only available in the iPhone app."); return; }
+
+        var albums = _store.Entries.ToList();
+        SetBusy(true, "");
+        int added = 0, failed = 0;
+        foreach (var album in albums)
         {
-            StatusText.Text = $"Couldn't sync to Apple Music: {ex.Message}";
+            Note($"Adding {album.Title}… ({added + failed + 1}/{albums.Count})");
+            var result = await AppleMusic.Writer!.AddAlbumAsync(_appleMusicName, album);
+            if (result.Ok) added++; else failed++;
         }
-        finally
-        {
-            AppleMusicButton.IsEnabled = true;
-        }
+        Note($"Pushed {added} to “{_appleMusicName}”" + (failed > 0 ? $", {failed} couldn't be added." : "."));
+        SetBusy(false);
+    }
+
+    private void Note(string message)
+    {
+        StatusText.IsVisible = true;
+        StatusText.Text = message;
+    }
+
+    private void SetBusy(bool busy, string? message = null)
+    {
+        ImportButton.IsEnabled = !busy && AppleMusic.IsAvailable;
+        PushButton.IsEnabled = !busy && AppleMusic.IsAvailable && (_store?.Entries.Count ?? 0) > 0;
+        if (message is not null) Note(message);
     }
 }

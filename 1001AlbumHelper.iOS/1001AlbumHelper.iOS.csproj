@@ -26,6 +26,14 @@
       pack that matches the installed Xcode.
     -->
     <ValidateXcodeVersion>false</ValidateXcodeVersion>
+    <!--
+      Run under the Mono interpreter instead of AOT. The installed .NET-for-iOS runtime (26.4)
+      crashes at launch on iOS 26.5 while loading AOT modules; the interpreter skips that path.
+      Slower at runtime but stable. Remove once a newer SDK ships a matching (26.5+) iOS pack.
+      Also passed on the command line in deploy-to-device.sh in case the SDK overrides it here.
+    -->
+    <MtouchInterpreter>all</MtouchInterpreter>
+    <UseInterpreter>true</UseInterpreter>
   </PropertyGroup>
 
   <ItemGroup>

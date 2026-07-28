@@ -8,8 +8,8 @@ public partial class MainView : UserControl
     {
         InitializeComponent();
 
-        Playlist1View.Configure(1, "Playlist 1 · from the 1001", "1001 Albums – My Picks");
-        Playlist2View.Configure(2, "Playlist 2 · recommended", "1001 Albums – Recommended");
+        Playlist1View.Configure(1, "Playlist 1 · from the 1001", "PLAYLIST1");
+        Playlist2View.Configure(2, "Playlist 2 · recommended", "PLAYLIST2");
 
         // Re-read the playlists whenever their tab comes forward, so albums added on the
         // List / Replacements tabs are reflected without restarting the app.
