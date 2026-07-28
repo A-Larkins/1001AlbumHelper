@@ -49,9 +49,13 @@ public sealed class CandidateSheet
         return new CandidateSheet(service, spreadsheetId!, tab);
     }
 
-    /// <summary>Every candidate on the Potentials tab, in sheet order.</summary>
+    /// <summary>Every candidate on the Potentials tab, in sheet order. An absent tab reads as empty.</summary>
     public async Task<List<CandidateAlbum>> LoadAsync()
     {
+        // Make sure the tab exists first, so a brand-new setup reads as empty (which triggers a seed
+        // from the local list) rather than throwing on an unknown range.
+        await EnsureTabExistsAsync();
+
         var response = await _service.Spreadsheets.Values
             .Get(_spreadsheetId, $"{Quote(_tab)}!A2:E")
             .ExecuteAsync();

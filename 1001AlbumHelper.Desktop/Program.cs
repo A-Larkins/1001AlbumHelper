@@ -14,6 +14,13 @@ internal static class Program
             return;
         }
 
+        // Headless check of the Google Sheets potentials sync (verifies access + seeds the sheet).
+        if (args.Contains("synctest"))
+        {
+            SyncDiagnostic.RunAsync().GetAwaiter().GetResult();
+            return;
+        }
+
         BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
     }
 

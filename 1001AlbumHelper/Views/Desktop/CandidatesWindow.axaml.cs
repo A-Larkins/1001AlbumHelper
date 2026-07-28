@@ -496,14 +496,28 @@ public partial class CandidatesWindow : Window
         }
     }
 
-    /// <summary>Pulls the shortlist from Google Sheets (if configured) and repaints from the refreshed cache.</summary>
+    /// <summary>
+    /// Reconciles with Google Sheets on open (when configured): if the sheet has the shared list, adopt
+    /// it and repaint; if the sheet is empty but we have a local list, seed the sheet from local. This
+    /// asymmetry is what stops a first-time-empty sheet from wiping the local shortlist.
+    /// </summary>
     private async Task SyncFromSheetsAsync()
     {
         if (!_repo.SyncEnabled) return;
         try
         {
-            if (await _repo.TryPullAsync() is not null)
-                Load(); // Load() re-reads the now-refreshed local cache
+            var remote = await _repo.PullAsync();
+            if (remote is null) return;
+
+            if (remote.Count > 0)
+            {
+                ReplacementCandidates.Save(remote); // the sheet is the shared source of truth
+                Load();                             // Load() re-reads the refreshed local cache
+            }
+            else if (_all.Count > 0)
+            {
+                await _repo.PushAsync(_all); // first sync: seed the empty sheet from the local list
+            }
         }
         catch (Exception ex)
         {

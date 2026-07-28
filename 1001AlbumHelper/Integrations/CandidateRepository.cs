@@ -46,15 +46,13 @@ public sealed class CandidateRepository
     }
 
     /// <summary>
-    /// Pulls the shortlist from Sheets and refreshes the local cache. Returns the pulled list, or null
-    /// when sync is off (so the caller knows whether to repaint).
+    /// Reads the shortlist from Sheets, or null when sync is off. Does not touch the local cache —
+    /// the caller decides whether the sheet wins (adopt it) or is empty and should be seeded from local.
     /// </summary>
-    public async Task<List<CandidateAlbum>?> TryPullAsync()
+    public async Task<List<CandidateAlbum>?> PullAsync()
     {
         if (_sheet is null) return null;
-        var remote = await _sheet.LoadAsync();
-        ReplacementCandidates.Save(remote); // keep the local cache in step with the sheet
-        return remote;
+        return await _sheet.LoadAsync();
     }
 
     /// <summary>Pushes the shortlist up to Sheets (a no-op when sync is off).</summary>
