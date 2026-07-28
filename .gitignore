@@ -10,5 +10,9 @@ credentials.json
 client_secret*.json
 .google-sheets-token/
 
+# Google service-account key (potentials sync) — secret, never commit
+service-account.json
+service-account*.json
+
 # macOS finder metadata
 .DS_Store

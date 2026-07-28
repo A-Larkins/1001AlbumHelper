@@ -38,6 +38,9 @@ public partial class CandidatesWindow : Window
     // Null when no Discogs token is configured: years then have to be typed in by hand.
     private readonly DiscogsApiClient? _discogs = DiscogsApiClient.TryCreate();
 
+    /// <summary>The shortlist backed by Google Sheets when a service account is configured (else local-only).</summary>
+    private readonly CandidateRepository _repo = CandidateRepository.Create();
+
     /// <summary>Stops the background year lookup when the window closes.</summary>
     private readonly CancellationTokenSource _closing = new();
 
@@ -63,6 +66,7 @@ public partial class CandidatesWindow : Window
             // Background priority so the first paint is finished rather than merely likely.
             Load();
             await Dispatcher.UIThread.InvokeAsync(() => { }, DispatcherPriority.Background);
+            await SyncFromSheetsAsync();
             await PrefetchYearsAsync();
         };
         Closed += (_, _) => _closing.Cancel();
@@ -473,6 +477,37 @@ public partial class CandidatesWindow : Window
             // The sheet has already been written by this point, so say so rather than pretending
             // the decision stuck — the album would otherwise be offered again next time.
             StatusText.Text = $"⚠️ Couldn't save the shortlist: {ex.Message}";
+        }
+
+        PushToSheets(); // mirror the change up to Google Sheets so the phone sees it too
+    }
+
+    /// <summary>Pushes the shortlist to Google Sheets in the background (no-op when sync is off).</summary>
+    private async void PushToSheets()
+    {
+        if (!_repo.SyncEnabled) return;
+        try
+        {
+            await _repo.PushAsync(_all);
+        }
+        catch (Exception ex)
+        {
+            StatusText.Text = $"⚠️ Saved locally; Google Sheets sync failed: {ex.Message}";
+        }
+    }
+
+    /// <summary>Pulls the shortlist from Google Sheets (if configured) and repaints from the refreshed cache.</summary>
+    private async Task SyncFromSheetsAsync()
+    {
+        if (!_repo.SyncEnabled) return;
+        try
+        {
+            if (await _repo.TryPullAsync() is not null)
+                Load(); // Load() re-reads the now-refreshed local cache
+        }
+        catch (Exception ex)
+        {
+            StatusText.Text = $"⚠️ Couldn't sync from Google Sheets: {ex.Message}";
         }
     }
 
