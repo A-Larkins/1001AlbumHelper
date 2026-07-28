@@ -10,6 +10,7 @@ namespace _1001AlbumHelper;
 public partial class ReplacementsView : UserControl
 {
     private List<CandidateAlbum> _all = new();
+    private bool _isLive;   // true once the list came from Google Sheets (not the baked-in snapshot)
     private readonly PlaylistStore _playlist2 = PlaylistStore.Open(2);
     private readonly CandidateRepository _repo = CandidateRepository.Create();
 
@@ -35,6 +36,7 @@ public partial class ReplacementsView : UserControl
                 if (live is not null)
                 {
                     _all = live;
+                    _isLive = true;
                     ApplyFilter();
                 }
             }
@@ -64,9 +66,10 @@ public partial class ReplacementsView : UserControl
         }
 
         Rows.ItemsSource = shown;
-        CountText.Text = shown.Count == _all.Count
+        string count = shown.Count == _all.Count
             ? $"{_all.Count} candidates"
             : $"{shown.Count} of {_all.Count} candidates";
+        CountText.Text = _isLive ? $"{count} · live ✓" : count;
     }
 
     private void OnAddToPlaylist2(object? sender, RoutedEventArgs e)
