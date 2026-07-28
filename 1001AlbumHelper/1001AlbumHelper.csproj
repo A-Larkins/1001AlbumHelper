@@ -50,6 +50,18 @@
     <EmbeddedResource Include="replacement-candidates.json">
       <LogicalName>candidates.json</LogicalName>
     </EmbeddedResource>
+
+    <!--
+      Config + service-account key, embedded so the mobile app (no data folder on disk) can reach
+      Google Sheets. Conditional so a clone without the secrets still builds — sync just stays off
+      there. These are personal secrets baked into the app bundle; fine for a personal build.
+    -->
+    <EmbeddedResource Include="appsettings.json" Condition="Exists('appsettings.json')">
+      <LogicalName>appsettings.json</LogicalName>
+    </EmbeddedResource>
+    <EmbeddedResource Include="service-account.json" Condition="Exists('service-account.json')">
+      <LogicalName>service-account.json</LogicalName>
+    </EmbeddedResource>
   </ItemGroup>
 
 </Project>

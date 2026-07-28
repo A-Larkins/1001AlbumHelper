@@ -28,21 +28,33 @@ public sealed class CandidateRepository
 
     private static CandidateSheet? BuildSheet()
     {
-        var config = new ConfigurationBuilder()
+        var builder = new ConfigurationBuilder()
             .AddJsonFile(Path.Combine(AppContext.BaseDirectory, "appsettings.json"), optional: true)
-            .AddJsonFile(Path.Combine(Operations.ProjectDir, "appsettings.json"), optional: true)
-            .Build();
+            .AddJsonFile(Path.Combine(Operations.ProjectDir, "appsettings.json"), optional: true);
+        // Mobile has no data folder — fall back to the config baked into the assembly.
+        if (Embedded("appsettings.json") is { } configStream) builder.AddJsonStream(configStream);
+        var config = builder.Build();
 
         string? spreadsheetId = config["GoogleSheets:SpreadsheetId"];
         string tab = config["GoogleSheets:PotentialsTab"] ?? "Potentials";
         string keyFile = config["GoogleSheets:ServiceAccountKeyFile"] ?? "service-account.json";
 
-        // Desktop: the key sits in the data folder next to appsettings.json. (Mobile will supply the
-        // key another way; until then BuildSheet returns null there and it stays local-only.)
+        // Key: the data folder on desktop, else the embedded snapshot on mobile.
         string keyPath = Path.Combine(Operations.ProjectDir, keyFile);
-        if (!File.Exists(keyPath)) return null;
+        string? keyJson = File.Exists(keyPath) ? File.ReadAllText(keyPath) : ReadEmbedded("service-account.json");
 
-        return CandidateSheet.TryCreate(File.ReadAllText(keyPath), spreadsheetId, tab);
+        return CandidateSheet.TryCreate(keyJson, spreadsheetId, tab);
+    }
+
+    private static Stream? Embedded(string logicalName) =>
+        typeof(CandidateRepository).Assembly.GetManifestResourceStream(logicalName);
+
+    private static string? ReadEmbedded(string logicalName)
+    {
+        using var stream = Embedded(logicalName);
+        if (stream is null) return null;
+        using var reader = new StreamReader(stream);
+        return reader.ReadToEnd();
     }
 
     /// <summary>

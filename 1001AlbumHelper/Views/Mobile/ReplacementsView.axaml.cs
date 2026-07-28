@@ -11,6 +11,7 @@ public partial class ReplacementsView : UserControl
 {
     private List<CandidateAlbum> _all = new();
     private readonly PlaylistStore _playlist2 = PlaylistStore.Open(2);
+    private readonly CandidateRepository _repo = CandidateRepository.Create();
 
     public ReplacementsView()
     {
@@ -19,18 +20,29 @@ public partial class ReplacementsView : UserControl
         Loaded += (_, _) => Load();
     }
 
-    private void Load()
+    private async void Load()
     {
-        try
+        // Instant: the snapshot baked into the app.
+        try { _all = MobileData.LoadCandidates(); ApplyFilter(); }
+        catch (Exception ex) { CountText.Text = $"Couldn't load candidates: {ex.Message}"; }
+
+        // Then: the live shared list from Google Sheets, if sync is configured on this device.
+        if (_repo.SyncEnabled)
         {
-            _all = MobileData.LoadCandidates();
+            try
+            {
+                var live = await _repo.PullAsync();
+                if (live is not null)
+                {
+                    _all = live;
+                    ApplyFilter();
+                }
+            }
+            catch (Exception ex)
+            {
+                CountText.Text += $"  ·  live sync failed: {ex.Message}";
+            }
         }
-        catch (Exception ex)
-        {
-            CountText.Text = $"Couldn't load candidates: {ex.Message}";
-            return;
-        }
-        ApplyFilter();
     }
 
     private void ApplyFilter()
