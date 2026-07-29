@@ -1,5 +1,3 @@
-using Microsoft.Extensions.Configuration;
-
 namespace _1001AlbumHelper;
 
 /// <summary>
@@ -45,37 +43,18 @@ public sealed class CandidateRepository
 
     private static (CandidateSheet? Sheet, string Status) BuildSheet()
     {
-        var builder = new ConfigurationBuilder()
-            .AddJsonFile(Path.Combine(AppContext.BaseDirectory, "appsettings.json"), optional: true)
-            .AddJsonFile(Path.Combine(Operations.ProjectDir, "appsettings.json"), optional: true);
-        // Mobile has no data folder — fall back to the config baked into the assembly.
-        if (Embedded("appsettings.json") is { } configStream) builder.AddJsonStream(configStream);
-        var config = builder.Build();
+        var config = EmbeddedConfig.Load("appsettings.json");
 
         string? spreadsheetId = config["GoogleSheets:SpreadsheetId"];
         string tab = config["GoogleSheets:PotentialsTab"] ?? "Potentials";
         string keyFile = config["GoogleSheets:ServiceAccountKeyFile"] ?? "service-account.json";
-
-        // Key: the data folder on desktop, else the embedded snapshot on mobile.
-        string keyPath = Path.Combine(Operations.ProjectDir, keyFile);
-        string? keyJson = File.Exists(keyPath) ? File.ReadAllText(keyPath) : ReadEmbedded("service-account.json");
+        string? keyJson = EmbeddedConfig.ReadFileOrEmbedded(keyFile);
 
         if (string.IsNullOrWhiteSpace(keyJson)) return (null, "off: no service-account key");
         if (string.IsNullOrWhiteSpace(spreadsheetId)) return (null, "off: no spreadsheet id");
 
         var sheet = CandidateSheet.TryCreate(keyJson, spreadsheetId, tab);
         return (sheet, sheet is null ? "off: couldn't build the Sheets client" : "on");
-    }
-
-    private static Stream? Embedded(string logicalName) =>
-        typeof(CandidateRepository).Assembly.GetManifestResourceStream(logicalName);
-
-    private static string? ReadEmbedded(string logicalName)
-    {
-        using var stream = Embedded(logicalName);
-        if (stream is null) return null;
-        using var reader = new StreamReader(stream);
-        return reader.ReadToEnd();
     }
 
     /// <summary>

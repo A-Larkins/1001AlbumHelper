@@ -1,6 +1,5 @@
 using System.Text.Json;
 using System.Text.RegularExpressions;
-using Microsoft.Extensions.Configuration;
 
 namespace _1001AlbumHelper;
 
@@ -14,14 +13,7 @@ public class DiscogsApiClient
         _httpClient = new HttpClient();
         _httpClient.DefaultRequestHeaders.Add("User-Agent", "1001AlbumHelper/1.0 (https://github.com/alarks/1001AlbumHelper)");
 
-        // Read the copy next to the executable first, then let the live copy in the data folder
-        // override it — same layering Operations uses, so editing appsettings.json takes effect
-        // without a rebuild (matters for the packaged .app, whose baked-in copy would be stale).
-        var config = new ConfigurationBuilder()
-            .AddJsonFile(Path.Combine(AppContext.BaseDirectory, "appsettings.json"), optional: true)
-            .AddJsonFile(Path.Combine(Operations.ProjectDir, "appsettings.json"), optional: true)
-            .Build();
-
+        var config = EmbeddedConfig.Load("appsettings.json");
         _token = config["Discogs:Token"] ?? "";
         if (string.IsNullOrEmpty(_token) || _token == "YOUR_DISCOGS_TOKEN")
         {
