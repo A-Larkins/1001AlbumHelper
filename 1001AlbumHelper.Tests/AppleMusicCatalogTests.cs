@@ -64,4 +64,30 @@ public class AppleMusicCatalogTests
     {
         Assert.Null(AppleMusicCatalog.FindBestMatch(new(), "Nirvana", "Nevermind"));
     }
+
+    // ----- The "nothing lines up" fallback -----
+    // A combined artist+title /search query already filtered by both, so its top hit is still a
+    // reasonable guess even without an exact title match. An artist's whole /lookup catalog was never
+    // filtered by title at all, so the same fallback there would silently hand back a random album.
+
+    [Fact]
+    public void An_unmatched_title_falls_back_to_the_first_result_by_default()
+    {
+        var albums = AppleMusicCatalog.ParseSearchResults(SampleJson);
+
+        var match = AppleMusicCatalog.FindBestMatch(albums, "Nirvana", "Bleach");
+
+        Assert.NotNull(match);
+        Assert.Equal(1440783617, match!.CollectionId); // Nevermind — the top hit, not a real match
+    }
+
+    [Fact]
+    public void Requiring_a_title_match_refuses_to_guess_from_an_unfiltered_catalog()
+    {
+        var albums = AppleMusicCatalog.ParseSearchResults(SampleJson);
+
+        var match = AppleMusicCatalog.FindBestMatch(albums, "Nirvana", "Bleach", requireTitleMatch: true);
+
+        Assert.Null(match);
+    }
 }
