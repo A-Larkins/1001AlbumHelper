@@ -83,6 +83,9 @@ a **single view with four bottom tabs** (phones don't do windows).
 | 2026-07-29 | **Mobile: rate albums.** New "Rate" tab — the desktop rating window's one-album-at-a-time queue (⭐/👍/👎/❌), writing straight to the master "1001 albums" sheet. Needed a REST path for the *master list* too, not just Potentials: extracted `ISheetsClient` from `GoogleSheetsWriter` and added `RestSheetsClient`, a full REST reimplementation (including the insert-row-with-formatting call the ⭐→Must Hear side effect depends on). Verified end-to-end against the live spreadsheet via a new self-cleaning `resttest` diagnostic (scratch tab, never touches real data) before wiring up the UI. |
 | 2026-07-29 | **Mobile: browse Must Hear + Replacements.** The "List" tab gained a 1001 / Must Hear / Replacements switcher instead of two more bottom tabs — Must Hear and Replacements read live via the same `RestSheetsClient` the Rate feature added, no new plumbing needed. **Phase 2 is done.** |
 | 2026-07-29 | **iOS app icon.** Reused the Mac app's "1001 + music note" art, cropped past its baked-in macOS rounding into a flat opaque square, as a single-size `Assets.xcassets/AppIcon.appiconset`. The home screen no longer shows a blank placeholder. |
+| 2026-07-29 | **Visual polish pass** across all 5 mobile screens (see §7 for the mobilepreview screenshot recipe that made this possible). **Roadmap (Phases 1–4) complete.** Opened **PR #1** (`iphone-support` → `main`) and pushed a public **README**. |
+| 2026-07-29 | **Bug fix:** Apple Music catalog lookup missed real albums Apple's own `/search` buries in its relevance ranking (reproduced live: zero results for "Nine Inch Nails The Downward Spiral"). Falls back to the artist's full catalog via `/lookup` when `/search` comes up empty. |
+| 2026-07-29 | **Real Apple Music removal, from the Mac** (branch `apple-music-removal`, off `iphone-support`) — `MusicAppPlaylistWriter` drives Music.app via AppleScript, which (unlike the phone's MediaPlayer API) can actually delete playlist tracks. New desktop window to browse + remove. **Not yet verified on-device** — blocked on a one-time macOS Automation permission dialog only a human can click through. |
 
 ---
 
@@ -111,7 +114,21 @@ manual bookkeeping.
   fill the screen around mostly empty space, clipped Apple Music button labels on the Playlist tabs,
   a missing (and once added, invisible-due-to-z-order) empty-state message there, and a redundant
   sync-status line on the Shortlist tab.
-- **The whole roadmap (Phases 1–4) is now done.**
+- **The whole roadmap (Phases 1–4) is done.** Opened as **PR #1**: `iphone-support` → `main`
+  (https://github.com/A-Larkins/1001AlbumHelper/pull/1), pushed to origin. Also fixed a real bug found
+  by testing: Apple Music catalog lookup missed albums Apple's own `/search` buries in its relevance
+  ranking — see `AppleMusicCatalog.FindAlbumAsync`'s fallback via `/lookup`.
+- 🔄 **In progress, branch `apple-music-removal`** (off `iphone-support`, not yet its own PR): real
+  Apple Music playlist removal from the Mac via AppleScript — see §5's new subsection. Code complete,
+  builds clean, tests pass, **but not yet actually run against Music.app** — the first `osascript`
+  call hit a one-time macOS permission dialog that needs a human's click, which this session couldn't
+  get past. **Next step:** run the app, open "Apple Music playlists" from the main window, click
+  through the permission prompt, and verify read + remove both actually work against a real playlist.
+
+**Git workflow:** repo is public — `github.com/A-Larkins/1001AlbumHelper`. Using feature branches +
+PRs into `main` now (this was the first PR). Tried requesting a GitHub Copilot review via `gh`/API —
+it doesn't recognize "copilot" as a requestable reviewer login for this repo, so that has to be done
+(if available at all) from the PR's own "Reviewers" dropdown in the GitHub UI, not automatable here.
 
 **User stories (what Andrew wants):**
 - *As I go through the 1001*, tap to add an album to my real Apple Music **PLAYLIST1** (and recs to **PLAYLIST2**).
@@ -185,23 +202,45 @@ xcrun devicectl device process launch --device <UDID> com.larkins.albumhelper
 - Targets your existing playlists **by name**: `PLAYLIST1` (from the 1001) and `PLAYLIST2`
   (recommendations).
 
-### The big constraint: add-only
+### The big constraint: add-only **on the phone**
 
-Apple's MediaPlayer framework can **add** items to a playlist but has **no API to remove, clear, or
-delete** — for any playlist. "Wipe and remake" doesn't work either (there's no wipe). The only
-framework that can truly edit a playlist is **MusicKit**, which is Swift-only and unreachable from
-C#/.NET.
+Apple's MediaPlayer framework (what iOS apps get) can **add** items to a playlist but has **no API to
+remove, clear, or delete** — for any playlist. "Wipe and remake" doesn't work either (there's no
+wipe). The only framework that can truly edit a playlist on-device is **MusicKit**, which is
+Swift-only and unreachable from C#/.NET.
 
-**So the model is:** the app's Playlist tabs are your **clean working list** (full add/remove, and
-— next — synced via Sheets); Apple Music is an **add-only listening queue**. You occasionally clear
-the Apple Music playlist yourself; everything else is automated.
+**So the phone-side model is:** the app's Playlist tabs are your **clean working list** (full
+add/remove, synced via Sheets); Apple Music is an **add-only listening queue** there.
 
 **The "delete these" checklist:** removing an album from a Playlist tab that was already pushed to
 (or imported from) Apple Music doesn't just delete it locally — Apple Music still has it, and the
-app can't remove it there. Instead it moves to a checklist ("Delete these from Apple Music (n)") at
+phone can't remove it there. Instead it moves to a checklist ("Delete these from Apple Music (n)") at
 the bottom of that tab, so nothing pushed there is ever silently forgotten; check it off once you've
 deleted it yourself. Reading a playlist back also carries each album's current track count, and a
 low one (≤3) is flagged in the list as possibly half-deleted.
+
+### The workaround: remove for real, from the Mac (branch `apple-music-removal`)
+
+Music.app's **AppleScript** dictionary — unlike the phone's MediaPlayer API — can actually delete
+tracks from a playlist. If the Mac and phone share an Apple Music library (iCloud Music Library /
+Sync Library on), a removal made on the Mac syncs to the phone too (usually within minutes). Removing
+a track from a *playlist* only unlists it there — it stays in the library untouched, so a wrong click
+is cheap to undo.
+
+- `MusicAppPlaylistWriter` (`1001AlbumHelper/Integrations/`, macOS-only — `IsAvailable` checks
+  `OperatingSystem.IsMacOS()`): shells out to `osascript`, reading a playlist's tracks as plain
+  `"album<TAB>artist"` lines rather than parsing AppleScript's own list-literal syntax back out (far
+  more robust), collapsed to per-album entries with track counts — same shape the iOS reader uses.
+  `RemoveAlbumAsync` runs `delete (every track of playlist X whose album is Y and artist is Z)`.
+- New desktop window, **Apple Music Playlists** (button on the main window): pick PLAYLIST1/PLAYLIST2
+  (or type another name), see what's really in it, remove albums one at a time.
+- **Not yet verified end-to-end.** The first `osascript` call against Music.app blocks on a one-time
+  macOS **Automation permission dialog** ("Terminal/[app] wants to control Music") that needs a
+  physical click — an agent session can't get past this. Builds clean, all 72 tests pass, but a real
+  human needs to click through it once (either run the app and click "OK" when prompted, or
+  pre-approve under **System Settings → Privacy & Security → Automation**), then verify: read a
+  playlist's contents matches reality, and a removal actually disappears from Music.app (and, given a
+  few minutes, the phone).
 
 ---
 
@@ -281,6 +320,13 @@ tab it creates and deletes, so it never risks the real lists.
   window number for owner "1001AlbumHelper", then `screencapture -l<id> -o out.png`. To see a
   specific tab without fighting UI-click automation, temporarily set the TabControl's
   `SelectedIndex` in `MainView.axaml`, rebuild, relaunch, capture, repeat — then revert it.
+- **First AppleScript call to Music.app needs a one-time human click.** `MusicAppPlaylistWriter`
+  (Mac-only removal, §5) shells out to `osascript`; the very first time a given controlling process
+  automates Music.app, macOS blocks on an Automation permission dialog ("X wants to control Music")
+  until someone clicks it — there's no way to script past this, and a headless/agent session will
+  just hang (`osascript` sits there; kill it rather than waiting). Run the app yourself once, click
+  "OK," and it's remembered from then on (revocable under System Settings → Privacy & Security →
+  Automation).
 
 ---
 
