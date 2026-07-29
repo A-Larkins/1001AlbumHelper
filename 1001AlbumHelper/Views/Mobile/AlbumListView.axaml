@@ -31,14 +31,16 @@
     <ListBox x:Name="Rows">
       <ListBox.ItemTemplate>
         <DataTemplate x:DataType="local:ViewRow">
-          <Grid ColumnDefinitions="34,*,Auto" Margin="0,4">
+          <Grid ColumnDefinitions="34,26,*,Auto" Margin="0,4" Opacity="{Binding RowOpacity}">
             <TextBlock Grid.Column="0" Text="{Binding Number}" Opacity="0.45"
                        VerticalAlignment="Center" FontSize="12" />
-            <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="1">
+            <TextBlock Grid.Column="1" Text="{Binding Rating}" FontSize="16"
+                       VerticalAlignment="Center" HorizontalAlignment="Center" />
+            <StackPanel Grid.Column="2" VerticalAlignment="Center" Spacing="1">
               <TextBlock Text="{Binding Title}" FontWeight="SemiBold" TextWrapping="Wrap" />
               <TextBlock Text="{Binding Artist}" Opacity="0.65" FontSize="12" TextWrapping="Wrap" />
             </StackPanel>
-            <Button Grid.Column="2" Content="＋ P1" Click="OnAddToPlaylist1"
+            <Button Grid.Column="3" Content="＋ P1" Click="OnAddToPlaylist1"
                     VerticalAlignment="Center" Margin="8,0,0,0" />
           </Grid>
         </DataTemplate>

@@ -57,7 +57,7 @@
           </DataTemplate>
         </ListBox.ItemTemplate>
       </ListBox>
-      <TextBlock x:Name="EmptyText" Text="Nothing here yet — add albums from the List or Shortlist tab."
+      <TextBlock x:Name="EmptyText" Text="Nothing here yet — add albums from the Lists or Potentials screen."
                  Opacity="0.5" FontSize="13" TextWrapping="Wrap" TextAlignment="Center"
                  HorizontalAlignment="Center" VerticalAlignment="Center" Margin="24"
                  IsHitTestVisible="False" IsVisible="False" />

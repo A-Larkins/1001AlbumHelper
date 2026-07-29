@@ -339,6 +339,32 @@ tab it creates and deletes, so it never risks the real lists.
 - **Weekly re-deploy pain** — a small script, or spring for the $99 Apple Developer Program +
   TestFlight (install once, no 7-day expiry).
 
+### Phase 5 — Mobile UI/UX polish v2 (branch `mobile-ui-polish`, off `iphone-support`, 2026-07-29)
+
+Andrew looked at the app on-device again and called out a second round of polish, distinct from the
+Phase 4 pass (which fixed clipping/z-order bugs, not layout/nav):
+
+1. **Too much empty black space** — several screens (Rate card especially) have dead vertical space;
+   tighten layout so it reads as designed, not stretched.
+2. **Navigation:** replace the bottom tab bar with a **dropdown/picker** for switching between
+   screens (decided over redesigning tabs in place — frees vertical space, and 5 destinations is a
+   lot for a bottom bar).
+3. **Rename tabs to match the Google Sheet's own naming**, since the phone is meant to mirror it:
+   - "List" → **"Lists"**.
+   - "Shortlist" → **"Potentials"** (the actual tab name in the sheet).
+   - Rate, Playlist 1, Playlist 2 stay as-is — confirmed good.
+4. **1001 list view:** make it obvious at a glance which albums are already rated/listened (not just
+   browsable data), and have the list **default-scroll to the first not-yet-listened album** instead
+   of always starting at #1.
+5. **Bring ratings into the main 1001 list** — currently ratings only show in Rate/Must-Hear
+   contexts; surface the ⭐/👍/👎/❌ per-row in the 1001 list itself.
+6. **PDF export exists on desktop but not mobile.** Decided approach: a **flag-file trigger** —
+   phone writes a "please export" request into the synced Google Sheet; next time the Mac app is
+   open it notices the flag, generates the PDF via the existing `PdfExporter`, and clears the flag.
+   Not instant (needs the Mac app open at some point after the request), but avoids needing the Mac
+   reachable/networked at request time. Not yet implemented — needs a small sheet-based flag +
+   polling design before UI work on this piece starts.
+
 ### "Maybe rewrite away from C#?" — honest take
 
 The friction we've hit is almost entirely **iOS-toolchain**: the runtime version mismatch, AOT +

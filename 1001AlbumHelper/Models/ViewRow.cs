@@ -11,4 +11,11 @@ public sealed record ViewRow(string Number, string Rating, string Title, string 
     public string Haystack { get; } =
         $"{Number} {Rating} {Title} {Artist} {Year} " +
         $"{NumberedList.Normalize(Title)} {NumberedList.Normalize(Artist)}";
+
+    /// <summary>True once a rating has been entered — used to dim already-listened rows so the
+    /// mobile Lists screen makes clear, at a glance, where you left off.</summary>
+    public bool IsListened => !string.IsNullOrWhiteSpace(Rating);
+
+    /// <summary>Dim listened rows so the eye is drawn to what's left.</summary>
+    public double RowOpacity => IsListened ? 0.5 : 1.0;
 }
