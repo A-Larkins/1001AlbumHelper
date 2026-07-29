@@ -30,9 +30,18 @@ public static class Operations
         var dir = AppContext.BaseDirectory;
         for (int i = 0; i < 8 && !string.IsNullOrEmpty(dir); i++)
         {
-            if (Directory.Exists(Path.Combine(dir, "input"))
-                || Directory.EnumerateFiles(dir, "*.csproj").Any())
-                return dir;
+            try
+            {
+                if (Directory.Exists(Path.Combine(dir, "input"))
+                    || Directory.EnumerateFiles(dir, "*.csproj").Any())
+                    return dir;
+            }
+            // On a sandboxed platform (iOS) enumerating a parent directory is "Operation not
+            // permitted" — stop walking rather than letting it kill this whole type initializer,
+            // which any code that touches Operations would then trip over.
+            catch (IOException) { break; }
+            catch (UnauthorizedAccessException) { break; }
+
             dir = Path.GetDirectoryName(dir.TrimEnd(Path.DirectorySeparatorChar));
         }
 
