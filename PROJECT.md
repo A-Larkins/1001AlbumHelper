@@ -81,6 +81,7 @@ a **single view with four bottom tabs** (phones don't do windows).
 | 2026-07-29 | **Apple Music playlist UX (Phase 3).** Pushing to Apple Music now names each failed album + why, instead of just a count. Removing an album that's already in Apple Music no longer silently drops it — it moves to a "delete these from Apple Music" checklist (Apple's API can't remove for us) until the user confirms they deleted it by hand. Reading a playlist back now carries each album's track count, and a low count is flagged in the UI as possibly half-deleted. |
 | 2026-07-29 | **Mobile: add to shortlist + edit years.** `ReplacementsView` gained an inline add-album panel (Discogs autocomplete lookup, reusing the desktop's `AlbumLookup` helper) and in-place year editing, both pushing straight to the Potentials sheet. Needed a Discogs token on iOS, so `DiscogsApiClient` picked up the same embedded-config fallback `CandidateRepository` already had (factored into a shared `EmbeddedConfig` helper). |
 | 2026-07-29 | **Mobile: rate albums.** New "Rate" tab — the desktop rating window's one-album-at-a-time queue (⭐/👍/👎/❌), writing straight to the master "1001 albums" sheet. Needed a REST path for the *master list* too, not just Potentials: extracted `ISheetsClient` from `GoogleSheetsWriter` and added `RestSheetsClient`, a full REST reimplementation (including the insert-row-with-formatting call the ⭐→Must Hear side effect depends on). Verified end-to-end against the live spreadsheet via a new self-cleaning `resttest` diagnostic (scratch tab, never touches real data) before wiring up the UI. |
+| 2026-07-29 | **Mobile: browse Must Hear + Replacements.** The "List" tab gained a 1001 / Must Hear / Replacements switcher instead of two more bottom tabs — Must Hear and Replacements read live via the same `RestSheetsClient` the Rate feature added, no new plumbing needed. **Phase 2 is done.** |
 
 ---
 
@@ -98,13 +99,13 @@ manual bookkeeping.
 - ✅ **Mobile Sheets sync** — confirmed on-device: the Replacements tab reads live from Google Sheets on the phone.
 - ✅ **Playlist UX (Phase 3)** — named failures + reason on push, a "delete these from Apple Music"
   checklist for add-only's blind spot, and track-count visibility for possibly half-deleted albums.
-- ✅ **Phase 2, 3 of 4:** rate (new REST client for the master sheet), add-to-shortlist (Discogs
-  lookup), edit years — all built, tested, and installed on-device. **Not yet visually confirmed
-  on-device** — the last install did launch cleanly, but nobody's actually poked the new Rate tab,
-  the add-album panel, or in-place year editing on the phone yet. Worth a real look before trusting
-  the UI wiring blindly.
-- ⏳ **Phase 2's last item** (browse/search Must Hear + the final numbered Replacements list) and
-  **Phase 4** (visual pass + app icon) are next.
+- ✅ **Phase 2 — all four features done:** rate (new REST client for the master sheet),
+  add-to-shortlist (Discogs lookup), edit years, browse/search Must Hear + Replacements. All built,
+  tested, and installed on-device. **Not yet visually confirmed on-device** — every install has
+  launched cleanly, but nobody's actually poked the new Rate tab, the add-album panel, in-place year
+  editing, or the list switcher on the phone yet. Worth a real look before trusting the UI wiring
+  blindly.
+- ⏳ **Phase 4** (visual pass + app icon) is the only phase left.
 
 **User stories (what Andrew wants):**
 - *As I go through the 1001*, tap to add an album to my real Apple Music **PLAYLIST1** (and recs to **PLAYLIST2**).
@@ -120,9 +121,9 @@ manual bookkeeping.
 
 **Roadmap:**
 1. ✅ **Phase 1 — Mobile Sheets sync** (foundation). Confirmed on-device. Unlocks persistence for everything below.
-2. **Phase 2 — Four features:** ✅ rate · ✅ add-to-shortlist · ⏳ browse/search all lists · ✅ edit years — all persisting via sync. Only browse/search is left.
+2. ✅ **Phase 2 — Four features:** rate · add-to-shortlist · browse/search all lists · edit years — all persisting via sync.
 3. ✅ **Phase 3 — Playlist UX:** name failed adds + why; the "delete these from Apple Music" diff checklist; track-count visibility for partial (half-deleted) albums.
-4. **Phase 4 — Clean visual pass + iOS app icon.**
+4. **Phase 4 — Clean visual pass + iOS app icon.** *(the only phase left)*
 
 ---
 
