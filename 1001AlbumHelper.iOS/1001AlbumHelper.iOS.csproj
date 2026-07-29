@@ -35,11 +35,10 @@
     <MtouchInterpreter>all</MtouchInterpreter>
     <UseInterpreter>true</UseInterpreter>
     <!--
-      Don't trim managed code. The Google API client is heavily reflection-based; the trimmer
-      strips members it needs and it throws TypeInitializationException at startup. No-trim makes
-      the app bigger but correct. (Also passed on the CLI in deploy-to-device.sh.)
+      Trimming stays ON (default): no-trim makes the app big enough that the runtime crashes at
+      startup on this toolchain. The Sheets sync no longer uses the reflection-heavy Google client
+      (CandidateSheet talks to the REST API directly), so trimming is safe again.
     -->
-    <MtouchLink>None</MtouchLink>
   </PropertyGroup>
 
   <ItemGroup>
