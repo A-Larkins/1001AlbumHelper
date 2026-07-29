@@ -1,0 +1,120 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="clr-namespace:_1001AlbumHelper"
+        x:Class="_1001AlbumHelper.AppleMusicPlaylistWindow"
+        Width="560" Height="620" MinWidth="480" MinHeight="440"
+        Title="Apple Music Playlists"
+        WindowStartupLocation="CenterOwner"
+        RequestedThemeVariant="Dark">
+
+  <Window.Background>
+    <LinearGradientBrush StartPoint="0%,0%" EndPoint="30%,100%">
+      <GradientStop Color="#151020" Offset="0" />
+      <GradientStop Color="#0e0b09" Offset="0.45" />
+      <GradientStop Color="#0b0807" Offset="1" />
+    </LinearGradientBrush>
+  </Window.Background>
+
+  <Window.Styles>
+    <Style Selector="Button.seg">
+      <Setter Property="Background" Value="#1d1714" />
+      <Setter Property="BorderBrush" Value="#362b23" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="8" />
+      <Setter Property="Padding" Value="14,7" />
+      <Setter Property="Foreground" Value="#9c8b7c" />
+      <Setter Property="FontSize" Value="12.5" />
+      <Setter Property="Cursor" Value="Hand" />
+    </Style>
+    <Style Selector="Button.seg.on">
+      <Setter Property="Background" Value="#3a2b12" />
+      <Setter Property="BorderBrush" Value="#b3852f" />
+      <Setter Property="Foreground" Value="#f5c985" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+    <Style Selector="Button.primary">
+      <Setter Property="Background">
+        <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,100%">
+          <GradientStop Color="#4a3411" Offset="0" />
+          <GradientStop Color="#302510" Offset="1" />
+        </LinearGradientBrush>
+      </Setter>
+      <Setter Property="BorderBrush" Value="#b3852f" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="8" />
+      <Setter Property="Padding" Value="14,8" />
+      <Setter Property="Foreground" Value="#f5c985" />
+      <Setter Property="FontSize" Value="12.5" />
+      <Setter Property="Cursor" Value="Hand" />
+    </Style>
+    <Style Selector="Button.primary:disabled /template/ ContentPresenter">
+      <Setter Property="Opacity" Value="0.4" />
+    </Style>
+    <Style Selector="Button.ghost">
+      <Setter Property="Background" Value="#241d18" />
+      <Setter Property="BorderBrush" Value="#362b23" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="8" />
+      <Setter Property="Padding" Value="12,6" />
+      <Setter Property="Foreground" Value="#d8ccc0" />
+      <Setter Property="FontSize" Value="11.5" />
+      <Setter Property="Cursor" Value="Hand" />
+    </Style>
+    <Style Selector="TextBox">
+      <Setter Property="Background" Value="#141010" />
+      <Setter Property="BorderBrush" Value="#3a2e25" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="8" />
+      <Setter Property="Padding" Value="10,7" />
+      <Setter Property="Foreground" Value="#f3e9df" />
+      <Setter Property="FontSize" Value="13" />
+    </Style>
+  </Window.Styles>
+
+  <Grid Margin="22,18,22,16" RowDefinitions="Auto,Auto,Auto,*,Auto">
+
+    <StackPanel Grid.Row="0" Spacing="3" Margin="0,0,0,14">
+      <TextBlock Text="Apple Music Playlists" FontSize="19" FontWeight="Bold" Foreground="#f3e9df" />
+      <TextBlock Text="Reads and removes tracks in a real Apple Music playlist via Music.app — the one thing the phone can't do (Apple's on-device API is add-only)."
+                 FontSize="12" Foreground="#b3a394" TextWrapping="Wrap" />
+    </StackPanel>
+
+    <Grid Grid.Row="1" ColumnDefinitions="Auto,Auto,*,Auto" Margin="0,0,0,10">
+      <Button Grid.Column="0" x:Name="Playlist1Button" Classes="seg on" Content="PLAYLIST1"
+              Click="OnPickPlaylist1" Margin="0,0,6,0" />
+      <Button Grid.Column="1" x:Name="Playlist2Button" Classes="seg" Content="PLAYLIST2"
+              Click="OnPickPlaylist2" Margin="0,0,6,0" />
+      <TextBox Grid.Column="2" x:Name="PlaylistNameBox" Text="PLAYLIST1" IsVisible="False" />
+      <Button Grid.Column="3" x:Name="LoadButton" Classes="primary" Content="Load" Click="OnLoad"
+              Margin="6,0,0,0" />
+    </Grid>
+
+    <TextBlock Grid.Row="2" x:Name="CountText" Text="" FontSize="12" Foreground="#8a7a6c" Margin="0,0,0,10" />
+
+    <Border Grid.Row="3" CornerRadius="10" Background="#141010" BorderBrush="#2a211b" BorderThickness="1">
+      <ScrollViewer>
+        <ItemsControl x:Name="Rows" Margin="4">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="local:MusicAppAlbum">
+              <Grid ColumnDefinitions="*,Auto" Margin="10,8">
+                <StackPanel Grid.Column="0" VerticalAlignment="Center" Spacing="2">
+                  <TextBlock Text="{Binding Title}" FontSize="14" FontWeight="SemiBold" Foreground="#f3e9df" TextWrapping="Wrap" />
+                  <TextBlock Text="{Binding Artist}" FontSize="12" Foreground="#a99884" TextWrapping="Wrap" />
+                  <TextBlock Text="{Binding TrackCount, StringFormat='{}{0} tracks'}" FontSize="11" Foreground="#6f6053" />
+                </StackPanel>
+                <Button Grid.Column="1" Classes="ghost" Content="Remove" Click="OnRemove"
+                        VerticalAlignment="Center" Margin="10,0,0,0" />
+              </Grid>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </ScrollViewer>
+    </Border>
+
+    <Grid Grid.Row="4" ColumnDefinitions="*,Auto" Margin="0,14,0,0">
+      <TextBlock Grid.Column="0" x:Name="StatusText" Text="" FontSize="12" Foreground="#8a7a6c"
+                 TextWrapping="Wrap" VerticalAlignment="Center" />
+      <Button Grid.Column="1" Classes="ghost" Content="Close" Click="OnClose" />
+    </Grid>
+  </Grid>
+</Window>

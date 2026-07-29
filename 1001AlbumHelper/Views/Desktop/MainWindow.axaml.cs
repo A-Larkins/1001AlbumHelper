@@ -179,6 +179,11 @@ public partial class MainWindow : Window
         await ShowLoggingDialogAsync(new CandidatesWindow());
     }
 
+    private void OnAppleMusicPlaylists(object? sender, RoutedEventArgs e)
+    {
+        new AppleMusicPlaylistWindow().ShowDialog(this);
+    }
+
     /// <summary>
     /// Shows a dialog that writes to the sheet. Those writes go through Operations, whose progress
     /// goes to Console — capture it into the log the same way a run does, so the main window still
