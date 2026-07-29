@@ -104,12 +104,14 @@ manual bookkeeping.
   add-to-shortlist (Discogs lookup), edit years, browse/search Must Hear + Replacements. Confirmed
   looking good on-device.
 - ✅ **iOS app icon** — the home screen no longer shows a blank placeholder.
-- ⏳ **Phase 4's other half** — an actual visual polish pass — is the only thing left on the
-  roadmap. Added a dev-only preview mode for it: `dotnet run --project 1001AlbumHelper.Desktop --
-  mobilepreview` opens a phone-sized window on the Mac hosting the real mobile `MainView`, so layout
-  tweaks can be eyeballed without a device deploy round-trip. (Automating a screenshot of it from
-  here turned out to be unreliable — a window-position query and the actual on-screen window
-  disagreed — so this is a "run it yourself and look" tool for now, not something driven remotely.)
+- ✅ **Visual polish pass.** Found a reliable way to screenshot `mobilepreview` after all (capture by
+  exact window ID via Quartz's window list, not a screen-region guess — see the dev tool note below),
+  combined with temporarily forcing the TabControl's `SelectedIndex` to see each of the 5 screens.
+  Fixed: a clipped "Replacements" tab label (renamed to "Shortlist"), the Rate card stretching to
+  fill the screen around mostly empty space, clipped Apple Music button labels on the Playlist tabs,
+  a missing (and once added, invisible-due-to-z-order) empty-state message there, and a redundant
+  sync-status line on the Shortlist tab.
+- **The whole roadmap (Phases 1–4) is now done.**
 
 **User stories (what Andrew wants):**
 - *As I go through the 1001*, tap to add an album to my real Apple Music **PLAYLIST1** (and recs to **PLAYLIST2**).
@@ -127,8 +129,9 @@ manual bookkeeping.
 1. ✅ **Phase 1 — Mobile Sheets sync** (foundation). Confirmed on-device. Unlocks persistence for everything below.
 2. ✅ **Phase 2 — Four features:** rate · add-to-shortlist · browse/search all lists · edit years — all persisting via sync.
 3. ✅ **Phase 3 — Playlist UX:** name failed adds + why; the "delete these from Apple Music" diff checklist; track-count visibility for partial (half-deleted) albums.
-4. **Phase 4 — Clean visual pass + iOS app icon.** ✅ App icon done; the visual pass is the only
-   item left on the whole roadmap, and it's blocked on someone actually looking at the phone.
+4. ✅ **Phase 4 — Clean visual pass + iOS app icon.** Both done.
+
+**The roadmap is complete.** Future work is genuinely new ideas, not a backlog — see §8.
 
 ---
 
@@ -269,6 +272,15 @@ tab it creates and deletes, so it never risks the real lists.
   on install usually succeeds on a plain retry. "Launch failed... Locked" on `process launch` means
   exactly that — unlock the phone (Face ID/passcode) and either retry the launch command or just tap
   the app icon; it is not a build problem.
+- **Screenshotting `mobilepreview` on the Mac reliably.** Don't query the window's position via
+  `osascript`/System Events and `screencapture -R` that region — if the window isn't on the currently
+  active Space (common for a window from a freshly-launched background process), that captures
+  whatever else is actually on-screen there instead (once grabbed an unrelated Safari window).
+  Capture by **window ID** instead — reliable regardless of Space:
+  `Quartz.CGWindowListCopyWindowInfo` (via a scratch venv with `pyobjc-framework-Quartz`) to find the
+  window number for owner "1001AlbumHelper", then `screencapture -l<id> -o out.png`. To see a
+  specific tab without fighting UI-click automation, temporarily set the TabControl's
+  `SelectedIndex` in `MainView.axaml`, rebuild, relaunch, capture, repeat — then revert it.
 
 ---
 
