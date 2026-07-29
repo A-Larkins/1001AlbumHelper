@@ -12,21 +12,34 @@ public sealed class CandidateRepository
 {
     private readonly CandidateSheet? _sheet; // null = sync not configured
 
-    private CandidateRepository(CandidateSheet? sheet) => _sheet = sheet;
+    private CandidateRepository(CandidateSheet? sheet, string status)
+    {
+        _sheet = sheet;
+        Status = status;
+    }
 
     /// <summary>True when a Google Sheets service account is configured and this is running where the key exists.</summary>
     public bool SyncEnabled => _sheet is not null;
 
+    /// <summary>Short human-readable reason for the sync state ("on", "off: …", or "error: …") — for diagnostics.</summary>
+    public string Status { get; }
+
     /// <summary>Reads config + the service-account key and builds a repository (local-only if either is absent).</summary>
     public static CandidateRepository Create()
     {
-        CandidateSheet? sheet = null;
-        try { sheet = BuildSheet(); }
-        catch { /* any config/key problem → local-only, never throw at startup */ }
-        return new CandidateRepository(sheet);
+        try
+        {
+            var (sheet, status) = BuildSheet();
+            return new CandidateRepository(sheet, status);
+        }
+        catch (Exception ex)
+        {
+            // Surface the reason instead of hiding it — this is what was masking iOS sync failures.
+            return new CandidateRepository(null, $"error: {ex.GetType().Name}: {ex.Message}");
+        }
     }
 
-    private static CandidateSheet? BuildSheet()
+    private static (CandidateSheet? Sheet, string Status) BuildSheet()
     {
         var builder = new ConfigurationBuilder()
             .AddJsonFile(Path.Combine(AppContext.BaseDirectory, "appsettings.json"), optional: true)
@@ -43,7 +56,11 @@ public sealed class CandidateRepository
         string keyPath = Path.Combine(Operations.ProjectDir, keyFile);
         string? keyJson = File.Exists(keyPath) ? File.ReadAllText(keyPath) : ReadEmbedded("service-account.json");
 
-        return CandidateSheet.TryCreate(keyJson, spreadsheetId, tab);
+        if (string.IsNullOrWhiteSpace(keyJson)) return (null, "off: no service-account key");
+        if (string.IsNullOrWhiteSpace(spreadsheetId)) return (null, "off: no spreadsheet id");
+
+        var sheet = CandidateSheet.TryCreate(keyJson, spreadsheetId, tab);
+        return (sheet, sheet is null ? "off: couldn't build the Sheets client" : "on");
     }
 
     private static Stream? Embedded(string logicalName) =>

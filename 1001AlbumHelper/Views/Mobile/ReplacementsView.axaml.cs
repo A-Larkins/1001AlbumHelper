@@ -27,23 +27,28 @@ public partial class ReplacementsView : UserControl
         try { _all = MobileData.LoadCandidates(); ApplyFilter(); }
         catch (Exception ex) { CountText.Text = $"Couldn't load candidates: {ex.Message}"; }
 
-        // Then: the live shared list from Google Sheets, if sync is configured on this device.
-        if (_repo.SyncEnabled)
+        // Then: the live shared list from Google Sheets. Show exactly what happened either way.
+        if (!_repo.SyncEnabled)
         {
-            try
+            SyncText.Text = $"⚠ Sheets sync {_repo.Status}";
+            return;
+        }
+
+        SyncText.Text = "Syncing with Google Sheets…";
+        try
+        {
+            var live = await _repo.PullAsync();
+            if (live is not null)
             {
-                var live = await _repo.PullAsync();
-                if (live is not null)
-                {
-                    _all = live;
-                    _isLive = true;
-                    ApplyFilter();
-                }
+                _all = live;
+                _isLive = true;
+                ApplyFilter();
+                SyncText.Text = $"✓ Live from Google Sheets ({live.Count})";
             }
-            catch (Exception ex)
-            {
-                CountText.Text += $"  ·  live sync failed: {ex.Message}";
-            }
+        }
+        catch (Exception ex)
+        {
+            SyncText.Text = $"⚠ Sync failed — {ex.GetType().Name}: {ex.Message}";
         }
     }
 

@@ -7,6 +7,7 @@
       <TextBlock Text="Potential replacements" FontSize="22" FontWeight="SemiBold" />
       <TextBox x:Name="SearchBox" Watermark="Search title or artist…" />
       <TextBlock x:Name="CountText" Opacity="0.55" FontSize="12" />
+      <TextBlock x:Name="SyncText" Opacity="0.7" FontSize="11" TextWrapping="Wrap" />
     </StackPanel>
 
     <ListBox x:Name="Rows">
