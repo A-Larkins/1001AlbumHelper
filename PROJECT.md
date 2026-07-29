@@ -31,10 +31,12 @@ framework).
 │   ├── Data/                   NumberedList, ReplacementCandidates, MobileData,
 │   │                           PlaylistStore, Operations, RatingSession, AlbumProcessor
 │   ├── Integrations/           DiscogsApiClient, GoogleSheetsWriter, CandidateSheet,
-│   │                           CandidateRepository, AppleMusicCatalog, SyncDiagnostic
+│   │                           CandidateRepository, AppleMusicCatalog, SyncDiagnostic,
+│   │                           ISheetsClient (+ RestSheetsClient, GoogleServiceAccountAuth,
+│   │                           RestSheetsClientDiagnostic) — the REST path for mobile writes
 │   ├── Export/                 CsvGenerator, ExcelGenerator, PdfExporter
 │   ├── Views/Desktop/          the six desktop windows
-│   ├── Views/Mobile/           MainView + AlbumListView, ReplacementsView, PlaylistView
+│   ├── Views/Mobile/           MainView + AlbumListView, RateView, ReplacementsView, PlaylistView
 │   ├── Console/                ConsoleMenu (text menu; `dotnet run -- console`)
 │   └── input/ output/ appsettings.json  (data + config; git-ignored where secret)
 │
@@ -77,6 +79,8 @@ a **single view with four bottom tabs** (phones don't do windows).
 | 2026-07-28 | **iOS fix:** `Operations.ResolveDataDir`'s directory walk no longer crashes the type initializer when it hits the iOS sandbox ("Operation not permitted"). This was the real blocker for mobile sync. |
 | 2026-07-28 | **Mobile Sheets sync confirmed on-device.** The four stacked bugs above (trimming, Google.Apis, the REST rewrite, the sandbox crash) are all fixed together — the Replacements tab reads live from Google Sheets on the phone. |
 | 2026-07-29 | **Apple Music playlist UX (Phase 3).** Pushing to Apple Music now names each failed album + why, instead of just a count. Removing an album that's already in Apple Music no longer silently drops it — it moves to a "delete these from Apple Music" checklist (Apple's API can't remove for us) until the user confirms they deleted it by hand. Reading a playlist back now carries each album's track count, and a low count is flagged in the UI as possibly half-deleted. |
+| 2026-07-29 | **Mobile: add to shortlist + edit years.** `ReplacementsView` gained an inline add-album panel (Discogs autocomplete lookup, reusing the desktop's `AlbumLookup` helper) and in-place year editing, both pushing straight to the Potentials sheet. Needed a Discogs token on iOS, so `DiscogsApiClient` picked up the same embedded-config fallback `CandidateRepository` already had (factored into a shared `EmbeddedConfig` helper). |
+| 2026-07-29 | **Mobile: rate albums.** New "Rate" tab — the desktop rating window's one-album-at-a-time queue (⭐/👍/👎/❌), writing straight to the master "1001 albums" sheet. Needed a REST path for the *master list* too, not just Potentials: extracted `ISheetsClient` from `GoogleSheetsWriter` and added `RestSheetsClient`, a full REST reimplementation (including the insert-row-with-formatting call the ⭐→Must Hear side effect depends on). Verified end-to-end against the live spreadsheet via a new self-cleaning `resttest` diagnostic (scratch tab, never touches real data) before wiring up the UI. |
 
 ---
 
@@ -94,9 +98,13 @@ manual bookkeeping.
 - ✅ **Mobile Sheets sync** — confirmed on-device: the Replacements tab reads live from Google Sheets on the phone.
 - ✅ **Playlist UX (Phase 3)** — named failures + reason on push, a "delete these from Apple Music"
   checklist for add-only's blind spot, and track-count visibility for possibly half-deleted albums.
-  Built + unit-tested + installed on-device; **pending the user's on-device look** (phone was locked
-  when this was built, so launch after install hasn't been visually confirmed yet).
-- ⏳ The four mobile feature-parity items (Phase 2) and the visual pass + app icon (Phase 4) are next.
+- ✅ **Phase 2, 3 of 4:** rate (new REST client for the master sheet), add-to-shortlist (Discogs
+  lookup), edit years — all built, tested, and installed on-device. **Not yet visually confirmed
+  on-device** — the last install did launch cleanly, but nobody's actually poked the new Rate tab,
+  the add-album panel, or in-place year editing on the phone yet. Worth a real look before trusting
+  the UI wiring blindly.
+- ⏳ **Phase 2's last item** (browse/search Must Hear + the final numbered Replacements list) and
+  **Phase 4** (visual pass + app icon) are next.
 
 **User stories (what Andrew wants):**
 - *As I go through the 1001*, tap to add an album to my real Apple Music **PLAYLIST1** (and recs to **PLAYLIST2**).
@@ -112,7 +120,7 @@ manual bookkeeping.
 
 **Roadmap:**
 1. ✅ **Phase 1 — Mobile Sheets sync** (foundation). Confirmed on-device. Unlocks persistence for everything below.
-2. **Phase 2 — Four features:** rate · add-to-shortlist · browse/search all lists · edit years — all persisting via sync. *(next up)*
+2. **Phase 2 — Four features:** ✅ rate · ✅ add-to-shortlist · ⏳ browse/search all lists · ✅ edit years — all persisting via sync. Only browse/search is left.
 3. ✅ **Phase 3 — Playlist UX:** name failed adds + why; the "delete these from Apple Music" diff checklist; track-count visibility for partial (half-deleted) albums.
 4. **Phase 4 — Clean visual pass + iOS app icon.**
 
@@ -206,8 +214,17 @@ Keeps the potentials shortlist in sync across devices via a **"Potentials" tab**
   data folder). First sync **seeds** the sheet from local so an empty sheet never wipes it.
 - Verify / seed headlessly: `dotnet run --project 1001AlbumHelper.Desktop -- synctest`.
 
-**Status:** working + verified on desktop (reads 153 rows). iPhone side is code-complete and in final
-on-device testing.
+**Status:** working + verified on both desktop and the phone (Replacements tab reads live).
+
+**The master list ("1001 albums") needs the same REST treatment, separately.** `CandidateSheet` only
+covers the Potentials tab; rating and Must Hear insertion go through `NumberedList`/`RatingSession`,
+which talk to an `ISheetsClient` — `GoogleSheetsWriter` (OAuth) on desktop, `RestSheetsClient`
+(service account, same REST approach as `CandidateSheet`) on mobile. `RestSheetsClient` is the harder
+of the two: `InsertRowAsync` needs a hand-built `batchUpdate` (insertDimension + copyPaste) to match
+`GoogleSheetsWriter`'s row-insert-with-formatting behavior exactly, since that's what a ⭐ rating's
+Must-Hear-list insert depends on. Verify / re-verify headlessly: `dotnet run --project
+1001AlbumHelper.Desktop -- resttest` — exercises every `ISheetsClient` operation against a scratch
+tab it creates and deletes, so it never risks the real lists.
 
 ---
 
