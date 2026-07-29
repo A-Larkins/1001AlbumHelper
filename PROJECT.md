@@ -71,13 +71,45 @@ a **single view with four bottom tabs** (phones don't do windows).
 | 2026-07-28 | **Cross-device potentials sync** via a Google service account (Potentials tab). Desktop wired + verified. |
 | 2026-07-28 | **On-device deploy.** App signed + installed + running on the real iPhone 15 Pro. |
 | 2026-07-28 | **Bug fix:** Sheets writes use RAW so numeric album titles (2112, 1984) aren't mangled into numbers/dates. |
+| 2026-07-28 | **Apple Music → your real playlists.** ＋P1/＋P2 and "Push all" target the existing `PLAYLIST1`/`PLAYLIST2` by name; "Import" reads them. Adding is confirmed working on-device. |
+| 2026-07-28 | **One-click re-deploy.** `Re-deploy to iPhone.command` renews the 7-day profile + rebuilds + reinstalls. |
+| 2026-07-28 | **Mobile Sheets sync, take 2.** Rewrote `CandidateSheet` onto the Sheets REST API (signed service-account JWT, RSA) — **no Google.Apis**, so it's trim/AOT-safe on iOS. Verified on desktop. |
+| 2026-07-28 | **iOS fix:** `Operations.ResolveDataDir`'s directory walk no longer crashes the type initializer when it hits the iOS sandbox ("Operation not permitted"). This was the real blocker for mobile sync. |
 
-### In progress / close (this session)
+---
 
-- **Apple Music linked to your existing `PLAYLIST1` / `PLAYLIST2`** (by name), instead of creating
-  new ones. Add + read work; remove is not possible in Apple Music (see §6).
-- **Mobile Google Sheets sync** — the working lists syncing Mac ↔ phone (next: embed the service
-  account key on iOS).
+## 3b. Current status & what we're building
+
+**Live workflow (the "why"):** Andrew is ~750/1001 through the list, listening 3–5 albums at a time.
+As he goes he queues albums into Apple Music **PLAYLIST1** (from the 1001) and **PLAYLIST2**
+(recommendations), listens, decides, then wants to remove them to keep the queue clean — cutting the
+manual bookkeeping.
+
+**Where we are right now:**
+- ✅ App builds, signs, installs, and **runs on the iPhone 15 Pro** (interpreter mode).
+- ✅ Apple Music: **adding** to the existing PLAYLIST1/PLAYLIST2 **works on-device** (confirmed).
+- ✅ Desktop potentials sync (Google Sheets) works and is verified.
+- 🔄 **Mobile Sheets sync** — code-complete + verified on desktop via the new REST path; **pending the
+  final on-device check** (the Replacements tab should read "✓ Live from Google Sheets (153)").
+- ⏳ The four mobile features, the playlist "to-remove" UX, a clean visual pass, and an app icon are queued behind it.
+
+**User stories (what Andrew wants):**
+- *As I go through the 1001*, tap to add an album to my real Apple Music **PLAYLIST1** (and recs to **PLAYLIST2**).
+- Keep a **clean working list** I can add **and remove** from. Apple Music can't remove, so the app owns "clean" and (planned) shows a **"delete these from Apple Music" checklist**.
+- **Sync my potentials shortlist** across Mac ↔ phone.
+- **Rate albums** as I listen, on the phone.
+- **Add to the shortlist** on the go (with Discogs year lookup).
+- **Browse/search** the 1001, Must Hear, and replacements lists on the phone.
+- **Edit/enter years** on the phone.
+- **One-click re-deploy** when the weekly trial lapses.
+- Make it **look clean** (tidy layout, an app icon) — not necessarily a desktop clone.
+- When something fails (e.g. an album not on Apple Music), **tell me which one and why**.
+
+**Roadmap:**
+1. **Phase 1 — Mobile Sheets sync** (foundation; in final on-device testing). Unlocks persistence for everything below.
+2. **Phase 2 — Four features:** rate · add-to-shortlist · browse/search all lists · edit years — all persisting via sync.
+3. **Phase 3 — Playlist UX:** name failed adds + why; the "delete these from Apple Music" diff checklist; handle partial (half-deleted) albums.
+4. **Phase 4 — Clean visual pass + iOS app icon.**
 
 ---
 
@@ -153,11 +185,17 @@ Keeps the potentials shortlist in sync across devices via a **"Potentials" tab**
   (git-ignored). Share the sheet with the service account email as **Editor**.
   - Service account: `albums-sync@secret-319922.iam.gserviceaccount.com`.
 - Config lives in `appsettings.json` → `GoogleSheets:{PotentialsTab, ServiceAccountKeyFile}`.
-- Code: `CandidateSheet` (read/write the tab) + `CandidateRepository` (Sheets-when-configured, local
-  JSON as offline cache). First sync **seeds** the sheet from local so an empty sheet never wipes it.
+- Code: `CandidateSheet` talks to the **Sheets v4 REST API directly** (service-account JWT signed with
+  RSA → access token → HTTP). It deliberately avoids the **Google.Apis** client library, which can't
+  be made to work on iOS (trimmed → `TypeInitializationException`; un-trimmed → the app is big enough
+  that the runtime crashes at launch). Only `System.Text.Json` + `RSA` + `HttpClient`.
+  `CandidateRepository` picks Sheets-when-configured with local JSON as an offline cache; on the phone
+  it loads the config + key from **embedded resources** (baked into the assembly — the phone has no
+  data folder). First sync **seeds** the sheet from local so an empty sheet never wipes it.
 - Verify / seed headlessly: `dotnet run --project 1001AlbumHelper.Desktop -- synctest`.
 
-**Status:** working + verified on desktop. iPhone side (embed the key) is the next step.
+**Status:** working + verified on desktop (reads 153 rows). iPhone side is code-complete and in final
+on-device testing.
 
 ---
 
@@ -173,9 +211,18 @@ Keeps the potentials shortlist in sync across devices via a **"Potentials" tab**
 - **Build flags that must be passed** (the SDK overrides them if set in the .csproj):
   `MtouchDebug=false` (or the debug agent SIGABRTs with no debugger), `ValidateXcodeVersion=false`
   (Xcode 26.6 vs pack 26.4), `MtouchInterpreter=all` (above).
+- **Google.Apis is unusable on iOS.** Trimmed, its static initializers throw
+  `TypeInitializationException`; un-trimmed, the app is too big and the runtime crashes at launch. The
+  potentials sync therefore uses the **REST API directly** (see §6). Google.Apis remains only on the
+  desktop-only list-writer.
+- **iOS sandbox + file walks.** `Directory.EnumerateFiles` on a parent directory throws "Operation
+  not permitted" outside the sandbox — any such walk on iOS must catch `IOException` /
+  `UnauthorizedAccessException` (see `Operations.ResolveDataDir`). This silently killed sync via a
+  type-initializer crash before it was fixed.
 - **No app icon on iOS** yet — the home-screen icon is a blank placeholder. Easy to add.
-- **Mobile Sheets sync not wired** — the phone reads baked-in snapshots; changes on the phone don't
-  yet reach the Mac. (Next up.)
+- **Re-deploying:** double-click **`Re-deploy to iPhone.command`** (repo root) — it renews the 7-day
+  profile via `xcodebuild -allowProvisioningUpdates`, rebuilds, and reinstalls. The signing stub lives
+  in `1001AlbumHelper.iOS/SignHelper/`.
 - **Apple Music removal** is impossible (see §5).
 
 ---
