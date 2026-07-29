@@ -119,6 +119,14 @@ public partial class RatingWindow : Window
         Render();
     }
 
+    private void OnBack(object? sender, RoutedEventArgs e)
+    {
+        if (_busy || _session is null || !_session.CanGoBack) return;
+        _session.Back();
+        StatusText.Text = "";
+        Render();
+    }
+
     private void OnClose(object? sender, RoutedEventArgs e) => Close();
 
     private async void OnKeyDown(object? sender, KeyEventArgs e)
@@ -136,6 +144,7 @@ public partial class RatingWindow : Window
 
         if (rating is not null) { e.Handled = true; await RateAsync(rating); }
         else if (e.Key == Key.S) { e.Handled = true; OnSkip(this, new RoutedEventArgs()); }
+        else if (e.Key == Key.B) { e.Handled = true; OnBack(this, new RoutedEventArgs()); }
     }
 
     // ---------- Rendering ----------
@@ -145,6 +154,7 @@ public partial class RatingWindow : Window
 
         string queueName = _session.Mode == RatingMode.NextUp ? "not yet listened" : "listened, unrated";
         RemainingText.Text = $"{_session.Remaining} left ({queueName})";
+        BackButton.IsEnabled = _session.CanGoBack;
 
         var album = _session.Current;
         if (album is null)
@@ -153,6 +163,7 @@ public partial class RatingWindow : Window
                 ? "🎉 Nothing left in the queue — every album on the list has a mark."
                 : "🎉 Nothing left to backfill — every ✓ album has a real rating.");
             SetRatingButtonsEnabled(false);
+            SkipButton.IsEnabled = false;
             return;
         }
 
@@ -177,6 +188,7 @@ public partial class RatingWindow : Window
     {
         SetRatingButtonsEnabled(on && _session?.Current is not null);
         SkipButton.IsEnabled = on && _session?.Current is not null;
+        BackButton.IsEnabled = on && (_session?.CanGoBack ?? false);
         NextUpButton.IsEnabled = on;
         BackfillButton.IsEnabled = on;
         ShuffleBox.IsEnabled = on;
