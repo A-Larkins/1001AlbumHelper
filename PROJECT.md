@@ -118,12 +118,14 @@ manual bookkeeping.
   (https://github.com/A-Larkins/1001AlbumHelper/pull/1), pushed to origin. Also fixed a real bug found
   by testing: Apple Music catalog lookup missed albums Apple's own `/search` buries in its relevance
   ranking — see `AppleMusicCatalog.FindAlbumAsync`'s fallback via `/lookup`.
-- 🔄 **In progress, branch `apple-music-removal`** (off `iphone-support`, not yet its own PR): real
-  Apple Music playlist removal from the Mac via AppleScript — see §5's new subsection. Code complete,
-  builds clean, tests pass, **but not yet actually run against Music.app** — the first `osascript`
-  call hit a one-time macOS permission dialog that needs a human's click, which this session couldn't
-  get past. **Next step:** run the app, open "Apple Music playlists" from the main window, click
-  through the permission prompt, and verify read + remove both actually work against a real playlist.
+- 🔄 **In progress: PR #2** (`apple-music-removal` → `iphone-support`, stacked on #1 —
+  https://github.com/A-Larkins/1001AlbumHelper/pull/2): real Apple Music playlist removal from the
+  Mac via AppleScript — see §5's new subsection. Code complete, builds clean, tests pass, **but not
+  yet actually run against Music.app** — the first `osascript` call hit a one-time macOS permission
+  dialog that needs a human's click, which this session couldn't get past. **Next step:** run the
+  app, open "Apple Music playlists" from the main window, click through the permission prompt, and
+  verify read + remove both actually work against a real playlist. The PR's test plan checklist
+  tracks this.
 
 **Git workflow:** repo is public — `github.com/A-Larkins/1001AlbumHelper`. Using feature branches +
 PRs into `main` now (this was the first PR). Tried requesting a GitHub Copilot review via `gh`/API —
