@@ -11,6 +11,9 @@
   <key>NSAppleMusicUsageDescription</key>
   <string>1001 Albums adds the albums you pick to your Apple Music playlists.</string>
   <key>LSRequiresIPhoneOS</key>          <true/>
+  <!-- Without this, iOS runs the app at a legacy compatibility resolution and letterboxes
+       it within the real screen instead of using the full native size. -->
+  <key>UILaunchScreen</key>              <dict/>
   <key>MinimumOSVersion</key>            <string>13.0</string>
   <key>UIDeviceFamily</key>
   <array>
