@@ -40,6 +40,18 @@ public partial class AlbumListView : UserControl
             CountText.Text = $"Couldn't load the list: {ex.Message}";
         }
         ShowList(Tab1001);
+
+        // Deferred: the ListBox needs a layout pass before ScrollIntoView can find a
+        // virtualized item, so scrolling right after setting ItemsSource is a silent no-op.
+        Avalonia.Threading.Dispatcher.UIThread.Post(ScrollToFirstUnlistened,
+            Avalonia.Threading.DispatcherPriority.Background);
+    }
+
+    /// <summary>Jump straight to where the user left off, instead of always opening at #1.</summary>
+    private void ScrollToFirstUnlistened()
+    {
+        var firstUnlistened = _all.FirstOrDefault(r => !r.IsListened);
+        if (firstUnlistened is not null) Rows.ScrollIntoView(firstUnlistened);
     }
 
     private void ShowList(string list)

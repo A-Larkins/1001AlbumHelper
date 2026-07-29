@@ -3,39 +3,29 @@
              xmlns:local="clr-namespace:_1001AlbumHelper"
              x:Class="_1001AlbumHelper.MainView">
   <!--
-    Mobile root: a bottom tab bar over the five screens. The UniformGrid item panel
-    makes the tabs share the width evenly in a single row. Playlist tabs get their
-    id/title and a refresh from the code-behind so they reflect albums added elsewhere.
+    Mobile root: a top dropdown picker swaps between the five screens (replaced the
+    bottom tab bar — five destinations was cramped as tabs and ate vertical space).
+    All five views are created once and kept alive so their state (scroll position,
+    in-progress edits) survives switching away and back; visibility toggles which
+    one is shown.
   -->
-  <TabControl x:Name="Tabs" TabStripPlacement="Bottom">
-    <TabControl.ItemsPanel>
-      <ItemsPanelTemplate>
-        <UniformGrid Rows="1" />
-      </ItemsPanelTemplate>
-    </TabControl.ItemsPanel>
-    <TabControl.Styles>
-      <Style Selector="TabItem">
-        <Setter Property="FontSize" Value="12" />
-        <Setter Property="HorizontalContentAlignment" Value="Center" />
-        <Setter Property="Padding" Value="2,8" />
-        <Setter Property="MinHeight" Value="0" />
-      </Style>
-    </TabControl.Styles>
+  <DockPanel>
+    <Border DockPanel.Dock="Top" Padding="12,8" BorderThickness="0,0,0,1" BorderBrush="#33808080">
+      <ComboBox x:Name="ScreenPicker" HorizontalAlignment="Stretch" SelectedIndex="0">
+        <ComboBoxItem Content="Lists" />
+        <ComboBoxItem Content="Rate" />
+        <ComboBoxItem Content="Potentials" />
+        <ComboBoxItem Content="Playlist 1" />
+        <ComboBoxItem Content="Playlist 2" />
+      </ComboBox>
+    </Border>
 
-    <TabItem Header="List">
-      <local:AlbumListView />
-    </TabItem>
-    <TabItem Header="Rate">
-      <local:RateView />
-    </TabItem>
-    <TabItem Header="Shortlist">
-      <local:ReplacementsView />
-    </TabItem>
-    <TabItem Header="Playlist 1">
-      <local:PlaylistView x:Name="Playlist1View" />
-    </TabItem>
-    <TabItem Header="Playlist 2">
-      <local:PlaylistView x:Name="Playlist2View" />
-    </TabItem>
-  </TabControl>
+    <Panel>
+      <local:AlbumListView x:Name="ListsScreen" />
+      <local:RateView x:Name="RateScreen" IsVisible="False" />
+      <local:ReplacementsView x:Name="PotentialsScreen" IsVisible="False" />
+      <local:PlaylistView x:Name="Playlist1View" IsVisible="False" />
+      <local:PlaylistView x:Name="Playlist2View" IsVisible="False" />
+    </Panel>
+  </DockPanel>
 </UserControl>
