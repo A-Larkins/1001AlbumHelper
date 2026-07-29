@@ -74,6 +74,9 @@ public sealed class RatingSession
     /// <summary>The album awaiting a rating, or null when the queue is finished.</summary>
     public AlbumEntry? Current => _index >= 0 && _index < _queue.Count ? _queue[_index] : null;
 
+    /// <summary>Whether <see cref="Back"/> has anything to step back to.</summary>
+    public bool CanGoBack => _index > 0;
+
     /// <summary>Reads the master list and prepares a session. Read-only.</summary>
     public static async Task<RatingSession> LoadAsync(ISheetsClient writer, string tab, string mustHearTab)
     {
@@ -141,6 +144,15 @@ public sealed class RatingSession
     public void Skip()
     {
         if (_index < _queue.Count) _index++;
+    }
+
+    /// <summary>
+    /// Steps back to the previous album in the queue, whether it was skipped or already rated —
+    /// letting a skip or a mis-tap be corrected instead of being stuck moving only forward.
+    /// </summary>
+    public void Back()
+    {
+        if (_index > 0) _index--;
     }
 
     /// <summary>What a rating did: the cell written, plus how the Must Hear list reacted.</summary>
