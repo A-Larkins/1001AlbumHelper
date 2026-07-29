@@ -35,6 +35,7 @@ public partial class PlaylistView : UserControl
         _store = PlaylistStore.Open(_playlistId);
         var active = _store.Active;
         Rows.ItemsSource = active;
+        EmptyText.IsVisible = active.Count == 0;
         CountText.Text = active.Count == 1 ? "1 album" : $"{active.Count} albums";
         ImportButton.IsEnabled = AppleMusic.IsAvailable;
         PushButton.IsEnabled = AppleMusic.IsAvailable && active.Count > 0;

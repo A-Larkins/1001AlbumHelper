@@ -7,12 +7,14 @@
       <TextBlock x:Name="TitleText" FontSize="22" FontWeight="SemiBold" />
       <TextBlock x:Name="CountText" Opacity="0.55" FontSize="12" />
       <Grid ColumnDefinitions="*,*" ColumnSpacing="6">
-        <Button x:Name="ImportButton" Grid.Column="0" Content="⬇ Import from Apple Music"
+        <Button x:Name="ImportButton" Grid.Column="0" Content="⬇ Import"
                 Click="OnImportFromAppleMusic" HorizontalAlignment="Stretch"
-                HorizontalContentAlignment="Center" FontSize="12" />
-        <Button x:Name="PushButton" Grid.Column="1" Content="⬆ Push all to Apple Music"
+                HorizontalContentAlignment="Center" FontSize="12"
+                ToolTip.Tip="Import from Apple Music" />
+        <Button x:Name="PushButton" Grid.Column="1" Content="⬆ Push all"
                 Click="OnPushToAppleMusic" HorizontalAlignment="Stretch"
-                HorizontalContentAlignment="Center" FontSize="12" />
+                HorizontalContentAlignment="Center" FontSize="12"
+                ToolTip.Tip="Push all to Apple Music" />
       </Grid>
       <TextBlock x:Name="StatusText" Opacity="0.7" FontSize="12" TextWrapping="Wrap" IsVisible="False" />
       <ItemsControl x:Name="FailuresList" IsVisible="False">
@@ -42,17 +44,23 @@
       </ItemsControl>
     </StackPanel>
 
-    <ListBox x:Name="Rows">
-      <ListBox.ItemTemplate>
-        <DataTemplate x:DataType="local:PlaylistEntry">
-          <Grid ColumnDefinitions="*,Auto" Margin="0,4">
-            <TextBlock Grid.Column="0" Text="{Binding Display}" VerticalAlignment="Center"
-                       TextWrapping="Wrap" />
-            <Button Grid.Column="1" Content="✕" Click="OnRemove" VerticalAlignment="Center"
-                    Margin="8,0,0,0" />
-          </Grid>
-        </DataTemplate>
-      </ListBox.ItemTemplate>
-    </ListBox>
+    <Panel>
+      <ListBox x:Name="Rows">
+        <ListBox.ItemTemplate>
+          <DataTemplate x:DataType="local:PlaylistEntry">
+            <Grid ColumnDefinitions="*,Auto" Margin="0,4">
+              <TextBlock Grid.Column="0" Text="{Binding Display}" VerticalAlignment="Center"
+                         TextWrapping="Wrap" />
+              <Button Grid.Column="1" Content="✕" Click="OnRemove" VerticalAlignment="Center"
+                      Margin="8,0,0,0" />
+            </Grid>
+          </DataTemplate>
+        </ListBox.ItemTemplate>
+      </ListBox>
+      <TextBlock x:Name="EmptyText" Text="Nothing here yet — add albums from the List or Shortlist tab."
+                 Opacity="0.5" FontSize="13" TextWrapping="Wrap" TextAlignment="Center"
+                 HorizontalAlignment="Center" VerticalAlignment="Center" Margin="24"
+                 IsHitTestVisible="False" IsVisible="False" />
+    </Panel>
   </DockPanel>
 </UserControl>

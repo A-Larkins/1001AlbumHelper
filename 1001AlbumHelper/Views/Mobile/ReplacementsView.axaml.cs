@@ -56,7 +56,8 @@ public partial class ReplacementsView : UserControl
             {
                 _isLive = true;
                 SetAll(live);
-                SyncText.Text = $"✓ Live from Google Sheets ({live.Count})";
+                // The count line below already says "· live ✓" once synced — no need to repeat it here.
+                SyncText.Text = "";
             }
         }
         catch (Exception ex)

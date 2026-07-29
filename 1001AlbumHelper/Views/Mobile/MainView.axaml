@@ -15,9 +15,9 @@
     </TabControl.ItemsPanel>
     <TabControl.Styles>
       <Style Selector="TabItem">
-        <Setter Property="FontSize" Value="13" />
+        <Setter Property="FontSize" Value="12" />
         <Setter Property="HorizontalContentAlignment" Value="Center" />
-        <Setter Property="Padding" Value="4,8" />
+        <Setter Property="Padding" Value="2,8" />
         <Setter Property="MinHeight" Value="0" />
       </Style>
     </TabControl.Styles>
@@ -28,7 +28,7 @@
     <TabItem Header="Rate">
       <local:RateView />
     </TabItem>
-    <TabItem Header="Replacements">
+    <TabItem Header="Shortlist">
       <local:ReplacementsView />
     </TabItem>
     <TabItem Header="Playlist 1">
