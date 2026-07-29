@@ -15,6 +15,31 @@
                 HorizontalContentAlignment="Center" FontSize="12" />
       </Grid>
       <TextBlock x:Name="StatusText" Opacity="0.7" FontSize="12" TextWrapping="Wrap" IsVisible="False" />
+      <ItemsControl x:Name="FailuresList" IsVisible="False">
+        <ItemsControl.ItemTemplate>
+          <DataTemplate>
+            <TextBlock Text="{Binding}" FontSize="11" Foreground="IndianRed" TextWrapping="Wrap" Margin="0,1" />
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+    </StackPanel>
+
+    <StackPanel x:Name="ToRemoveSection" DockPanel.Dock="Bottom" IsVisible="False" Spacing="4" Margin="0,8,0,0">
+      <TextBlock x:Name="ToRemoveHeader" FontSize="12" FontWeight="SemiBold" Opacity="0.8" />
+      <TextBlock Text="Apple Music can't remove these for you — delete them there yourself, then check them off."
+                 FontSize="11" Opacity="0.55" TextWrapping="Wrap" />
+      <ItemsControl x:Name="ToRemoveRows">
+        <ItemsControl.ItemTemplate>
+          <DataTemplate x:DataType="local:PlaylistEntry">
+            <Grid ColumnDefinitions="*,Auto" Margin="0,3">
+              <TextBlock Grid.Column="0" Text="{Binding Display}" VerticalAlignment="Center"
+                         TextWrapping="Wrap" Opacity="0.7" />
+              <Button Grid.Column="1" Content="✓ Deleted" Click="OnConfirmRemoved" VerticalAlignment="Center"
+                      Margin="8,0,0,0" FontSize="11" />
+            </Grid>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
     </StackPanel>
 
     <ListBox x:Name="Rows">

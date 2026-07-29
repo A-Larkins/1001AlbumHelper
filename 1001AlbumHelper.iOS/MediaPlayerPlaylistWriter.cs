@@ -54,9 +54,11 @@ public sealed class MediaPlayerPlaylistWriter : IApplePlaylistWriter
         var playlist = FindPlaylistByName(playlistName);
         if (playlist is null) return Array.Empty<PlaylistEntry>();
 
-        // One MPMediaItem per track; collapse to one entry per album (title+artist), in first-seen order.
-        var seen = new HashSet<string>();
-        var albums = new List<PlaylistEntry>();
+        // One MPMediaItem per track; collapse to one entry per album (title+artist), in first-seen
+        // order, counting tracks per album so a half-deleted album (some tracks removed by the user
+        // directly in Apple Music) is still visible with its actual remaining count.
+        var order = new List<string>();
+        var byKey = new Dictionary<string, (string Title, string Artist, int Count)>();
         foreach (var item in playlist.Items ?? Array.Empty<MPMediaItem>())
         {
             string title = item.AlbumTitle ?? "";
@@ -64,10 +66,19 @@ public sealed class MediaPlayerPlaylistWriter : IApplePlaylistWriter
             if (title.Length == 0) continue;
 
             string key = $"{NumberedList.Normalize(title)}|{NumberedList.Normalize(artist)}";
-            if (seen.Add(key))
-                albums.Add(new PlaylistEntry(title, artist, ""));
+            if (byKey.TryGetValue(key, out var existing))
+                byKey[key] = (existing.Title, existing.Artist, existing.Count + 1);
+            else
+            {
+                byKey[key] = (title, artist, 1);
+                order.Add(key);
+            }
         }
-        return albums;
+        return order.Select(key =>
+        {
+            var (title, artist, count) = byKey[key];
+            return new PlaylistEntry(title, artist, "") { TrackCount = count };
+        }).ToList();
     }
 
     // ---- MediaPlayer plumbing (its APIs are callback-based; wrap them as tasks) ----

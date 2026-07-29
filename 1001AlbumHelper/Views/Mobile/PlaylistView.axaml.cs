@@ -33,16 +33,30 @@ public partial class PlaylistView : UserControl
     {
         if (_playlistId == 0) return;
         _store = PlaylistStore.Open(_playlistId);
-        Rows.ItemsSource = _store.Entries;
-        CountText.Text = _store.Entries.Count == 1 ? "1 album" : $"{_store.Entries.Count} albums";
+        var active = _store.Active;
+        Rows.ItemsSource = active;
+        CountText.Text = active.Count == 1 ? "1 album" : $"{active.Count} albums";
         ImportButton.IsEnabled = AppleMusic.IsAvailable;
-        PushButton.IsEnabled = AppleMusic.IsAvailable && _store.Entries.Count > 0;
+        PushButton.IsEnabled = AppleMusic.IsAvailable && active.Count > 0;
+
+        var toRemove = _store.ToRemove;
+        ToRemoveSection.IsVisible = toRemove.Count > 0;
+        ToRemoveHeader.Text = $"Delete these from Apple Music ({toRemove.Count})";
+        ToRemoveRows.ItemsSource = toRemove;
     }
 
     private void OnRemove(object? sender, RoutedEventArgs e)
     {
         if (_store is null || sender is not Button button || button.DataContext is not PlaylistEntry entry) return;
-        _store.Remove(entry);
+        _store.RequestRemoval(entry);
+        Refresh();
+    }
+
+    /// <summary>The user has manually deleted this album from Apple Music — drop it off the checklist.</summary>
+    private void OnConfirmRemoved(object? sender, RoutedEventArgs e)
+    {
+        if (_store is null || sender is not Button button || button.DataContext is not PlaylistEntry entry) return;
+        _store.ConfirmRemoved(entry);
         Refresh();
     }
 
@@ -56,7 +70,7 @@ public partial class PlaylistView : UserControl
         try
         {
             var albums = await AppleMusic.Writer!.ReadAlbumsAsync(_appleMusicName);
-            int added = albums.Count(a => _store.Add(a.Title, a.Artist, a.Year));
+            int added = _store.MergeFromAppleMusic(albums);
             Refresh();
             Note($"Imported {added} new ({albums.Count} in “{_appleMusicName}”).");
         }
@@ -64,22 +78,28 @@ public partial class PlaylistView : UserControl
         finally { SetBusy(false); }
     }
 
-    /// <summary>Adds every album in the working list to the Apple Music playlist (skips ones already there is up to Apple Music).</summary>
+    /// <summary>Adds every album in the working list to the Apple Music playlist, naming any that fail and why.</summary>
     private async void OnPushToAppleMusic(object? sender, RoutedEventArgs e)
     {
-        if (_store is null || _store.Entries.Count == 0) return;
+        if (_store is null || _store.Active.Count == 0) return;
         if (!AppleMusic.IsAvailable) { Note("Apple Music is only available in the iPhone app."); return; }
 
-        var albums = _store.Entries.ToList();
+        var albums = _store.Active.ToList();
         SetBusy(true, "");
-        int added = 0, failed = 0;
+        int added = 0;
+        var failures = new List<string>();
         foreach (var album in albums)
         {
-            Note($"Adding {album.Title}… ({added + failed + 1}/{albums.Count})");
+            Note($"Adding {album.Title}… ({added + failures.Count + 1}/{albums.Count})");
             var result = await AppleMusic.Writer!.AddAlbumAsync(_appleMusicName, album);
-            if (result.Ok) added++; else failed++;
+            if (result.Ok) { _store.MarkInAppleMusic(album); added++; }
+            else failures.Add($"{album.Title} — {album.Artist}: {result.Message}");
         }
-        Note($"Pushed {added} to “{_appleMusicName}”" + (failed > 0 ? $", {failed} couldn't be added." : "."));
+
+        Refresh();
+        Note($"Pushed {added} to “{_appleMusicName}”" + (failures.Count > 0 ? $", {failures.Count} couldn't be added (below)." : "."));
+        FailuresList.ItemsSource = failures;
+        FailuresList.IsVisible = failures.Count > 0;
         SetBusy(false);
     }
 
@@ -92,7 +112,8 @@ public partial class PlaylistView : UserControl
     private void SetBusy(bool busy, string? message = null)
     {
         ImportButton.IsEnabled = !busy && AppleMusic.IsAvailable;
-        PushButton.IsEnabled = !busy && AppleMusic.IsAvailable && (_store?.Entries.Count ?? 0) > 0;
+        PushButton.IsEnabled = !busy && AppleMusic.IsAvailable && (_store?.Active.Count ?? 0) > 0;
+        if (busy) FailuresList.IsVisible = false; // clear any failures shown from a previous push
         if (message is not null) Note(message);
     }
 }
