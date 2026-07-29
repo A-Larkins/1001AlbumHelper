@@ -72,14 +72,15 @@
       </Button>
     </Grid>
 
-    <Grid Grid.Row="3" ColumnDefinitions="*,Auto,Auto" ColumnSpacing="6" Margin="0,10,0,0"
-          MinHeight="36" VerticalAlignment="Center">
-      <TextBlock Grid.Column="0" x:Name="StatusText" Text="" FontSize="12" Opacity="0.6"
-                 TextWrapping="Wrap" VerticalAlignment="Center" />
-      <Button Grid.Column="1" x:Name="BackButton" Content="Back" Click="OnBack" FontSize="12"
-              MinWidth="44" MinHeight="32" />
-      <Button Grid.Column="2" x:Name="SkipButton" Content="Skip" Click="OnSkip" FontSize="12"
-              MinWidth="44" MinHeight="32" />
-    </Grid>
+    <StackPanel Grid.Row="3" Orientation="Horizontal" Spacing="8" Margin="0,10,0,0"
+                HorizontalAlignment="Right">
+      <Button x:Name="BackButton" Content="Back" Click="OnBack" FontSize="12"
+              Width="70" Height="36" />
+      <Button x:Name="SkipButton" Content="Skip" Click="OnSkip" FontSize="12"
+              Width="70" Height="36" />
+    </StackPanel>
+
+    <TextBlock Grid.Row="3" x:Name="StatusText" Text="" FontSize="12" Opacity="0.6"
+               TextWrapping="Wrap" VerticalAlignment="Center" Margin="0,10,160,0" />
   </Grid>
 </UserControl>
