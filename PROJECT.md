@@ -101,15 +101,15 @@ manual bookkeeping.
 - ✅ **Playlist UX (Phase 3)** — named failures + reason on push, a "delete these from Apple Music"
   checklist for add-only's blind spot, and track-count visibility for possibly half-deleted albums.
 - ✅ **Phase 2 — all four features done:** rate (new REST client for the master sheet),
-  add-to-shortlist (Discogs lookup), edit years, browse/search Must Hear + Replacements. All built,
-  tested, and installed on-device. **Not yet visually confirmed on-device** — every install has
-  launched cleanly, but nobody's actually poked the new Rate tab, the add-album panel, in-place year
-  editing, or the list switcher on the phone yet. Worth a real look before trusting the UI wiring
-  blindly.
+  add-to-shortlist (Discogs lookup), edit years, browse/search Must Hear + Replacements. Confirmed
+  looking good on-device.
 - ✅ **iOS app icon** — the home screen no longer shows a blank placeholder.
 - ⏳ **Phase 4's other half** — an actual visual polish pass — is the only thing left on the
-  roadmap, and it genuinely needs someone looking at the phone: every mobile view so far has been
-  built and installed successfully but not eyeballed running.
+  roadmap. Added a dev-only preview mode for it: `dotnet run --project 1001AlbumHelper.Desktop --
+  mobilepreview` opens a phone-sized window on the Mac hosting the real mobile `MainView`, so layout
+  tweaks can be eyeballed without a device deploy round-trip. (Automating a screenshot of it from
+  here turned out to be unreliable — a window-position query and the actual on-screen window
+  disagreed — so this is a "run it yourself and look" tool for now, not something driven remotely.)
 
 **User stories (what Andrew wants):**
 - *As I go through the 1001*, tap to add an album to my real Apple Music **PLAYLIST1** (and recs to **PLAYLIST2**).
