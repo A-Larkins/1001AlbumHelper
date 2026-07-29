@@ -96,17 +96,27 @@ public partial class RateView : UserControl
         Render();
     }
 
+    private void OnBack(object? sender, RoutedEventArgs e)
+    {
+        if (_busy || _session is null || !_session.CanGoBack) return;
+        _session.Back();
+        StatusText.Text = "";
+        Render();
+    }
+
     private void Render()
     {
         if (_session is null) return;
 
         RemainingText.Text = $"{_session.Remaining} left to rate";
+        BackButton.IsEnabled = _session.CanGoBack;
 
         var album = _session.Current;
         if (album is null)
         {
             ShowMessage("🎉 Nothing left in the queue — every album on the list has a mark.");
             SetRatingButtonsEnabled(false);
+            SkipButton.IsEnabled = false;
             return;
         }
 
@@ -131,6 +141,7 @@ public partial class RateView : UserControl
     {
         SetRatingButtonsEnabled(on && _session?.Current is not null);
         SkipButton.IsEnabled = on && _session?.Current is not null;
+        BackButton.IsEnabled = on && (_session?.CanGoBack ?? false);
     }
 
     private void SetRatingButtonsEnabled(bool on)
