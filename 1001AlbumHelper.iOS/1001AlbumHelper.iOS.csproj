@@ -16,6 +16,8 @@
     <TargetFramework>net10.0-ios</TargetFramework>
     <OutputType>Exe</OutputType>
     <RootNamespace>_1001AlbumHelper</RootNamespace>
+    <!-- Points actool at the AppIcon.appiconset in Assets.xcassets (auto-included by the SDK). -->
+    <AppIcon>AppIcon</AppIcon>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <SupportedOSPlatformVersion>13.0</SupportedOSPlatformVersion>
