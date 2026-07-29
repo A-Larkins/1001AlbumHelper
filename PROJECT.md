@@ -1,7 +1,7 @@
 # 1001 Albums Helper — Project Handbook
 
 A living reference for the app: what it is, how it's built, how to ship it, and where it's going.
-**Update this as we go.** Last updated: 2026-07-28.
+**Update this as we go.** Last updated: 2026-07-29.
 
 ---
 
@@ -40,7 +40,7 @@ framework).
 │
 ├── 1001AlbumHelper.Desktop/    → Mac/Win/Linux head (produces the "1001AlbumHelper" executable)
 ├── 1001AlbumHelper.iOS/        → iPhone head (bundle id: com.larkins.albumhelper)
-└── 1001AlbumHelper.Tests/      → xUnit tests (62 as of this writing)
+└── 1001AlbumHelper.Tests/      → xUnit tests (70 as of this writing)
 ```
 
 **Key idea:** all the real code lives in the shared library. The two "head" projects are thin —
@@ -75,6 +75,8 @@ a **single view with four bottom tabs** (phones don't do windows).
 | 2026-07-28 | **One-click re-deploy.** `Re-deploy to iPhone.command` renews the 7-day profile + rebuilds + reinstalls. |
 | 2026-07-28 | **Mobile Sheets sync, take 2.** Rewrote `CandidateSheet` onto the Sheets REST API (signed service-account JWT, RSA) — **no Google.Apis**, so it's trim/AOT-safe on iOS. Verified on desktop. |
 | 2026-07-28 | **iOS fix:** `Operations.ResolveDataDir`'s directory walk no longer crashes the type initializer when it hits the iOS sandbox ("Operation not permitted"). This was the real blocker for mobile sync. |
+| 2026-07-28 | **Mobile Sheets sync confirmed on-device.** The four stacked bugs above (trimming, Google.Apis, the REST rewrite, the sandbox crash) are all fixed together — the Replacements tab reads live from Google Sheets on the phone. |
+| 2026-07-29 | **Apple Music playlist UX (Phase 3).** Pushing to Apple Music now names each failed album + why, instead of just a count. Removing an album that's already in Apple Music no longer silently drops it — it moves to a "delete these from Apple Music" checklist (Apple's API can't remove for us) until the user confirms they deleted it by hand. Reading a playlist back now carries each album's track count, and a low count is flagged in the UI as possibly half-deleted. |
 
 ---
 
@@ -89,9 +91,12 @@ manual bookkeeping.
 - ✅ App builds, signs, installs, and **runs on the iPhone 15 Pro** (interpreter mode).
 - ✅ Apple Music: **adding** to the existing PLAYLIST1/PLAYLIST2 **works on-device** (confirmed).
 - ✅ Desktop potentials sync (Google Sheets) works and is verified.
-- 🔄 **Mobile Sheets sync** — code-complete + verified on desktop via the new REST path; **pending the
-  final on-device check** (the Replacements tab should read "✓ Live from Google Sheets (153)").
-- ⏳ The four mobile features, the playlist "to-remove" UX, a clean visual pass, and an app icon are queued behind it.
+- ✅ **Mobile Sheets sync** — confirmed on-device: the Replacements tab reads live from Google Sheets on the phone.
+- ✅ **Playlist UX (Phase 3)** — named failures + reason on push, a "delete these from Apple Music"
+  checklist for add-only's blind spot, and track-count visibility for possibly half-deleted albums.
+  Built + unit-tested + installed on-device; **pending the user's on-device look** (phone was locked
+  when this was built, so launch after install hasn't been visually confirmed yet).
+- ⏳ The four mobile feature-parity items (Phase 2) and the visual pass + app icon (Phase 4) are next.
 
 **User stories (what Andrew wants):**
 - *As I go through the 1001*, tap to add an album to my real Apple Music **PLAYLIST1** (and recs to **PLAYLIST2**).
@@ -106,9 +111,9 @@ manual bookkeeping.
 - When something fails (e.g. an album not on Apple Music), **tell me which one and why**.
 
 **Roadmap:**
-1. **Phase 1 — Mobile Sheets sync** (foundation; in final on-device testing). Unlocks persistence for everything below.
-2. **Phase 2 — Four features:** rate · add-to-shortlist · browse/search all lists · edit years — all persisting via sync.
-3. **Phase 3 — Playlist UX:** name failed adds + why; the "delete these from Apple Music" diff checklist; handle partial (half-deleted) albums.
+1. ✅ **Phase 1 — Mobile Sheets sync** (foundation). Confirmed on-device. Unlocks persistence for everything below.
+2. **Phase 2 — Four features:** rate · add-to-shortlist · browse/search all lists · edit years — all persisting via sync. *(next up)*
+3. ✅ **Phase 3 — Playlist UX:** name failed adds + why; the "delete these from Apple Music" diff checklist; track-count visibility for partial (half-deleted) albums.
 4. **Phase 4 — Clean visual pass + iOS app icon.**
 
 ---
@@ -174,6 +179,13 @@ C#/.NET.
 — next — synced via Sheets); Apple Music is an **add-only listening queue**. You occasionally clear
 the Apple Music playlist yourself; everything else is automated.
 
+**The "delete these" checklist:** removing an album from a Playlist tab that was already pushed to
+(or imported from) Apple Music doesn't just delete it locally — Apple Music still has it, and the
+app can't remove it there. Instead it moves to a checklist ("Delete these from Apple Music (n)") at
+the bottom of that tab, so nothing pushed there is ever silently forgotten; check it off once you've
+deleted it yourself. Reading a playlist back also carries each album's current track count, and a
+low one (≤3) is flagged in the list as possibly half-deleted.
+
 ---
 
 ## 6. Updating the potentials list (Google Sheets sync)
@@ -224,6 +236,10 @@ on-device testing.
   profile via `xcodebuild -allowProvisioningUpdates`, rebuilds, and reinstalls. The signing stub lives
   in `1001AlbumHelper.iOS/SignHelper/`.
 - **Apple Music removal** is impossible (see §5).
+- **`devicectl install`/`launch` are flaky over the tunnel connection.** "Connection reset by peer"
+  on install usually succeeds on a plain retry. "Launch failed... Locked" on `process launch` means
+  exactly that — unlock the phone (Face ID/passcode) and either retry the launch command or just tap
+  the app icon; it is not a build problem.
 
 ---
 
