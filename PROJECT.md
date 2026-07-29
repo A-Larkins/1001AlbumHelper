@@ -82,6 +82,7 @@ a **single view with four bottom tabs** (phones don't do windows).
 | 2026-07-29 | **Mobile: add to shortlist + edit years.** `ReplacementsView` gained an inline add-album panel (Discogs autocomplete lookup, reusing the desktop's `AlbumLookup` helper) and in-place year editing, both pushing straight to the Potentials sheet. Needed a Discogs token on iOS, so `DiscogsApiClient` picked up the same embedded-config fallback `CandidateRepository` already had (factored into a shared `EmbeddedConfig` helper). |
 | 2026-07-29 | **Mobile: rate albums.** New "Rate" tab — the desktop rating window's one-album-at-a-time queue (⭐/👍/👎/❌), writing straight to the master "1001 albums" sheet. Needed a REST path for the *master list* too, not just Potentials: extracted `ISheetsClient` from `GoogleSheetsWriter` and added `RestSheetsClient`, a full REST reimplementation (including the insert-row-with-formatting call the ⭐→Must Hear side effect depends on). Verified end-to-end against the live spreadsheet via a new self-cleaning `resttest` diagnostic (scratch tab, never touches real data) before wiring up the UI. |
 | 2026-07-29 | **Mobile: browse Must Hear + Replacements.** The "List" tab gained a 1001 / Must Hear / Replacements switcher instead of two more bottom tabs — Must Hear and Replacements read live via the same `RestSheetsClient` the Rate feature added, no new plumbing needed. **Phase 2 is done.** |
+| 2026-07-29 | **iOS app icon.** Reused the Mac app's "1001 + music note" art, cropped past its baked-in macOS rounding into a flat opaque square, as a single-size `Assets.xcassets/AppIcon.appiconset`. The home screen no longer shows a blank placeholder. |
 
 ---
 
@@ -105,7 +106,10 @@ manual bookkeeping.
   launched cleanly, but nobody's actually poked the new Rate tab, the add-album panel, in-place year
   editing, or the list switcher on the phone yet. Worth a real look before trusting the UI wiring
   blindly.
-- ⏳ **Phase 4** (visual pass + app icon) is the only phase left.
+- ✅ **iOS app icon** — the home screen no longer shows a blank placeholder.
+- ⏳ **Phase 4's other half** — an actual visual polish pass — is the only thing left on the
+  roadmap, and it genuinely needs someone looking at the phone: every mobile view so far has been
+  built and installed successfully but not eyeballed running.
 
 **User stories (what Andrew wants):**
 - *As I go through the 1001*, tap to add an album to my real Apple Music **PLAYLIST1** (and recs to **PLAYLIST2**).
@@ -123,7 +127,8 @@ manual bookkeeping.
 1. ✅ **Phase 1 — Mobile Sheets sync** (foundation). Confirmed on-device. Unlocks persistence for everything below.
 2. ✅ **Phase 2 — Four features:** rate · add-to-shortlist · browse/search all lists · edit years — all persisting via sync.
 3. ✅ **Phase 3 — Playlist UX:** name failed adds + why; the "delete these from Apple Music" diff checklist; track-count visibility for partial (half-deleted) albums.
-4. **Phase 4 — Clean visual pass + iOS app icon.** *(the only phase left)*
+4. **Phase 4 — Clean visual pass + iOS app icon.** ✅ App icon done; the visual pass is the only
+   item left on the whole roadmap, and it's blocked on someone actually looking at the phone.
 
 ---
 
@@ -249,7 +254,13 @@ tab it creates and deletes, so it never risks the real lists.
   not permitted" outside the sandbox — any such walk on iOS must catch `IOException` /
   `UnauthorizedAccessException` (see `Operations.ResolveDataDir`). This silently killed sync via a
   type-initializer crash before it was fixed.
-- **No app icon on iOS** yet — the home-screen icon is a blank placeholder. Easy to add.
+- **iOS app icon setup.** A single-size (1024×1024) `Assets.xcassets/AppIcon.appiconset` — the
+  modern Xcode 14+ convention, no need to hand-generate every legacy size. Two things it needed that
+  a normal Xcode project handles for you: the `.csproj` must set `<AppIcon>AppIcon</AppIcon>` (the
+  MSBuild property `actool` reads — nothing wires it up automatically), and the source art must be
+  fully **opaque** (no alpha channel) — the Mac icon's `.icns` bakes in transparent rounded corners,
+  which iOS's own asset compiler rejects; it needs cropping past that rounding into a flat full-bleed
+  square first (iOS applies its own corner mask at render time).
 - **Re-deploying:** double-click **`Re-deploy to iPhone.command`** (repo root) — it renews the 7-day
   profile via `xcodebuild -allowProvisioningUpdates`, rebuilds, and reinstalls. The signing stub lives
   in `1001AlbumHelper.iOS/SignHelper/`.
@@ -263,10 +274,8 @@ tab it creates and deletes, so it never risks the real lists.
 
 ## 8. Future features & ideas
 
-- **Finish the Apple Music playlist workflow** — ＋P1/＋P2 push straight into PLAYLIST1/PLAYLIST2 as
-  you browse; import existing contents to seed the working list.
-- **Mobile Sheets sync** — embed the service-account key on iOS so the working lists sync Mac ↔ phone.
-- **App icon** for the iPhone app.
+- **Backfill mode + shuffle on mobile Rate** — the desktop rating window offers both; mobile's
+  RateView only exposes the "not yet listened" queue so far.
 - **Weekly re-deploy pain** — a small script, or spring for the $99 Apple Developer Program +
   TestFlight (install once, no 7-day expiry).
 
