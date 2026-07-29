@@ -6,6 +6,9 @@ namespace _1001AlbumHelper;
 
 public partial class App : Application
 {
+    /// <summary>Dev-only: set from Program.cs's `mobilepreview` arg to show the mobile view instead of MainWindow.</summary>
+    public static bool PreviewMobile;
+
     public override void Initialize() => AvaloniaXamlLoader.Load(this);
 
     public override void OnFrameworkInitializationCompleted()
@@ -13,7 +16,7 @@ public partial class App : Application
         // Desktop (Mac/Windows/Linux): a top-level window.
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
-            desktop.MainWindow = new MainWindow();
+            desktop.MainWindow = PreviewMobile ? new MobilePreviewWindow() : new MainWindow();
         }
         // Mobile (iOS/Android): no OS windows — a single root view fills the screen.
         else if (ApplicationLifetime is ISingleViewApplicationLifetime singleView)

@@ -28,6 +28,12 @@ internal static class Program
             return;
         }
 
+        // Dev-only: show the mobile MainView in a phone-sized window instead of the desktop MainWindow.
+        if (args.Contains("mobilepreview"))
+        {
+            App.PreviewMobile = true;
+        }
+
         BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
     }
 
