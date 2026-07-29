@@ -44,14 +44,14 @@ public sealed class RatingSession
         (Trash,    "Trash",                 "Actual torture to get through."),
     };
 
-    private readonly GoogleSheetsWriter _writer;
+    private readonly ISheetsClient _writer;
     private readonly string _tab;
     private readonly string _mustHearTab;
     private readonly List<AlbumEntry> _all;
     private List<AlbumEntry> _queue = new();
     private int _index;
 
-    private RatingSession(GoogleSheetsWriter writer, string tab, string mustHearTab, List<AlbumEntry> all)
+    private RatingSession(ISheetsClient writer, string tab, string mustHearTab, List<AlbumEntry> all)
     {
         _writer = writer;
         _tab = tab;
@@ -75,7 +75,7 @@ public sealed class RatingSession
     public AlbumEntry? Current => _index >= 0 && _index < _queue.Count ? _queue[_index] : null;
 
     /// <summary>Reads the master list and prepares a session. Read-only.</summary>
-    public static async Task<RatingSession> LoadAsync(GoogleSheetsWriter writer, string tab, string mustHearTab)
+    public static async Task<RatingSession> LoadAsync(ISheetsClient writer, string tab, string mustHearTab)
     {
         var rows = await writer.ReadTabAsync(tab, "A1:E");
 

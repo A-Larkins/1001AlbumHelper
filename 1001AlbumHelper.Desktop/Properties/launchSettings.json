@@ -1,0 +1,11 @@
+{
+  "profiles": {
+    "1001AlbumHelper.Desktop": {
+      "commandName": "Project",
+      "workingDirectory": "..\\1001AlbumHelper",
+      "environmentVariables": {
+        "ALBUMHELPER_DATA_DIR": "."
+      }
+    }
+  }
+}

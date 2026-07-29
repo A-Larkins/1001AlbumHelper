@@ -17,9 +17,12 @@
 #
 set -euo pipefail
 
+# PROJ_DIR is the shared project's folder — it also holds the data (appsettings.json,
+# credentials.json, input/, output/) that the launcher points the app at. The thing we
+# actually publish is the Desktop head, which produces the "1001AlbumHelper" executable.
 PROJ_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_DIR="$(dirname "$PROJ_DIR")"
-CSPROJ="$PROJ_DIR/1001AlbumHelper.csproj"
+CSPROJ="$REPO_DIR/1001AlbumHelper.Desktop/1001AlbumHelper.Desktop.csproj"
 TEST_CSPROJ="$REPO_DIR/1001AlbumHelper.Tests/1001AlbumHelper.Tests.csproj"
 APP_NAME="1001 Albums Helper"
 DIST_DIR="$PROJ_DIR/dist"

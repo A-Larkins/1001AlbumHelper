@@ -1,0 +1,48 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:_1001AlbumHelper"
+             x:Class="_1001AlbumHelper.AlbumListView">
+  <UserControl.Styles>
+    <Style Selector="Button.seg.on">
+      <Setter Property="FontWeight" Value="Bold" />
+      <Setter Property="Opacity" Value="1" />
+    </Style>
+    <Style Selector="Button.seg">
+      <Setter Property="Opacity" Value="0.55" />
+    </Style>
+  </UserControl.Styles>
+
+  <DockPanel Margin="12,8">
+    <StackPanel DockPanel.Dock="Top" Spacing="6" Margin="0,0,0,8">
+      <TextBlock Text="Browse" FontSize="22" FontWeight="SemiBold" />
+      <Grid ColumnDefinitions="*,*,*" ColumnSpacing="6">
+        <Button Grid.Column="0" x:Name="Tab1001Button" Classes="seg on" Content="1001" Click="OnPick1001"
+                HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" FontSize="12" />
+        <Button Grid.Column="1" x:Name="TabMustHearButton" Classes="seg" Content="Must Hear" Click="OnPickMustHear"
+                HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" FontSize="12" />
+        <Button Grid.Column="2" x:Name="TabReplacementsButton" Classes="seg" Content="Replacements" Click="OnPickReplacements"
+                HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" FontSize="12" />
+      </Grid>
+      <TextBox x:Name="SearchBox" Watermark="Search title or artist…" />
+      <TextBlock x:Name="CountText" Opacity="0.55" FontSize="12" />
+      <TextBlock x:Name="SyncText" Opacity="0.7" FontSize="11" TextWrapping="Wrap" />
+    </StackPanel>
+
+    <ListBox x:Name="Rows">
+      <ListBox.ItemTemplate>
+        <DataTemplate x:DataType="local:ViewRow">
+          <Grid ColumnDefinitions="34,*,Auto" Margin="0,4">
+            <TextBlock Grid.Column="0" Text="{Binding Number}" Opacity="0.45"
+                       VerticalAlignment="Center" FontSize="12" />
+            <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="1">
+              <TextBlock Text="{Binding Title}" FontWeight="SemiBold" TextWrapping="Wrap" />
+              <TextBlock Text="{Binding Artist}" Opacity="0.65" FontSize="12" TextWrapping="Wrap" />
+            </StackPanel>
+            <Button Grid.Column="2" Content="＋ P1" Click="OnAddToPlaylist1"
+                    VerticalAlignment="Center" Margin="8,0,0,0" />
+          </Grid>
+        </DataTemplate>
+      </ListBox.ItemTemplate>
+    </ListBox>
+  </DockPanel>
+</UserControl>

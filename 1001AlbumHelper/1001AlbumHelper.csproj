@@ -1,19 +1,23 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
+  <!--
+    Shared library: all the app's engine + views live here and are consumed by the
+    platform "head" projects (1001AlbumHelper.Desktop and 1001AlbumHelper.iOS).
+    It references only Avalonia *core* — each head brings its own backend
+    (Avalonia.Desktop / Avalonia.iOS). The assembly is named .Core so it doesn't
+    collide with the Desktop head's "1001AlbumHelper" executable.
+  -->
   <PropertyGroup>
-    <OutputType>WinExe</OutputType>
     <TargetFramework>net10.0</TargetFramework>
     <RootNamespace>_1001AlbumHelper</RootNamespace>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <BuiltInComInteropSupport>true</BuiltInComInteropSupport>
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
-    <AssemblyName>1001AlbumHelper</AssemblyName>
+    <AssemblyName>1001AlbumHelper.Core</AssemblyName>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="Avalonia" Version="11.3.0" />
-    <PackageReference Include="Avalonia.Desktop" Version="11.3.0" />
     <PackageReference Include="Avalonia.Themes.Fluent" Version="11.3.0" />
     <PackageReference Include="Avalonia.Fonts.Inter" Version="11.3.0" />
 
@@ -30,6 +34,34 @@
     <None Update="appsettings.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+  </ItemGroup>
+
+  <!--
+    Data snapshots embedded into the assembly so the mobile app has the lists offline
+    (the desktop app still reads the live copies from its data folder). LogicalName
+    gives each a clean resource name for MobileData to load by.
+  -->
+  <ItemGroup>
+    <None Remove="input\**\*.csv" />
+    <None Remove="replacement-candidates.json" />
+    <EmbeddedResource Include="input\1001 Albums You Must Hear Before You Die - 1001 albums.csv">
+      <LogicalName>albums-1001.csv</LogicalName>
+    </EmbeddedResource>
+    <EmbeddedResource Include="replacement-candidates.json">
+      <LogicalName>candidates.json</LogicalName>
+    </EmbeddedResource>
+
+    <!--
+      Config + service-account key, embedded so the mobile app (no data folder on disk) can reach
+      Google Sheets. Conditional so a clone without the secrets still builds — sync just stays off
+      there. These are personal secrets baked into the app bundle; fine for a personal build.
+    -->
+    <EmbeddedResource Include="appsettings.json" Condition="Exists('appsettings.json')">
+      <LogicalName>appsettings.json</LogicalName>
+    </EmbeddedResource>
+    <EmbeddedResource Include="service-account.json" Condition="Exists('service-account.json')">
+      <LogicalName>service-account.json</LogicalName>
+    </EmbeddedResource>
   </ItemGroup>
 
 </Project>

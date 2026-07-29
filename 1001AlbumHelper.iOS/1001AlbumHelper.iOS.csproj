@@ -1,0 +1,55 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    iOS "head": the iPhone/iPad app. Like the Desktop head it's thin — an entry
+    point (Main.cs), an AppDelegate, and Info.plist — referencing the shared
+    1001AlbumHelper project for all the real code.
+
+    Building this needs the iOS workload (`dotnet workload install ios`) and a
+    full Xcode install.
+
+    Launching standalone (no attached debugger) needs `-p:MtouchDebug=false`, or the
+    Debug agent aborts the app at startup when it can't reach a debugger. The SDK
+    overrides this property from the .csproj, so it must be passed on the command line.
+  -->
+  <PropertyGroup>
+    <TargetFramework>net10.0-ios</TargetFramework>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>_1001AlbumHelper</RootNamespace>
+    <!-- Points actool at the AppIcon.appiconset in Assets.xcassets (auto-included by the SDK). -->
+    <AppIcon>AppIcon</AppIcon>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <SupportedOSPlatformVersion>13.0</SupportedOSPlatformVersion>
+    <!--
+      The installed .NET-for-iOS pack targets Xcode 26.4, but a newer Xcode
+      (26.6+) is fine to build with — Xcode ships ahead of the workload. Skip the
+      strict equality check. Remove this once `dotnet workload update` ships a
+      pack that matches the installed Xcode.
+    -->
+    <ValidateXcodeVersion>false</ValidateXcodeVersion>
+    <!--
+      Run under the Mono interpreter instead of AOT. The installed .NET-for-iOS runtime (26.4)
+      crashes at launch on iOS 26.5 while loading AOT modules; the interpreter skips that path.
+      Slower at runtime but stable. Remove once a newer SDK ships a matching (26.5+) iOS pack.
+      Also passed on the command line in deploy-to-device.sh in case the SDK overrides it here.
+    -->
+    <MtouchInterpreter>all</MtouchInterpreter>
+    <UseInterpreter>true</UseInterpreter>
+    <!--
+      Trimming stays ON (default): no-trim makes the app big enough that the runtime crashes at
+      startup on this toolchain. The Sheets sync no longer uses the reflection-heavy Google client
+      (CandidateSheet talks to the REST API directly), so trimming is safe again.
+    -->
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Avalonia.iOS" Version="11.3.0" />
+    <PackageReference Include="Avalonia.Fonts.Inter" Version="11.3.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\1001AlbumHelper\1001AlbumHelper.csproj" />
+  </ItemGroup>
+
+</Project>

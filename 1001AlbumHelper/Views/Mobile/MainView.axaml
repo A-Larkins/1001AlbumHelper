@@ -1,0 +1,41 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:_1001AlbumHelper"
+             x:Class="_1001AlbumHelper.MainView">
+  <!--
+    Mobile root: a bottom tab bar over the five screens. The UniformGrid item panel
+    makes the tabs share the width evenly in a single row. Playlist tabs get their
+    id/title and a refresh from the code-behind so they reflect albums added elsewhere.
+  -->
+  <TabControl x:Name="Tabs" TabStripPlacement="Bottom">
+    <TabControl.ItemsPanel>
+      <ItemsPanelTemplate>
+        <UniformGrid Rows="1" />
+      </ItemsPanelTemplate>
+    </TabControl.ItemsPanel>
+    <TabControl.Styles>
+      <Style Selector="TabItem">
+        <Setter Property="FontSize" Value="12" />
+        <Setter Property="HorizontalContentAlignment" Value="Center" />
+        <Setter Property="Padding" Value="2,8" />
+        <Setter Property="MinHeight" Value="0" />
+      </Style>
+    </TabControl.Styles>
+
+    <TabItem Header="List">
+      <local:AlbumListView />
+    </TabItem>
+    <TabItem Header="Rate">
+      <local:RateView />
+    </TabItem>
+    <TabItem Header="Shortlist">
+      <local:ReplacementsView />
+    </TabItem>
+    <TabItem Header="Playlist 1">
+      <local:PlaylistView x:Name="Playlist1View" />
+    </TabItem>
+    <TabItem Header="Playlist 2">
+      <local:PlaylistView x:Name="Playlist2View" />
+    </TabItem>
+  </TabControl>
+</UserControl>

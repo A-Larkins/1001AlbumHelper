@@ -1,0 +1,36 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Desktop "head": the Mac/Windows/Linux executable. It's deliberately tiny —
+    just the entry point (Program.cs) plus the desktop Avalonia backend. All the
+    real code lives in the shared 1001AlbumHelper project it references.
+
+    AssemblyName stays "1001AlbumHelper" so the produced apphost is named
+    1001AlbumHelper, which build-macos-app.sh's launcher expects.
+  -->
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>_1001AlbumHelper</RootNamespace>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <BuiltInComInteropSupport>true</BuiltInComInteropSupport>
+    <AssemblyName>1001AlbumHelper</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Avalonia.Desktop" Version="11.3.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\1001AlbumHelper\1001AlbumHelper.csproj" />
+  </ItemGroup>
+
+  <!-- appsettings.json lives with the shared data folder; copy it beside the exe too. -->
+  <ItemGroup>
+    <None Include="..\1001AlbumHelper\appsettings.json" Link="appsettings.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
+</Project>

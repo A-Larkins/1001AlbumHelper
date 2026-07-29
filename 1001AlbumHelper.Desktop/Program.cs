@@ -14,6 +14,26 @@ internal static class Program
             return;
         }
 
+        // Headless check of the Google Sheets potentials sync (verifies access + seeds the sheet).
+        if (args.Contains("synctest"))
+        {
+            SyncDiagnostic.RunAsync().GetAwaiter().GetResult();
+            return;
+        }
+
+        // Headless, self-cleaning check of the mobile-safe REST Sheets client.
+        if (args.Contains("resttest"))
+        {
+            RestSheetsClientDiagnostic.RunAsync().GetAwaiter().GetResult();
+            return;
+        }
+
+        // Dev-only: show the mobile MainView in a phone-sized window instead of the desktop MainWindow.
+        if (args.Contains("mobilepreview"))
+        {
+            App.PreviewMobile = true;
+        }
+
         BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
     }
 

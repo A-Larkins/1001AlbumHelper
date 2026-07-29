@@ -10,7 +10,7 @@ namespace _1001AlbumHelper;
 /// Writes generated album lists into a Google Sheet. Authenticates with OAuth as the
 /// signed-in user (a browser opens the first time; the token is then cached and reused).
 /// </summary>
-public sealed class GoogleSheetsWriter
+public sealed class GoogleSheetsWriter : ISheetsClient
 {
     private readonly SheetsService _service;
     private readonly string _spreadsheetId;
@@ -99,11 +99,15 @@ public sealed class GoogleSheetsWriter
         };
         await _service.Spreadsheets.BatchUpdate(normalize, _spreadsheetId).ExecuteAsync();
 
-        // Write the new values from A1.
+        // Write the new values from A1. RAW — like every other writer here — so Google Sheets stores
+        // each value literally instead of guessing its type: otherwise a year fragment like "1969-05"
+        // is turned into a real date, and a title/artist starting with "="/"+"/"-" (e.g. the band
+        // "+44") is parsed as a formula. That auto-parsing was corrupting the Must Hear list's dates
+        // and styling on every rewrite.
         var update = _service.Spreadsheets.Values.Update(
             new ValueRange { Values = rows }, _spreadsheetId, $"{range}!A1");
         update.ValueInputOption =
-            SpreadsheetsResource.ValuesResource.UpdateRequest.ValueInputOptionEnum.USERENTERED;
+            SpreadsheetsResource.ValuesResource.UpdateRequest.ValueInputOptionEnum.RAW;
         await update.ExecuteAsync();
     }
 

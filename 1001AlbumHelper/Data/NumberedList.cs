@@ -26,7 +26,7 @@ public static class NumberedList
         contents.Rows.Where((r, i) => r.Number != (i + 1).ToString()).Any();
 
     /// <summary>Reads a numbered tab, skipping anything above the "#" header.</summary>
-    public static async Task<Contents> ReadAsync(GoogleSheetsWriter writer, string tab)
+    public static async Task<Contents> ReadAsync(ISheetsClient writer, string tab)
     {
         var raw = await writer.ReadTabAsync(tab, "A1:D");
 
@@ -82,7 +82,7 @@ public static class NumberedList
     /// Returns the position it landed at.
     /// </summary>
     public static async Task<int> InsertByYearAsync(
-        GoogleSheetsWriter writer, string tab, string title, string artist, int year)
+        ISheetsClient writer, string tab, string title, string artist, int year)
     {
         var contents = await ReadAsync(writer, tab);
         var (newSheetRow, position) = PlaceByYear(contents, year);
@@ -161,7 +161,7 @@ public static class NumberedList
     /// state is not written to at all.
     /// </summary>
     public static async Task<Plan> ApplyAsync(
-        GoogleSheetsWriter writer, string tab, Func<Row, bool>? shouldRemove = null)
+        ISheetsClient writer, string tab, Func<Row, bool>? shouldRemove = null)
     {
         var contents = await ReadAsync(writer, tab);
         var plan = BuildPlan(contents, shouldRemove);
