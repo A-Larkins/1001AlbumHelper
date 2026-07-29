@@ -34,8 +34,12 @@ public sealed class CandidateRepository
         }
         catch (Exception ex)
         {
-            // Surface the reason instead of hiding it — this is what was masking iOS sync failures.
-            return new CandidateRepository(null, $"error: {ex.GetType().Name}: {ex.Message}");
+            // Surface the reason instead of hiding it. Unwrap to the root cause — a
+            // TypeInitializationException just means a static ctor blew up; the inner one is the real story.
+            string type = ex is TypeInitializationException tie ? tie.TypeName ?? ex.GetType().Name : ex.GetType().Name;
+            var root = ex;
+            while (root.InnerException is not null) root = root.InnerException;
+            return new CandidateRepository(null, $"error: {type} → {root.GetType().Name}: {root.Message}");
         }
     }
 

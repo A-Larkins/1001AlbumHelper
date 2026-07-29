@@ -29,7 +29,7 @@ cp "$SRC_PROFILES/"*.mobileprovision "$DST_PROFILES/" 2>/dev/null || true
 echo "▶ Building + signing (interpreter mode)…"
 dotnet build "$CSPROJ" -c Debug -f net10.0-ios -r ios-arm64 \
   -p:MtouchDebug=false -p:ValidateXcodeVersion=false \
-  -p:MtouchInterpreter=all -p:UseInterpreter=true \
+  -p:MtouchInterpreter=all -p:UseInterpreter=true -p:MtouchLink=None \
   -p:CodesignKey="$SIGN" --nologo -v minimal
 
 echo "▶ Installing to the iPhone…"
