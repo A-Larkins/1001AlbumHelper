@@ -3,8 +3,8 @@
              xmlns:local="clr-namespace:_1001AlbumHelper"
              x:Class="_1001AlbumHelper.MainView">
   <!--
-    Mobile root: a bottom tab bar over the four screens. The UniformGrid item panel
-    makes the four tabs share the width evenly in a single row. Playlist tabs get their
+    Mobile root: a bottom tab bar over the five screens. The UniformGrid item panel
+    makes the tabs share the width evenly in a single row. Playlist tabs get their
     id/title and a refresh from the code-behind so they reflect albums added elsewhere.
   -->
   <TabControl x:Name="Tabs" TabStripPlacement="Bottom">
@@ -24,6 +24,9 @@
 
     <TabItem Header="List">
       <local:AlbumListView />
+    </TabItem>
+    <TabItem Header="Rate">
+      <local:RateView />
     </TabItem>
     <TabItem Header="Replacements">
       <local:ReplacementsView />

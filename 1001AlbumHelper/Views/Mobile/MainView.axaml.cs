@@ -15,8 +15,8 @@ public partial class MainView : UserControl
         // List / Replacements tabs are reflected without restarting the app.
         Tabs.SelectionChanged += (_, _) =>
         {
-            if (Tabs.SelectedIndex == 2) Playlist1View.Refresh();
-            else if (Tabs.SelectedIndex == 3) Playlist2View.Refresh();
+            if (Tabs.SelectedIndex == 3) Playlist1View.Refresh();
+            else if (Tabs.SelectedIndex == 4) Playlist2View.Refresh();
         };
     }
 }

@@ -21,6 +21,13 @@ internal static class Program
             return;
         }
 
+        // Headless, self-cleaning check of the mobile-safe REST Sheets client.
+        if (args.Contains("resttest"))
+        {
+            RestSheetsClientDiagnostic.RunAsync().GetAwaiter().GetResult();
+            return;
+        }
+
         BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
     }
 

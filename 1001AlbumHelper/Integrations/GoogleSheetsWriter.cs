@@ -10,7 +10,7 @@ namespace _1001AlbumHelper;
 /// Writes generated album lists into a Google Sheet. Authenticates with OAuth as the
 /// signed-in user (a browser opens the first time; the token is then cached and reused).
 /// </summary>
-public sealed class GoogleSheetsWriter
+public sealed class GoogleSheetsWriter : ISheetsClient
 {
     private readonly SheetsService _service;
     private readonly string _spreadsheetId;
