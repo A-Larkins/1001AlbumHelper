@@ -34,9 +34,7 @@ public static class AppleMusicCatalog
 
     /// <summary>
     /// Falls back to the artist's full album catalog via <c>/lookup</c> (not a relevance search) when
-    /// <c>/search</c> found nothing plausible. Requires an actual title match — unlike
-    /// <see cref="FindBestMatch"/>'s default, picking "the first album this artist ever released" when
-    /// nothing lines up would be a silent wrong-album add, not a reasonable last resort.
+    /// <c>/search</c> found nothing plausible.
     /// </summary>
     private static async Task<AppleMusicAlbum?> FindInArtistCatalogAsync(string artist, string title, CancellationToken ct)
     {
@@ -45,7 +43,7 @@ public static class AppleMusicCatalog
 
         var url = $"https://itunes.apple.com/lookup?id={artistId}&entity=album&limit=200";
         var json = await Http.GetStringAsync(url, ct).ConfigureAwait(false);
-        return FindBestMatch(ParseSearchResults(json), artist, title, requireTitleMatch: true);
+        return FindBestMatch(ParseSearchResults(json), artist, title);
     }
 
     /// <summary>The iTunes catalog id for an artist's best-matching name, or null if none was found.</summary>
@@ -88,27 +86,21 @@ public static class AppleMusicCatalog
 
     /// <summary>
     /// Picks the best candidate: an album matching both title and artist, else a title-only match,
-    /// else — unless <paramref name="requireTitleMatch"/> says not to — the first result. Titles are
-    /// compared with the same loose rule the Discogs lookup uses, so a catalogue "(Deluxe Edition)" /
-    /// "(Live)" still lines up with the plain album name.
+    /// else null. Titles are compared with the same loose rule the Discogs lookup uses, so a catalogue
+    /// "(Deluxe Edition)" / "(Live)" still lines up with the plain album name.
     /// <para>
-    /// The bare "first result" fallback only makes sense when <paramref name="candidates"/> already
-    /// came from a query naming both the artist and the title, so an unmatched top hit is still a
-    /// plausible guess. Callers passing an artist's whole catalog (not filtered by title at all) must
-    /// pass <paramref name="requireTitleMatch"/>: true, or a title that matches nothing would still
-    /// return some unrelated album by the same artist.
+    /// Deliberately never falls back to "just the first result" — iTunes's relevance ranking for a
+    /// combined artist+title <c>/search</c> can still rank an unrelated album by the same artist above
+    /// the actual match (e.g. a compilation outranking the real studio album), so an unmatched top hit
+    /// is not a safe guess. Guessing wrong here means silently adding the wrong album to a playlist.
     /// </para>
     /// </summary>
-    public static AppleMusicAlbum? FindBestMatch(
-        List<AppleMusicAlbum> candidates, string artist, string title, bool requireTitleMatch = false)
+    public static AppleMusicAlbum? FindBestMatch(List<AppleMusicAlbum> candidates, string artist, string title)
     {
         var both = candidates.FirstOrDefault(c =>
             DiscogsApiClient.TitlesLineUp(c.CollectionName, title) && NumberedList.Matches(c.ArtistName, artist));
         if (both is not null) return both;
 
-        var byTitle = candidates.FirstOrDefault(c => DiscogsApiClient.TitlesLineUp(c.CollectionName, title));
-        if (byTitle is not null) return byTitle;
-
-        return requireTitleMatch ? null : candidates.FirstOrDefault();
+        return candidates.FirstOrDefault(c => DiscogsApiClient.TitlesLineUp(c.CollectionName, title));
     }
 }
