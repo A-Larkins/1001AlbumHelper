@@ -87,7 +87,7 @@
     </Grid>
 
     <!-- Column headings -->
-    <Grid Grid.Row="2" ColumnDefinitions="54,40,*,240,58,58" Margin="12,0,16,6">
+    <Grid Grid.Row="2" ColumnDefinitions="54,40,*,240,58,72" Margin="12,0,16,6">
       <TextBlock Grid.Column="0" Text="#" FontSize="10.5" FontWeight="Bold" Foreground="#6f6053" />
       <TextBlock Grid.Column="1" x:Name="RatingHeader" Text="" FontSize="10.5" FontWeight="Bold" Foreground="#6f6053" />
       <TextBlock Grid.Column="2" Text="ALBUM" FontSize="10.5" FontWeight="Bold" Foreground="#6f6053" />
@@ -101,7 +101,7 @@
         <ListBox x:Name="RowsList" Background="Transparent" BorderThickness="0" Padding="4">
           <ListBox.ItemTemplate>
             <DataTemplate x:DataType="local:ViewRow">
-              <Grid ColumnDefinitions="54,40,*,240,58,58" Margin="8,6">
+              <Grid ColumnDefinitions="54,40,*,240,58,72" Margin="8,6">
                 <TextBlock Grid.Column="0" Text="{Binding Number}" FontSize="12"
                            Foreground="#7f7164" FontFamily="Menlo,Consolas,monospace" />
                 <TextBlock Grid.Column="1" Text="{Binding Rating}" FontSize="13" />
