@@ -163,6 +163,9 @@
         <Button x:Name="CheckButton" Classes="ghost" Content="Check connection"
                 Tag="sync-check" Click="OnRun"
                 ToolTip.Tip="Sign in and list the sheet’s tabs — a safe, read-only check." />
+        <Button x:Name="RenewTrialButton" Classes="ghost" Content="Renew iPhone trial"
+                Click="OnRenewTrial"
+                ToolTip.Tip="Runs deploy-to-device.sh — renews the 7-day free signing profile and redeploys to the iPhone." />
       </StackPanel>
     </Grid>
 

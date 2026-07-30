@@ -253,6 +253,8 @@
 
                 <StackPanel Grid.Column="4" Orientation="Horizontal" Spacing="7"
                             HorizontalAlignment="Right" VerticalAlignment="Center">
+                  <Button Classes="ghost" Content="＋ P2" Click="OnAddToPlaylist2"
+                          ToolTip.Tip="Add to Playlist 2." />
                   <Button Classes="add" Content="＋  Keep" Click="OnKeepRow"
                           ToolTip.Tip="Add to the replacements list, placed by year." />
                   <Button Classes="nah" Content="Nah" Click="OnDropRow"

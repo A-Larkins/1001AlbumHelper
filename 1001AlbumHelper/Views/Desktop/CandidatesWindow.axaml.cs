@@ -40,6 +40,7 @@ public partial class CandidatesWindow : Window
 
     /// <summary>The shortlist backed by Google Sheets when a service account is configured (else local-only).</summary>
     private readonly CandidateRepository _repo = CandidateRepository.Create();
+    private readonly PlaylistStore _playlist2 = PlaylistStore.Open(2);
 
     /// <summary>Stops the background year lookup when the window closes.</summary>
     private readonly CancellationTokenSource _closing = new();
@@ -298,6 +299,14 @@ public partial class CandidatesWindow : Window
     {
         if (sender is not Button { DataContext: CandidateAlbum album }) return;
         await KeepAsync(album);
+    }
+
+    private void OnAddToPlaylist2(object? sender, RoutedEventArgs e)
+    {
+        if (sender is not Button button || button.DataContext is not CandidateAlbum album) return;
+        bool added = _playlist2.Add(album.Title, album.Artist, album.Year);
+        button.Content = added ? "✓ P2" : "· P2";
+        button.IsEnabled = false;
     }
 
     private async Task KeepAsync(CandidateAlbum album)

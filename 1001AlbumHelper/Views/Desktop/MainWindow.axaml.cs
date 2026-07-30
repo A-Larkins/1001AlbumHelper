@@ -1,5 +1,6 @@
 using System;
 using System.Diagnostics;
+using System.IO;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -133,6 +134,7 @@ public partial class MainWindow : Window
         StatusText.Text = on ? "Running…" : "Idle";
         StatusDot.Fill = on ? RunningDot : IdleDot;
         CheckButton.IsEnabled = !on;
+        RenewTrialButton.IsEnabled = !on;
         RateNextButton.IsEnabled = !on;
         BackfillButton.IsEnabled = !on;
         AddAlbumButton.IsEnabled = !on;
@@ -140,6 +142,72 @@ public partial class MainWindow : Window
         CandidatesButton.IsEnabled = !on;
         SyncButton.IsEnabled = !on;
         ExportButton.IsEnabled = !on;
+    }
+
+    /// <summary>
+    /// Renews the iPhone's 7-day free-account signing profile and redeploys, by shelling out to
+    /// deploy-to-device.sh — the same script used from the terminal (see PROJECT.md §4 and §7).
+    /// </summary>
+    private async void OnRenewTrial(object? sender, RoutedEventArgs e)
+    {
+        if (!_gate.Wait(0)) return;
+
+        SetRunning(true);
+        LogBox.Text = "";
+        _startedAt = DateTime.Now;
+        _timer.Start();
+
+        var sw = Stopwatch.StartNew();
+        bool ok = false;
+        string? err = null;
+
+        await Task.Run(async () =>
+        {
+            try
+            {
+                var scriptPath = Path.Combine(FindRepoRoot(), "1001AlbumHelper.iOS", "deploy-to-device.sh");
+
+                var psi = new ProcessStartInfo("/bin/bash", $"\"{scriptPath}\"")
+                {
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    UseShellExecute = false,
+                };
+
+                using var proc = Process.Start(psi)!;
+                proc.OutputDataReceived += (_, args) =>
+                {
+                    if (args.Data is not null) Dispatcher.UIThread.Post(() => AppendLine(args.Data));
+                };
+                proc.ErrorDataReceived += (_, args) =>
+                {
+                    if (args.Data is not null) Dispatcher.UIThread.Post(() => AppendLine(args.Data));
+                };
+                proc.BeginOutputReadLine();
+                proc.BeginErrorReadLine();
+                await proc.WaitForExitAsync();
+
+                if (proc.ExitCode != 0) throw new InvalidOperationException($"exited with code {proc.ExitCode}");
+                ok = true;
+            }
+            catch (Exception ex)
+            {
+                err = ex.Message;
+            }
+        });
+
+        sw.Stop();
+
+        Dispatcher.UIThread.Post(() =>
+        {
+            _timer.Stop();
+            AppendLine("");
+            AppendLine(ok
+                ? $"✓ Finished in {sw.Elapsed.TotalSeconds:0.0}s."
+                : $"✗ Failed{(err != null ? ": " + err : ".")}");
+            SetRunning(false);
+            _gate.Release();
+        });
     }
 
     private void AppendLine(string line)
@@ -198,6 +266,26 @@ public partial class MainWindow : Window
             Console.SetOut(previousOut);
             writer.Flush();
         }
+    }
+
+    /// <summary>
+    /// Walks up from the running app's directory to find the repo root (marked by the .sln). Falls back
+    /// to the known checkout path since the published app (installed to /Applications) is disconnected
+    /// from the source tree it was built from.
+    /// </summary>
+    private static string FindRepoRoot()
+    {
+        var dir = new DirectoryInfo(AppContext.BaseDirectory);
+        while (dir is not null)
+        {
+            if (dir.GetFiles("*.sln").Length > 0) return dir.FullName;
+            dir = dir.Parent;
+        }
+
+        const string fallback = "/Users/alarks/code/C#/1001AlbumHelper";
+        if (Directory.Exists(fallback)) return fallback;
+
+        throw new InvalidOperationException("Couldn't locate the repo root (.sln) from " + AppContext.BaseDirectory);
     }
 
     /// <summary>Opens a Finder window with the file selected.</summary>

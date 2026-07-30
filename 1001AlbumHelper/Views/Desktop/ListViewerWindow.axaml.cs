@@ -13,6 +13,7 @@ public partial class ListViewerWindow : Window
     private enum Which { Master, MustHear, Replacements }
 
     private readonly Dictionary<Which, List<ViewRow>> _cache = new();
+    private readonly PlaylistStore _playlist1 = PlaylistStore.Open(1);
     private Which _current = Which.Master;
 
     public ListViewerWindow()
@@ -140,4 +141,12 @@ public partial class ListViewerWindow : Window
 
     private async void OnReload(object? sender, RoutedEventArgs e) => await LoadAsync(force: true);
     private void OnClose(object? sender, RoutedEventArgs e) => Close();
+
+    private void OnAddToPlaylist1(object? sender, RoutedEventArgs e)
+    {
+        if (sender is not Button button || button.DataContext is not ViewRow row) return;
+        bool added = _playlist1.Add(row.Title, row.Artist, row.Year);
+        button.Content = added ? "✓ P1" : "· P1";
+        button.IsEnabled = false;
+    }
 }
