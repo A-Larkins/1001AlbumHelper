@@ -2,7 +2,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         x:Class="_1001AlbumHelper.CandidatesWindow"
         xmlns:local="clr-namespace:_1001AlbumHelper"
-        Width="960" Height="700" MinWidth="760" MinHeight="500"
+        Width="1060" Height="700" MinWidth="860" MinHeight="500"
         Title="Potential replacements"
         WindowStartupLocation="CenterOwner"
         RequestedThemeVariant="Dark">
@@ -193,7 +193,7 @@
     </Grid>
 
     <!-- Column headings — click one to sort by it; click again to flip the direction. -->
-    <Grid Grid.Row="2" ColumnDefinitions="*,210,120,74,168" Margin="12,0,16,6">
+    <Grid Grid.Row="2" ColumnDefinitions="*,190,100,74,264" Margin="12,0,16,6">
       <Button Grid.Column="0" x:Name="HeaderTitle" Classes="colhead" Tag="Title" Click="OnSortHeader"
               ToolTip.Tip="Sort by album">
         <StackPanel Orientation="Horizontal" Spacing="4">
@@ -230,7 +230,7 @@
                  SelectionMode="Single">
           <ListBox.ItemTemplate>
             <DataTemplate x:DataType="local:CandidateAlbum">
-              <Grid ColumnDefinitions="*,210,120,74,168" Margin="8,7" VerticalAlignment="Center">
+              <Grid ColumnDefinitions="*,190,100,74,264" Margin="8,7" VerticalAlignment="Center">
                 <StackPanel Grid.Column="0" Spacing="2" VerticalAlignment="Center" Margin="0,0,10,0">
                   <TextBlock Text="{Binding Title}" FontSize="13" Foreground="#f0e5da"
                              TextTrimming="CharacterEllipsis" />
