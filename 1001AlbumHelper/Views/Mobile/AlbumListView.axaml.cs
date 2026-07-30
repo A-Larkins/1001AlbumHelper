@@ -23,12 +23,15 @@ public partial class AlbumListView : UserControl
     private string _active = Tab1001;
     private List<ViewRow> _all = new();
     private readonly PlaylistStore _playlist1 = PlaylistStore.Open(1);
+    private ViewRowSortColumn? _sortColumn;
+    private bool _sortDescending;
 
     public AlbumListView()
     {
         InitializeComponent();
         SearchBox.TextChanged += (_, _) => ApplyFilter();
         Loaded += (_, _) => Load1001();
+        UpdateSortIndicators();
     }
 
     private void Load1001()
@@ -125,10 +128,45 @@ public partial class AlbumListView : UserControl
             }).ToList();
         }
 
+        if (_sortColumn is { } column) shown = ViewRowSort.Sort(shown, column, _sortDescending);
+
         Rows.ItemsSource = shown;
         CountText.Text = shown.Count == _all.Count
             ? $"{_all.Count} albums"
             : $"{shown.Count} of {_all.Count} albums";
+    }
+
+    // ---------- Sorting ----------
+
+    /// <summary>Tap a column to sort by it ascending; tap the active one again to flip direction.</summary>
+    private void OnSortHeader(object? sender, RoutedEventArgs e)
+    {
+        if (sender is not Button { Tag: string tag } || !Enum.TryParse(tag, out ViewRowSortColumn column))
+            return;
+
+        if (_sortColumn == column) _sortDescending = !_sortDescending;
+        else { _sortColumn = column; _sortDescending = false; }
+
+        UpdateSortIndicators();
+        ApplyFilter();
+    }
+
+    private void UpdateSortIndicators()
+    {
+        (ViewRowSortColumn Column, Button Button, string Label)[] buttons =
+        {
+            (ViewRowSortColumn.Title, SortTitleButton, "Title"),
+            (ViewRowSortColumn.Artist, SortArtistButton, "Artist"),
+            (ViewRowSortColumn.Year, SortYearButton, "Year"),
+            (ViewRowSortColumn.Rating, SortRatingButton, "Rating"),
+        };
+
+        foreach (var (column, button, label) in buttons)
+        {
+            bool active = _sortColumn == column;
+            button.Classes.Set("on", active);
+            button.Content = active ? $"{label} {(_sortDescending ? "▼" : "▲")}" : label;
+        }
     }
 
     private void OnAddToPlaylist1(object? sender, RoutedEventArgs e)

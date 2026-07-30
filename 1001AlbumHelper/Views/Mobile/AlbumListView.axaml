@@ -10,6 +10,15 @@
     <Style Selector="Button.seg">
       <Setter Property="Opacity" Value="0.55" />
     </Style>
+    <Style Selector="Button.sort">
+      <Setter Property="Opacity" Value="0.55" />
+      <Setter Property="FontSize" Value="11.5" />
+      <Setter Property="Padding" Value="0,6" />
+    </Style>
+    <Style Selector="Button.sort.on">
+      <Setter Property="Opacity" Value="1" />
+      <Setter Property="FontWeight" Value="Bold" />
+    </Style>
   </UserControl.Styles>
 
   <DockPanel Margin="12,8">
@@ -24,6 +33,19 @@
                 HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" FontSize="12" />
       </Grid>
       <TextBox x:Name="SearchBox" Watermark="Search title or artist…" />
+
+      <!-- Sort: tap a column to sort by it; tap the active one again to flip direction. -->
+      <Grid ColumnDefinitions="*,*,*,*" ColumnSpacing="4">
+        <Button Grid.Column="0" x:Name="SortTitleButton" Classes="sort" Tag="Title" Click="OnSortHeader"
+                HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" />
+        <Button Grid.Column="1" x:Name="SortArtistButton" Classes="sort" Tag="Artist" Click="OnSortHeader"
+                HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" />
+        <Button Grid.Column="2" x:Name="SortYearButton" Classes="sort" Tag="Year" Click="OnSortHeader"
+                HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" />
+        <Button Grid.Column="3" x:Name="SortRatingButton" Classes="sort" Tag="Rating" Click="OnSortHeader"
+                HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" />
+      </Grid>
+
       <TextBlock x:Name="CountText" Opacity="0.55" FontSize="12" />
       <TextBlock x:Name="SyncText" Opacity="0.7" FontSize="11" TextWrapping="Wrap" />
     </StackPanel>
@@ -31,14 +53,16 @@
     <ListBox x:Name="Rows">
       <ListBox.ItemTemplate>
         <DataTemplate x:DataType="local:ViewRow">
-          <Grid ColumnDefinitions="34,*,Auto" Margin="0,4">
+          <Grid ColumnDefinitions="34,Auto,*,Auto" Margin="0,4">
             <TextBlock Grid.Column="0" Text="{Binding Number}" Opacity="0.45"
                        VerticalAlignment="Center" FontSize="12" />
-            <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="1">
+            <TextBlock Grid.Column="1" Text="{Binding Rating}" VerticalAlignment="Center"
+                       FontSize="14" Margin="0,0,6,0" />
+            <StackPanel Grid.Column="2" VerticalAlignment="Center" Spacing="1">
               <TextBlock Text="{Binding Title}" FontWeight="SemiBold" TextWrapping="Wrap" />
               <TextBlock Text="{Binding Artist}" Opacity="0.65" FontSize="12" TextWrapping="Wrap" />
             </StackPanel>
-            <Button Grid.Column="2" Content="＋ P1" Click="OnAddToPlaylist1"
+            <Button Grid.Column="3" Content="＋ P1" Click="OnAddToPlaylist1"
                     VerticalAlignment="Center" Margin="8,0,0,0" />
           </Grid>
         </DataTemplate>

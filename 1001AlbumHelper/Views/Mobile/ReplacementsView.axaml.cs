@@ -19,6 +19,8 @@ public partial class ReplacementsView : UserControl
     private bool _isLive;   // true once the list came from Google Sheets (not the baked-in snapshot)
     private readonly PlaylistStore _playlist2 = PlaylistStore.Open(2);
     private readonly CandidateRepository _repo = CandidateRepository.Create();
+    private CandidateSortColumn? _sortColumn;
+    private bool _sortDescending;
 
     // Null when no Discogs token is configured: adding still works, just without lookup.
     private readonly DiscogsApiClient? _discogs = DiscogsApiClient.TryCreate();
@@ -32,6 +34,8 @@ public partial class ReplacementsView : UserControl
         LookupHint.Text = AlbumLookup.Attach(
             _discogs, TitleBox, ArtistBox, YearBox,
             pick => { LookupHint.Text = AlbumLookup.Picked(pick); AddStatusText.Text = ""; });
+
+        UpdateSortIndicators();
     }
 
     private async void Load()
@@ -106,11 +110,46 @@ public partial class ReplacementsView : UserControl
             }).ToList();
         }
 
+        if (_sortColumn is { } column) shown = ReplacementCandidates.Sort(shown, column, _sortDescending);
+
         Rows.ItemsSource = shown;
         string count = shown.Count == _all.Count
             ? $"{_all.Count} candidates"
             : $"{shown.Count} of {_all.Count} candidates";
         CountText.Text = _isLive ? $"{count} · live ✓" : count;
+    }
+
+    // ---------- Sorting ----------
+
+    /// <summary>Tap a column to sort by it ascending; tap the active one again to flip direction.</summary>
+    private void OnSortHeader(object? sender, RoutedEventArgs e)
+    {
+        if (sender is not Button { Tag: string tag } || !Enum.TryParse(tag, out CandidateSortColumn column))
+            return;
+
+        if (_sortColumn == column) _sortDescending = !_sortDescending;
+        else { _sortColumn = column; _sortDescending = false; }
+
+        UpdateSortIndicators();
+        ApplyFilter();
+    }
+
+    private void UpdateSortIndicators()
+    {
+        (CandidateSortColumn Column, Button Button, string Label)[] buttons =
+        {
+            (CandidateSortColumn.Title, SortTitleButton, "Title"),
+            (CandidateSortColumn.Artist, SortArtistButton, "Artist"),
+            (CandidateSortColumn.Genre, SortGenreButton, "Genre"),
+            (CandidateSortColumn.Year, SortYearButton, "Year"),
+        };
+
+        foreach (var (column, button, label) in buttons)
+        {
+            bool active = _sortColumn == column;
+            button.Classes.Set("on", active);
+            button.Content = active ? $"{label} {(_sortDescending ? "▼" : "▲")}" : label;
+        }
     }
 
     private void OnAddToPlaylist2(object? sender, RoutedEventArgs e)

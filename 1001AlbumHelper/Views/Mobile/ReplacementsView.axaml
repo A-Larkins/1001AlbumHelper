@@ -2,6 +2,18 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:local="clr-namespace:_1001AlbumHelper"
              x:Class="_1001AlbumHelper.ReplacementsView">
+  <UserControl.Styles>
+    <Style Selector="Button.sort">
+      <Setter Property="Opacity" Value="0.55" />
+      <Setter Property="FontSize" Value="11.5" />
+      <Setter Property="Padding" Value="0,6" />
+    </Style>
+    <Style Selector="Button.sort.on">
+      <Setter Property="Opacity" Value="1" />
+      <Setter Property="FontWeight" Value="Bold" />
+    </Style>
+  </UserControl.Styles>
+
   <DockPanel Margin="12,8">
     <StackPanel DockPanel.Dock="Top" Spacing="6" Margin="0,0,0,8">
       <Grid ColumnDefinitions="*,Auto">
@@ -11,6 +23,19 @@
                 FontSize="12" VerticalAlignment="Center" />
       </Grid>
       <TextBox x:Name="SearchBox" Watermark="Search title or artist…" />
+
+      <!-- Sort: tap a column to sort by it; tap the active one again to flip direction. -->
+      <Grid ColumnDefinitions="*,*,*,*" ColumnSpacing="4">
+        <Button Grid.Column="0" x:Name="SortTitleButton" Classes="sort" Tag="Title" Click="OnSortHeader"
+                HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" />
+        <Button Grid.Column="1" x:Name="SortArtistButton" Classes="sort" Tag="Artist" Click="OnSortHeader"
+                HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" />
+        <Button Grid.Column="2" x:Name="SortGenreButton" Classes="sort" Tag="Genre" Click="OnSortHeader"
+                HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" />
+        <Button Grid.Column="3" x:Name="SortYearButton" Classes="sort" Tag="Year" Click="OnSortHeader"
+                HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" />
+      </Grid>
+
       <TextBlock x:Name="CountText" Opacity="0.55" FontSize="12" />
       <TextBlock x:Name="SyncText" Opacity="0.7" FontSize="11" TextWrapping="Wrap" />
 
@@ -51,6 +76,8 @@
             <StackPanel Grid.Column="0" VerticalAlignment="Center" Spacing="1">
               <TextBlock Text="{Binding Title}" FontWeight="SemiBold" TextWrapping="Wrap" />
               <TextBlock Text="{Binding Artist}" Opacity="0.65" FontSize="12" TextWrapping="Wrap" />
+              <TextBlock Text="{Binding Genre}" IsVisible="{Binding HasGenre}"
+                         Opacity="0.5" FontSize="11" TextWrapping="Wrap" />
               <TextBox Text="{Binding Year, Mode=TwoWay}" Watermark="year" FontSize="11"
                        Padding="4,2" Width="70" HorizontalAlignment="Left"
                        Background="Transparent" BorderThickness="0,0,0,1" />

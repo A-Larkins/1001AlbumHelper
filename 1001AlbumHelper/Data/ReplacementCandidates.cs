@@ -60,6 +60,9 @@ public sealed class CandidateAlbum : INotifyPropertyChanged
 
     [JsonIgnore]
     public bool HasNote => _note.Length > 0;
+
+    [JsonIgnore]
+    public bool HasGenre => Genre.Length > 0;
 }
 
 /// <summary>Which column the shortlist is ordered by when the user sorts it.</summary>
