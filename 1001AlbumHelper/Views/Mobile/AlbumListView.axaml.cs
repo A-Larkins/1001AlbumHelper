@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
+using Avalonia.Threading;
 
 namespace _1001AlbumHelper;
 
@@ -57,6 +58,7 @@ public partial class AlbumListView : UserControl
             _all = cached;
             SyncText.Text = list == Tab1001 ? "" : "✓ Live from Google Sheets";
             ApplyFilter();
+            if (list == Tab1001) ScrollToProgress();
         }
         else
         {
@@ -64,6 +66,26 @@ public partial class AlbumListView : UserControl
             ApplyFilter();
             _ = LoadLiveListAsync(list);
         }
+    }
+
+    /// <summary>
+    /// Jumps the list to wherever you actually are — the first album (in list order) with neither a
+    /// rating nor a "✓ listened" mark — so opening the 1001 tab shows your progress instead of always
+    /// starting at #1. Only makes sense with the search box empty (a filtered view might not even
+    /// contain that row).
+    /// </summary>
+    private void ScrollToProgress()
+    {
+        if (!string.IsNullOrWhiteSpace(SearchBox.Text)) return;
+
+        var target = _all.FirstOrDefault(r => string.IsNullOrWhiteSpace(r.Rating));
+        if (target is null) return;
+
+        Dispatcher.UIThread.Post(() =>
+        {
+            Rows.SelectedItem = target;
+            Rows.ScrollIntoView(target);
+        }, DispatcherPriority.Loaded);
     }
 
     private async System.Threading.Tasks.Task LoadLiveListAsync(string list)
