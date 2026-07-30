@@ -13,8 +13,8 @@ public class AppleMusicCatalogTests
     {
       "resultCount": 3,
       "results": [
-        { "collectionType": "Album", "collectionId": 1440783617, "artistName": "Nirvana", "collectionName": "Nevermind (Remastered)" },
-        { "collectionType": "Album", "collectionId": 1631384034, "artistName": "Nirvana", "collectionName": "In Utero - 30th Anniversary" },
+        { "collectionType": "Album", "collectionId": 1440783617, "artistName": "Nirvana", "collectionName": "Nevermind (Remastered)", "trackCount": 13 },
+        { "collectionType": "Album", "collectionId": 1631384034, "artistName": "Nirvana", "collectionName": "In Utero - 30th Anniversary", "trackCount": 39 },
         { "wrapperType": "artist", "artistName": "Nirvana" }
       ]
     }
@@ -29,6 +29,16 @@ public class AppleMusicCatalogTests
         Assert.Equal(1440783617, albums[0].CollectionId);
         Assert.Equal("Nevermind (Remastered)", albums[0].CollectionName);
         Assert.Equal("Nirvana", albums[0].ArtistName);
+        Assert.Equal(13, albums[0].TrackCount);
+    }
+
+    [Fact]
+    public void A_missing_trackCount_is_treated_as_worst_not_smallest()
+    {
+        var albums = AppleMusicCatalog.ParseSearchResults(
+            """{ "results": [{ "collectionType": "Album", "collectionId": 1, "artistName": "X", "collectionName": "Y" }] }""");
+
+        Assert.Equal(int.MaxValue, albums[0].TrackCount);
     }
 
     [Fact]
@@ -57,6 +67,26 @@ public class AppleMusicCatalogTests
 
         Assert.NotNull(match);
         Assert.Equal(1631384034, match!.CollectionId);
+    }
+
+    [Fact]
+    public void Among_several_editions_of_the_same_album_the_smallest_track_count_wins()
+    {
+        // A deluxe reissue padded with demos/remixes should lose to the plain original release,
+        // even though both line up on title and artist equally.
+        var albums = AppleMusicCatalog.ParseSearchResults("""
+        {
+          "results": [
+            { "collectionType": "Album", "collectionId": 111, "artistName": "Snoop Doggy Dogg", "collectionName": "Doggystyle (Deluxe Edition)", "trackCount": 25 },
+            { "collectionType": "Album", "collectionId": 222, "artistName": "Snoop Doggy Dogg", "collectionName": "Doggystyle", "trackCount": 13 }
+          ]
+        }
+        """);
+
+        var match = AppleMusicCatalog.FindBestMatch(albums, "Snoop Doggy Dogg", "Doggystyle");
+
+        Assert.NotNull(match);
+        Assert.Equal(222, match!.CollectionId);
     }
 
     [Fact]

@@ -3,7 +3,7 @@ using System.Text.Json;
 namespace _1001AlbumHelper;
 
 /// <summary>One album found in the Apple Music / iTunes catalog.</summary>
-public sealed record AppleMusicAlbum(long CollectionId, string CollectionName, string ArtistName);
+public sealed record AppleMusicAlbum(long CollectionId, string CollectionName, string ArtistName, int TrackCount);
 
 /// <summary>
 /// Looks albums up in the Apple Music catalog via the public iTunes Search API
@@ -75,19 +75,33 @@ public static class AppleMusicCatalog
         {
             if (r.TryGetProperty("collectionId", out var cid) && cid.TryGetInt64(out long id))
             {
+                // Missing trackCount means we can't tell whether it's the plain album or a padded
+                // edition, so it loses to any candidate that does report one.
+                int trackCount = r.TryGetProperty("trackCount", out var tc) && tc.TryGetInt32(out int t)
+                    ? t
+                    : int.MaxValue;
+
                 albums.Add(new AppleMusicAlbum(
                     id,
                     r.TryGetProperty("collectionName", out var n) ? n.GetString() ?? "" : "",
-                    r.TryGetProperty("artistName", out var a) ? a.GetString() ?? "" : ""));
+                    r.TryGetProperty("artistName", out var a) ? a.GetString() ?? "" : "",
+                    trackCount));
             }
         }
         return albums;
     }
 
     /// <summary>
-    /// Picks the best candidate: an album matching both title and artist, else a title-only match,
-    /// else null. Titles are compared with the same loose rule the Discogs lookup uses, so a catalogue
-    /// "(Deluxe Edition)" / "(Live)" still lines up with the plain album name.
+    /// Picks the best candidate: among albums matching both title and artist, else among title-only
+    /// matches, the one with the fewest tracks — else null. Titles are compared with the same loose
+    /// rule the Discogs lookup uses, so a catalogue "(Deluxe Edition)" / "(Live)" still lines up with
+    /// the plain album name.
+    /// <para>
+    /// Apple Music often lists several editions of the same album side by side — a deluxe reissue
+    /// with a dozen bonus demos/remixes alongside the original release. Since those all line up on
+    /// title and artist equally, the tie-break is track count: the original release is the one that
+    /// wasn't padded out with extra material, so it's (almost always) the smallest.
+    /// </para>
     /// <para>
     /// Deliberately never falls back to "just the first result" — iTunes's relevance ranking for a
     /// combined artist+title <c>/search</c> can still rank an unrelated album by the same artist above
@@ -97,10 +111,15 @@ public static class AppleMusicCatalog
     /// </summary>
     public static AppleMusicAlbum? FindBestMatch(List<AppleMusicAlbum> candidates, string artist, string title)
     {
-        var both = candidates.FirstOrDefault(c =>
+        var both = candidates.Where(c =>
             DiscogsApiClient.TitlesLineUp(c.CollectionName, title) && NumberedList.Matches(c.ArtistName, artist));
-        if (both is not null) return both;
+        var smallestOfBoth = SmallestByTrackCount(both);
+        if (smallestOfBoth is not null) return smallestOfBoth;
 
-        return candidates.FirstOrDefault(c => DiscogsApiClient.TitlesLineUp(c.CollectionName, title));
+        var byTitle = candidates.Where(c => DiscogsApiClient.TitlesLineUp(c.CollectionName, title));
+        return SmallestByTrackCount(byTitle);
     }
+
+    private static AppleMusicAlbum? SmallestByTrackCount(IEnumerable<AppleMusicAlbum> candidates) =>
+        candidates.OrderBy(c => c.TrackCount).FirstOrDefault();
 }
