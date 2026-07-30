@@ -1,7 +1,7 @@
 # 1001 Albums Helper — Project Handbook
 
 A living reference for the app: what it is, how it's built, how to ship it, and where it's going.
-**Update this as we go.** Last updated: 2026-07-29.
+**Update this as we go.** Last updated: 2026-07-29 (Mac app parity session).
 
 ---
 
@@ -83,6 +83,7 @@ a **single view with four bottom tabs** (phones don't do windows).
 | 2026-07-29 | **Mobile: rate albums.** New "Rate" tab — the desktop rating window's one-album-at-a-time queue (⭐/👍/👎/❌), writing straight to the master "1001 albums" sheet. Needed a REST path for the *master list* too, not just Potentials: extracted `ISheetsClient` from `GoogleSheetsWriter` and added `RestSheetsClient`, a full REST reimplementation (including the insert-row-with-formatting call the ⭐→Must Hear side effect depends on). Verified end-to-end against the live spreadsheet via a new self-cleaning `resttest` diagnostic (scratch tab, never touches real data) before wiring up the UI. |
 | 2026-07-29 | **Mobile: browse Must Hear + Replacements.** The "List" tab gained a 1001 / Must Hear / Replacements switcher instead of two more bottom tabs — Must Hear and Replacements read live via the same `RestSheetsClient` the Rate feature added, no new plumbing needed. **Phase 2 is done.** |
 | 2026-07-29 | **iOS app icon.** Reused the Mac app's "1001 + music note" art, cropped past its baked-in macOS rounding into a flat opaque square, as a single-size `Assets.xcassets/AppIcon.appiconset`. The home screen no longer shows a blank placeholder. |
+| 2026-07-29 | **Mac app parity pass.** Added a "Renew iPhone trial" button to `MainWindow` (shells out to `deploy-to-device.sh`, streaming its output into the activity log — see §4/§7) and "+P1"/"+P2" playlist buttons to `ListViewerWindow` (browse) and `CandidatesWindow` (potential replacements), matching the mobile app's `AlbumListView`/`ReplacementsView`. Both apps rebuilt, reinstalled, and committed (`f852195`). |
 
 ---
 
@@ -288,8 +289,18 @@ tab it creates and deletes, so it never risks the real lists.
 
 - **Backfill mode + shuffle on mobile Rate** — the desktop rating window offers both; mobile's
   RateView only exposes the "not yet listened" queue so far.
-- **Weekly re-deploy pain** — a small script, or spring for the $99 Apple Developer Program +
-  TestFlight (install once, no 7-day expiry).
+- **Weekly re-deploy pain** — mostly solved 2026-07-29 with an in-app "Renew iPhone trial" button on
+  the Mac app (§3 table); still 7-day manual either way unless we spring for the $99 Apple Developer
+  Program + TestFlight (install once, no expiry).
+- **Rate view: show current position, not just single-card.** Andrew wants the Rate screen to open
+  already scrolled/landed on his actual progress — including seeing ratings already given, not just
+  the bare next-unrated card. `RatingSession.Rebuild` (in `Data/RatingSession.cs`) already computes
+  "first unrated" correctly (filters to blank-rating rows, sorts by `SheetRow`, resets index to 0), so
+  `Current` is always the right album on open. What's missing: both `RateView` (mobile) and
+  `RatingWindow` (desktop) are single-card UIs with no visible list/context around that position — if
+  what's wanted is an actual scrollable list (like `AlbumListView`) that highlights/scrolls to the
+  first unrated row while showing neighboring rows and their ratings, that's new UI, not yet built.
+  Needs clarifying with Andrew before implementing further.
 
 ### "Maybe rewrite away from C#?" — honest take
 

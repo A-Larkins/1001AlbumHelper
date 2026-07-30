@@ -269,23 +269,25 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
-    /// Walks up from the running app's directory to find the repo root (marked by the .sln). Falls back
-    /// to the known checkout path since the published app (installed to /Applications) is disconnected
-    /// from the source tree it was built from.
+    /// Walks up from the running app's directory to find the repo root, identified by a sibling
+    /// "1001AlbumHelper.iOS" directory (a plain *.sln check is ambiguous — there's one both at the
+    /// true repo root and one level down, inside the shared-library project folder). Falls back to the
+    /// known checkout path since the published app (installed to /Applications) is disconnected from
+    /// the source tree it was built from.
     /// </summary>
     private static string FindRepoRoot()
     {
         var dir = new DirectoryInfo(AppContext.BaseDirectory);
         while (dir is not null)
         {
-            if (dir.GetFiles("*.sln").Length > 0) return dir.FullName;
+            if (Directory.Exists(Path.Combine(dir.FullName, "1001AlbumHelper.iOS"))) return dir.FullName;
             dir = dir.Parent;
         }
 
         const string fallback = "/Users/alarks/code/C#/1001AlbumHelper";
         if (Directory.Exists(fallback)) return fallback;
 
-        throw new InvalidOperationException("Couldn't locate the repo root (.sln) from " + AppContext.BaseDirectory);
+        throw new InvalidOperationException("Couldn't locate the repo root from " + AppContext.BaseDirectory);
     }
 
     /// <summary>Opens a Finder window with the file selected.</summary>
