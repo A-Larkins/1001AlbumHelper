@@ -384,8 +384,23 @@ public class DiscogsApiClient
             ? haveCount
             : 0;
 
-        return new AlbumSuggestion(title, artist, year, have);
+        // Discogs splits classification into "genre" (~15 broad buckets: Rock, Jazz, Pop…) and
+        // "style" (specific: Art Rock, Bebop, Trip Hop…), both usually present together. Style
+        // leads because it's what actually distinguishes an album's sound — genre alone makes
+        // near-everything "Rock" — with genre appended after as broader context, deduplicated
+        // against anything style already said.
+        var style = StringArray(result, "style");
+        var genre = StringArray(result, "genre").Where(g => !style.Contains(g, StringComparer.OrdinalIgnoreCase));
+        var tags = string.Join(", ", style.Concat(genre));
+
+        return new AlbumSuggestion(title, artist, year, have, tags);
     }
+
+    /// <summary>A string-array property (e.g. Discogs' "genre"/"style"), or empty if absent.</summary>
+    private static string[] StringArray(JsonElement result, string property) =>
+        result.TryGetProperty(property, out var arr) && arr.ValueKind == JsonValueKind.Array
+            ? arr.EnumerateArray().Select(x => x.GetString() ?? "").Where(s => s.Length > 0).ToArray()
+            : Array.Empty<string>();
 
     /// <summary>
     /// Splits Discogs' "Artist - Album" display title. Splits on the *first* separator only, so

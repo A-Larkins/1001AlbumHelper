@@ -387,6 +387,87 @@ public static class Operations
         }
     }
 
+    /// <summary>
+    /// Fills in column F (Genre) on the master list for every rated album that doesn't have one
+    /// yet, via Discogs lookups. Resumable — already-filled rows are skipped by default, so
+    /// re-running only costs a request per still-blank row (e.g. newly rated albums since the
+    /// last run). Pass <paramref name="force"/> to re-fetch every rated row regardless — e.g.
+    /// after a change to what <see cref="DiscogsApiClient"/> extracts as "genre".
+    /// </summary>
+    public static async Task BackfillGenresAsync(bool force = false)
+    {
+        var cfg = LoadSheetsConfig();
+        var writer = await CreateWriterAsync(cfg);
+        if (writer is null) return;
+
+        var discogs = DiscogsApiClient.TryCreate();
+        if (discogs is null)
+        {
+            Console.WriteLine("⚠️  Discogs isn't configured (missing/placeholder token in appsettings.json).");
+            return;
+        }
+
+        Console.WriteLine($"Reading \"{cfg.AlbumsTab}\"…");
+        var session = await RatingSession.LoadAsync(writer, cfg.AlbumsTab, cfg.StarredTab);
+
+        var targets = session.AllAlbums
+            .Where(a => !string.IsNullOrWhiteSpace(a.Rating) && (force || a.Genre.Length == 0))
+            .ToList();
+
+        Console.WriteLine(force
+            ? $"{targets.Count} rated album(s) — re-fetching all (--force).\n"
+            : $"{targets.Count} rated album(s) still need a genre.\n");
+
+        int found = 0, missed = 0;
+        for (int i = 0; i < targets.Count; i++)
+        {
+            var album = targets[i];
+            Console.Write($"[{i + 1}/{targets.Count}] {album.Title} — {album.Artist}… ");
+
+            AlbumSuggestion? suggestion = null;
+            for (int attempt = 1; attempt <= 4; attempt++)
+            {
+                try
+                {
+                    suggestion = await discogs.FindAlbumAsync(album.Title, album.Artist);
+                    break;
+                }
+                catch (HttpRequestException ex) when (ex.Message.Contains("429") && attempt < 4)
+                {
+                    // Discogs' 60/min budget is shared across every request FindAlbumAsync's own
+                    // rungs make, so a long run can trip it even at ~1/sec average. Back off hard
+                    // and retry rather than silently leaving the album blank.
+                    var wait = TimeSpan.FromSeconds(10 * attempt);
+                    Console.WriteLine($"rate-limited, waiting {wait.TotalSeconds:0}s… ");
+                    await Task.Delay(wait);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"⚠️ lookup failed: {ex.Message}");
+                    break;
+                }
+            }
+
+            if (suggestion is not null && suggestion.Genre.Length > 0)
+            {
+                await writer.UpdateCellAsync(cfg.AlbumsTab, $"F{album.SheetRow}", suggestion.Genre);
+                Console.WriteLine(suggestion.Genre);
+                found++;
+            }
+            else
+            {
+                Console.WriteLine("not found — skipped");
+                missed++;
+            }
+
+            // A bit under Discogs' 60/min budget — FindAlbumAsync's own rungs spend from the same
+            // budget when an album isn't found on the first try, so this leaves headroom for that.
+            if (i < targets.Count - 1) await Task.Delay(TimeSpan.FromMilliseconds(1500));
+        }
+
+        Console.WriteLine($"\n✓ Done. {found} filled in, {missed} not found on Discogs.");
+    }
+
     /// <summary>What a sync would have to fix. All counts come from a read-only pass.</summary>
     public sealed record SyncStatus(
         IReadOnlyList<AlbumEntry> MissingStars,
@@ -615,6 +696,55 @@ public static class Operations
             PdfExporter.Write(path, lists.MustHear, lists.Replacements, cfg.StarredTab);
             Console.WriteLine($"✓ Wrote {lists.MustHear.Count + lists.Replacements.Count} albums to:");
             Console.WriteLine($"   {path}");
+            return path;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"✗ Couldn't write the PDF: {ex.Message}");
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Renders the same breakdowns the Analytics window charts — ratings and shortlist alike —
+    /// as a PDF snapshot. Returns the file path, or null if it couldn't be produced.
+    /// </summary>
+    public static async Task<string?> ExportAnalyticsPdfAsync(string? destination = null)
+    {
+        Console.WriteLine("\n=== Export Analytics to PDF ===\n");
+
+        var session = await OpenRatingSessionAsync();
+        if (session is null) return null;
+
+        var rated = session.AllAlbums.Where(a => AlbumAnalytics.ScoreFor(a.Rating) is not null).ToList();
+        var summary = AlbumAnalytics.Summarize(session.AllAlbums);
+
+        var repo = CandidateRepository.Create();
+        try
+        {
+            var remote = await repo.PullAsync();
+            if (remote is { Count: > 0 }) ReplacementCandidates.Save(remote);
+        }
+        catch { /* local cache is still a fine fallback */ }
+        var candidates = ReplacementCandidates.Load();
+        int pending = candidates.Count(c => c.Status == CandidateStatus.Pending);
+
+        string path = destination ?? Path.Combine(
+            OutputDir, $"Taste Patterns Report - {DateTime.Now:yyyy-MM-dd}.pdf");
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+
+        try
+        {
+            AnalyticsPdfExporter.Write(
+                path, summary,
+                AlbumAnalytics.DecadeBreakdown(rated),
+                AlbumAnalytics.GenreBreakdown(rated),
+                AlbumAnalytics.RatingDistribution(rated),
+                AlbumAnalytics.BestGenres(rated),
+                pending,
+                AlbumAnalytics.CandidateDecadeBreakdown(candidates),
+                AlbumAnalytics.CandidateGenreBreakdown(candidates));
+            Console.WriteLine($"✓ Wrote the taste patterns report to:\n   {path}");
             return path;
         }
         catch (Exception ex)

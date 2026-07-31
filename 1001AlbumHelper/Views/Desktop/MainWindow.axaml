@@ -180,72 +180,102 @@
       </Border.Background>
     </Border>
 
-    <!-- ===== Actions ===== -->
-    <StackPanel Grid.Row="2" Spacing="13" VerticalAlignment="Center">
+    <!-- ===== Actions =====
+         Grouped into sections rather than one flat stack, and scrollable so the window never
+         has to grow (or overlap the log below it) as more panels get added. -->
+    <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto" Padding="0,0,10,0">
+    <StackPanel Spacing="20">
 
-      <Button x:Name="RateNextButton" Classes="card hero" Click="OnRateNext">
-        <Grid ColumnDefinitions="Auto,*">
-          <Border Grid.Column="0" Classes="badge">
-            <TextBlock Text="🎧" />
-          </Border>
-          <StackPanel Grid.Column="1" Margin="16,0,0,0" VerticalAlignment="Center">
-            <TextBlock Classes="title" Text="Rate the next album" />
-            <TextBlock Classes="desc" Text="Walks albums with no mark yet, in list order. A ⭐ is added to your Must Hear list automatically." />
-          </StackPanel>
-        </Grid>
-      </Button>
+      <StackPanel Spacing="10">
+        <TextBlock Classes="sectionLabel" Text="RATE &amp; LISTEN" />
+        <StackPanel Spacing="13">
+          <Button x:Name="RateNextButton" Classes="card hero" Click="OnRateNext">
+            <Grid ColumnDefinitions="Auto,*">
+              <Border Grid.Column="0" Classes="badge">
+                <TextBlock Text="🎧" />
+              </Border>
+              <StackPanel Grid.Column="1" Margin="16,0,0,0" VerticalAlignment="Center">
+                <TextBlock Classes="title" Text="Rate the next album" />
+                <TextBlock Classes="desc" Text="Walks albums with no mark yet, in list order. A ⭐ is added to your Must Hear list automatically." />
+              </StackPanel>
+            </Grid>
+          </Button>
 
-      <Grid ColumnDefinitions="*,*,*">
-        <Button Grid.Column="0" x:Name="BackfillButton" Classes="card" Click="OnBackfill" Margin="0,0,6,0">
+          <Button x:Name="BackfillButton" Classes="card" Click="OnBackfill">
+            <Grid ColumnDefinitions="Auto,*">
+              <Border Grid.Column="0" Classes="badge">
+                <TextBlock Text="📼" />
+              </Border>
+              <StackPanel Grid.Column="1" Margin="16,0,0,0" VerticalAlignment="Center">
+                <TextBlock Classes="title" Text="Backfill rated ✓" />
+                <TextBlock Classes="desc" Text="Score the ones marked listened but never rated." />
+              </StackPanel>
+            </Grid>
+          </Button>
+        </StackPanel>
+      </StackPanel>
+
+      <StackPanel Spacing="10">
+        <TextBlock Classes="sectionLabel" Text="GROW YOUR LISTS" />
+        <StackPanel Spacing="13">
+          <Grid ColumnDefinitions="*,*">
+            <Button Grid.Column="0" x:Name="AddAlbumButton" Classes="card" Click="OnAddAlbum" Margin="0,0,6,0">
+              <Grid ColumnDefinitions="Auto,*">
+                <Border Grid.Column="0" Classes="badge">
+                  <TextBlock Text="➕" />
+                </Border>
+                <StackPanel Grid.Column="1" Margin="13,0,0,0" VerticalAlignment="Center">
+                  <TextBlock Classes="title" Text="Add an album" />
+                  <TextBlock Classes="desc" Text="Slots into your replacements list by year." />
+                </StackPanel>
+              </Grid>
+            </Button>
+
+            <Button Grid.Column="1" x:Name="BrowseButton" Classes="card" Click="OnBrowse" Margin="6,0,0,0">
+              <Grid ColumnDefinitions="Auto,*">
+                <Border Grid.Column="0" Classes="badge">
+                  <TextBlock Text="🔍" />
+                </Border>
+                <StackPanel Grid.Column="1" Margin="13,0,0,0" VerticalAlignment="Center">
+                  <TextBlock Classes="title" Text="Browse &amp; search" />
+                  <TextBlock Classes="desc" Text="Look through any of the three lists." />
+                </StackPanel>
+              </Grid>
+            </Button>
+          </Grid>
+
+          <Button x:Name="CandidatesButton" Classes="card" Click="OnCandidates">
+            <Grid ColumnDefinitions="Auto,*">
+              <Border Grid.Column="0" Classes="badge">
+                <TextBlock Text="🗂" />
+              </Border>
+              <StackPanel Grid.Column="1" Margin="16,0,0,0" VerticalAlignment="Center">
+                <TextBlock Classes="title" Text="Potential replacements" />
+                <TextBlock Classes="desc" Text="Work through your shortlist one album at a time — keep it and it slots into the replacements list by year, or drop it for good." />
+              </StackPanel>
+            </Grid>
+          </Button>
+        </StackPanel>
+      </StackPanel>
+
+      <StackPanel Spacing="10" x:Name="InsightsSection" IsVisible="False">
+        <TextBlock Classes="sectionLabel" Text="INSIGHTS" />
+        <Button x:Name="AnalyticsButton" Classes="card" Click="OnAnalytics">
           <Grid ColumnDefinitions="Auto,*">
             <Border Grid.Column="0" Classes="badge">
-              <TextBlock Text="📼" />
+              <TextBlock Text="📊" />
             </Border>
-            <StackPanel Grid.Column="1" Margin="13,0,0,0" VerticalAlignment="Center">
-              <TextBlock Classes="title" Text="Backfill rated ✓" />
-              <TextBlock Classes="desc" Text="Score the ones marked listened but never rated." />
+            <StackPanel Grid.Column="1" Margin="16,0,0,0" VerticalAlignment="Center">
+              <TextBlock Classes="title" Text="Analytics" />
+              <TextBlock Classes="desc" Text="Taste patterns across your ratings — by decade and genre." />
             </StackPanel>
           </Grid>
         </Button>
+      </StackPanel>
 
-        <Button Grid.Column="1" x:Name="AddAlbumButton" Classes="card" Click="OnAddAlbum" Margin="6,0,6,0">
-          <Grid ColumnDefinitions="Auto,*">
-            <Border Grid.Column="0" Classes="badge">
-              <TextBlock Text="➕" />
-            </Border>
-            <StackPanel Grid.Column="1" Margin="13,0,0,0" VerticalAlignment="Center">
-              <TextBlock Classes="title" Text="Add an album" />
-              <TextBlock Classes="desc" Text="Slots into your replacements list by year." />
-            </StackPanel>
-          </Grid>
-        </Button>
-
-        <Button Grid.Column="2" x:Name="BrowseButton" Classes="card" Click="OnBrowse" Margin="6,0,0,0">
-          <Grid ColumnDefinitions="Auto,*">
-            <Border Grid.Column="0" Classes="badge">
-              <TextBlock Text="🔍" />
-            </Border>
-            <StackPanel Grid.Column="1" Margin="13,0,0,0" VerticalAlignment="Center">
-              <TextBlock Classes="title" Text="Browse &amp; search" />
-              <TextBlock Classes="desc" Text="Look through any of the three lists." />
-            </StackPanel>
-          </Grid>
-        </Button>
-      </Grid>
-
-      <Button x:Name="CandidatesButton" Classes="card" Click="OnCandidates">
-        <Grid ColumnDefinitions="Auto,*">
-          <Border Grid.Column="0" Classes="badge">
-            <TextBlock Text="🗂" />
-          </Border>
-          <StackPanel Grid.Column="1" Margin="16,0,0,0" VerticalAlignment="Center">
-            <TextBlock Classes="title" Text="Potential replacements" />
-            <TextBlock Classes="desc" Text="Work through your shortlist one album at a time — keep it and it slots into the replacements list by year, or drop it for good." />
-          </StackPanel>
-        </Grid>
-      </Button>
-
-      <Grid ColumnDefinitions="*,*">
+      <StackPanel Spacing="10">
+        <TextBlock Classes="sectionLabel" Text="SHEETS &amp; EXPORT" />
+        <Grid ColumnDefinitions="*,*">
         <Button Grid.Column="0" x:Name="ExportButton" Classes="card" Tag="export-pdf" Click="OnRun"
                 Margin="0,0,6,0">
           <Grid ColumnDefinitions="Auto,*">
@@ -281,8 +311,11 @@
             </StackPanel>
           </Grid>
         </Button>
-      </Grid>
+        </Grid>
+      </StackPanel>
+
     </StackPanel>
+    </ScrollViewer>
 
     <!-- ===== Log ===== -->
     <Grid Grid.Row="3" ColumnDefinitions="*,Auto" Margin="0,18,0,7">

@@ -8,7 +8,7 @@ namespace _1001AlbumHelper;
 /// and obscure same-name records — see <see cref="DiscogsApiClient.SearchAlbumsAsync"/>.
 /// </para>
 /// </summary>
-public sealed record AlbumSuggestion(string Title, string Artist, string Year, int Have)
+public sealed record AlbumSuggestion(string Title, string Artist, string Year, int Have, string Genre = "")
 {
     /// <summary>"Blue Train — John Coltrane (1958)", for the dropdown and the collapsed box.</summary>
     public string Display => string.IsNullOrEmpty(Year)

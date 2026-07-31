@@ -17,7 +17,8 @@ public sealed record AlbumEntry(
     string Rating,
     string Title,
     string Artist,
-    string Year);
+    string Year,
+    string Genre = ""); // column F — comma-joined Discogs genres, blank until backfilled
 
 /// <summary>
 /// A live rating run over the master album list.
@@ -80,7 +81,7 @@ public sealed class RatingSession
     /// <summary>Reads the master list and prepares a session. Read-only.</summary>
     public static async Task<RatingSession> LoadAsync(ISheetsClient writer, string tab, string mustHearTab)
     {
-        var rows = await writer.ReadTabAsync(tab, "A1:E");
+        var rows = await writer.ReadTabAsync(tab, "A1:F");
 
         // Find the header row ("#", "Rating", …) so the legend block above it is skipped
         // without hardcoding how tall it is.
@@ -108,7 +109,8 @@ public sealed class RatingSession
                 Rating: Cell(1),
                 Title: Cell(2),
                 Artist: Cell(3),
-                Year: Cell(4)));
+                Year: Cell(4),
+                Genre: Cell(5)));
         }
 
         return new RatingSession(writer, tab, mustHearTab, all);

@@ -28,11 +28,23 @@ internal static class Program
             return;
         }
 
+        // Headless genre backfill: fills column F on the master list for every rated album
+        // missing one, via Discogs lookups. Resumable — safe to re-run.
+        if (args.Contains("backfill-genres"))
+        {
+            Operations.BackfillGenresAsync(force: args.Contains("--force")).GetAwaiter().GetResult();
+            return;
+        }
+
         // Dev-only: show the mobile MainView in a phone-sized window instead of the desktop MainWindow.
         if (args.Contains("mobilepreview"))
         {
             App.PreviewMobile = true;
         }
+
+        // The Analytics window needs LiveCharts, which only this head references (see
+        // AnalyticsWindowHost) — wire the factory so MainWindow's button can open it.
+        AnalyticsWindowHost.Factory = () => new AnalyticsWindow();
 
         BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
     }

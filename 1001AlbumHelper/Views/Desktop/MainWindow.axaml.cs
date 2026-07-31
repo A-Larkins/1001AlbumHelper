@@ -33,6 +33,8 @@ public partial class MainWindow : Window
         };
 
         Opened += async (_, _) => await RefreshSyncStatusAsync();
+
+        InsightsSection.IsVisible = AnalyticsWindowHost.Factory is not null;
     }
 
     /// <summary>
@@ -245,6 +247,12 @@ public partial class MainWindow : Window
     {
         if (!CandidatesButton.IsEnabled) return;
         await ShowLoggingDialogAsync(new CandidatesWindow());
+    }
+
+    private void OnAnalytics(object? sender, RoutedEventArgs e)
+    {
+        var window = AnalyticsWindowHost.Factory?.Invoke();
+        window?.ShowDialog(this);
     }
 
     /// <summary>

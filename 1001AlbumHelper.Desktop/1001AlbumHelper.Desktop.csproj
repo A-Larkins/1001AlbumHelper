@@ -20,6 +20,12 @@
 
   <ItemGroup>
     <PackageReference Include="Avalonia.Desktop" Version="11.3.0" />
+    <!--
+      Charting for the Analytics window. Lives here (not the shared library) so the iOS head,
+      which also builds against the shared library, never has to link SkiaSharp-native charting —
+      same trim/AOT risk class as Google.Apis (see PROJECT.md §7). See AnalyticsWindowHost.
+    -->
+    <PackageReference Include="LiveChartsCore.SkiaSharpView.Avalonia" Version="2.0.0-rc5.4" />
   </ItemGroup>
 
   <ItemGroup>

@@ -1,0 +1,178 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:lvc="using:LiveChartsCore.SkiaSharpView.Avalonia"
+        x:Class="_1001AlbumHelper.AnalyticsWindow"
+        Width="880" Height="680" MinWidth="640" MinHeight="480"
+        Title="Analytics"
+        WindowStartupLocation="CenterOwner"
+        RequestedThemeVariant="Dark">
+
+  <Window.Background>
+    <LinearGradientBrush StartPoint="0%,0%" EndPoint="30%,100%">
+      <GradientStop Color="#151020" Offset="0" />
+      <GradientStop Color="#0e0b09" Offset="0.45" />
+      <GradientStop Color="#0b0807" Offset="1" />
+    </LinearGradientBrush>
+  </Window.Background>
+
+  <Window.Styles>
+    <Style Selector="Button.ghost">
+      <Setter Property="Background" Value="#221b16" />
+      <Setter Property="BorderBrush" Value="#3a2e25" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="8" />
+      <Setter Property="Padding" Value="12,7" />
+      <Setter Property="Foreground" Value="#cbbdb0" />
+      <Setter Property="FontSize" Value="12" />
+      <Setter Property="Cursor" Value="Hand" />
+    </Style>
+    <Style Selector="Button.ghost:pointerover /template/ ContentPresenter">
+      <Setter Property="BorderBrush" Value="#54453a" />
+    </Style>
+
+    <Style Selector="TextBlock.sectionLabel">
+      <Setter Property="Foreground" Value="#6f6053" />
+      <Setter Property="FontSize" Value="10.5" />
+      <Setter Property="FontWeight" Value="Bold" />
+      <Setter Property="Margin" Value="2,0,0,0" />
+    </Style>
+
+    <Style Selector="Border.statTile">
+      <Setter Property="CornerRadius" Value="12" />
+      <Setter Property="Background" Value="#1b1511" />
+      <Setter Property="BorderBrush" Value="#3a2e25" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="Padding" Value="14,12" />
+    </Style>
+    <Style Selector="TextBlock.statValue">
+      <Setter Property="FontSize" Value="20" />
+      <Setter Property="FontWeight" Value="Bold" />
+      <Setter Property="Foreground" Value="#f7cf90" />
+    </Style>
+    <Style Selector="TextBlock.statLabel">
+      <Setter Property="FontSize" Value="10.5" />
+      <Setter Property="Foreground" Value="#8f7f70" />
+      <Setter Property="Margin" Value="0,3,0,0" />
+    </Style>
+  </Window.Styles>
+
+  <Grid Margin="20,18,20,16" RowDefinitions="Auto,Auto,Auto,*,Auto">
+
+    <TextBlock Grid.Row="0" Text="Taste patterns across your ratings" FontSize="16"
+               FontWeight="SemiBold" Foreground="#f0e5da" Margin="0,0,0,4" />
+    <TextBlock Grid.Row="1" x:Name="SummaryText" Text="Loading…" FontSize="12"
+               Foreground="#9c8b7c" Margin="0,0,0,14" />
+
+    <Grid Grid.Row="2" ColumnDefinitions="*,*,*,*" ColumnSpacing="12" Margin="0,0,0,18">
+      <Border Grid.Column="0" Classes="statTile">
+        <StackPanel>
+          <TextBlock x:Name="CompletionValue" Classes="statValue" Text="—" />
+          <TextBlock Classes="statLabel" Text="ALBUMS RATED" />
+        </StackPanel>
+      </Border>
+      <Border Grid.Column="1" Classes="statTile">
+        <StackPanel>
+          <TextBlock x:Name="AverageScoreValue" Classes="statValue" Text="—" />
+          <TextBlock Classes="statLabel" Text="AVERAGE SCORE (OF 4)" />
+        </StackPanel>
+      </Border>
+      <Border Grid.Column="2" Classes="statTile">
+        <StackPanel>
+          <TextBlock x:Name="FavoriteDecadeValue" Classes="statValue" Text="—" />
+          <TextBlock Classes="statLabel" Text="FAVORITE DECADE" />
+        </StackPanel>
+      </Border>
+      <Border Grid.Column="3" Classes="statTile">
+        <StackPanel>
+          <TextBlock x:Name="FavoriteGenreValue" Classes="statValue" Text="—" />
+          <TextBlock Classes="statLabel" Text="FAVORITE GENRE" />
+        </StackPanel>
+      </Border>
+    </Grid>
+
+    <ScrollViewer Grid.Row="3" VerticalScrollBarVisibility="Auto" Padding="0,0,10,0">
+    <StackPanel Spacing="18">
+
+      <StackPanel Spacing="8">
+        <TextBlock Classes="sectionLabel" Text="YOUR RATINGS — THE 1001 LIST" />
+        <Grid ColumnDefinitions="*,*" ColumnSpacing="16" Height="280">
+          <Border Grid.Column="0" CornerRadius="12" Background="#120f0e" BorderBrush="#282019"
+                  BorderThickness="1" Padding="12">
+            <Grid RowDefinitions="Auto,*">
+              <TextBlock Grid.Row="0" Text="By decade" FontSize="12.5" FontWeight="SemiBold"
+                         Foreground="#cbbdb0" Margin="4,0,0,8" />
+              <lvc:CartesianChart Grid.Row="1" x:Name="DecadeChart" />
+            </Grid>
+          </Border>
+
+          <Border Grid.Column="1" CornerRadius="12" Background="#120f0e" BorderBrush="#282019"
+                  BorderThickness="1" Padding="12">
+            <Grid RowDefinitions="Auto,*">
+              <TextBlock Grid.Row="0" Text="Top genres" FontSize="12.5" FontWeight="SemiBold"
+                         Foreground="#cbbdb0" Margin="4,0,0,8" />
+              <lvc:CartesianChart Grid.Row="1" x:Name="GenreChart" />
+            </Grid>
+          </Border>
+        </Grid>
+
+        <Grid ColumnDefinitions="*,*" ColumnSpacing="16" Height="280">
+          <Border Grid.Column="0" CornerRadius="12" Background="#120f0e" BorderBrush="#282019"
+                  BorderThickness="1" Padding="12">
+            <Grid RowDefinitions="Auto,*">
+              <TextBlock Grid.Row="0" Text="Rating distribution" FontSize="12.5" FontWeight="SemiBold"
+                         Foreground="#cbbdb0" Margin="4,0,0,8" />
+              <lvc:CartesianChart Grid.Row="1" x:Name="RatingChart" />
+            </Grid>
+          </Border>
+
+          <Border Grid.Column="1" CornerRadius="12" Background="#120f0e" BorderBrush="#282019"
+                  BorderThickness="1" Padding="12">
+            <Grid RowDefinitions="Auto,Auto,*">
+              <TextBlock Grid.Row="0" Text="Best genres" FontSize="12.5" FontWeight="SemiBold"
+                         Foreground="#cbbdb0" Margin="4,0,0,2" />
+              <TextBlock Grid.Row="1" Text="By average score, min. 3 albums" FontSize="10.5"
+                         Foreground="#7f7164" Margin="4,0,0,6" />
+              <lvc:CartesianChart Grid.Row="2" x:Name="BestGenresChart" />
+            </Grid>
+          </Border>
+        </Grid>
+      </StackPanel>
+
+      <StackPanel Spacing="8">
+        <TextBlock Classes="sectionLabel" Text="YOUR SHORTLIST — POTENTIAL REPLACEMENTS" />
+        <TextBlock x:Name="ShortlistSummaryText" Text="" FontSize="11.5" Foreground="#7f7164" Margin="2,-2,0,0" />
+        <Grid ColumnDefinitions="*,*" ColumnSpacing="16" Height="280">
+          <Border Grid.Column="0" CornerRadius="12" Background="#120f0e" BorderBrush="#282019"
+                  BorderThickness="1" Padding="12">
+            <Grid RowDefinitions="Auto,*">
+              <TextBlock Grid.Row="0" Text="By decade" FontSize="12.5" FontWeight="SemiBold"
+                         Foreground="#cbbdb0" Margin="4,0,0,8" />
+              <lvc:CartesianChart Grid.Row="1" x:Name="ShortlistDecadeChart" />
+            </Grid>
+          </Border>
+
+          <Border Grid.Column="1" CornerRadius="12" Background="#120f0e" BorderBrush="#282019"
+                  BorderThickness="1" Padding="12">
+            <Grid RowDefinitions="Auto,*">
+              <TextBlock Grid.Row="0" Text="Top genres" FontSize="12.5" FontWeight="SemiBold"
+                         Foreground="#cbbdb0" Margin="4,0,0,8" />
+              <lvc:CartesianChart Grid.Row="1" x:Name="ShortlistGenreChart" />
+            </Grid>
+          </Border>
+        </Grid>
+      </StackPanel>
+
+    </StackPanel>
+    </ScrollViewer>
+
+    <Grid Grid.Row="4" ColumnDefinitions="*,Auto" Margin="0,14,0,0">
+      <TextBlock Grid.Column="0" x:Name="StatusText" Text="" FontSize="11.5" Foreground="#7f7164"
+                 VerticalAlignment="Center" />
+      <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
+        <Button x:Name="ExportPdfButton" Classes="ghost" Content="Export as PDF" Click="OnExportPdf" />
+        <Button Classes="ghost" Content="Reload" Click="OnReload" />
+        <Button Classes="ghost" Content="Close" Click="OnClose" />
+      </StackPanel>
+    </Grid>
+  </Grid>
+</Window>
