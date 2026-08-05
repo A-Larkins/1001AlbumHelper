@@ -9,9 +9,15 @@ namespace _1001AlbumHelper;
 
 /// <summary>
 /// Mobile browser over the potential-replacements shortlist: search, add new candidates (with
-/// Discogs year lookup), edit a year in place, and add a row to Playlist 2. Adding and editing both
-/// require live Sheets sync — there's no writable local cache on the phone, so an edit that couldn't
-/// reach Sheets would otherwise vanish the moment the view reloads.
+/// Discogs year lookup), edit a year in place, add a row to Playlist 2, and rule on a candidate —
+/// Keep puts it on the replacements list, Nah drops it for good. Every one of those needs live
+/// Sheets sync: there's no writable local cache on the phone, so a change that couldn't reach Sheets
+/// would vanish the moment the view reloads.
+/// <para>
+/// Keep writes to the *master* spreadsheet (via <see cref="MobileSheets"/>), while the shortlist
+/// itself lives on the Potentials tab (via <see cref="CandidateRepository"/>) — two different sheets,
+/// which is why this view holds both.
+/// </para>
 /// </summary>
 public partial class ReplacementsView : UserControl
 {
@@ -21,6 +27,12 @@ public partial class ReplacementsView : UserControl
     private readonly CandidateRepository _repo = CandidateRepository.Create();
     private CandidateSortColumn? _sortColumn;
     private bool _sortDescending;
+
+    private bool _busy;
+    private CandidateAlbum? _lastDropped;
+
+    // Built on the first Keep rather than at load: nothing else here touches the master spreadsheet.
+    private MobileSheets? _sheets;
 
     // Null when no Discogs token is configured: adding still works, just without lookup.
     private readonly DiscogsApiClient? _discogs = DiscogsApiClient.TryCreate();
@@ -94,16 +106,20 @@ public partial class ReplacementsView : UserControl
 
     private void ApplyFilter()
     {
+        // Only undecided albums are on offer — kept and dropped ones stay in the file (so a decision
+        // sticks and they're never offered again) but have no business in the list. Same as desktop.
+        var pending = _all.Where(a => a.Status == CandidateStatus.Pending).ToList();
+
         string query = SearchBox.Text?.Trim() ?? "";
         List<CandidateAlbum> shown;
         if (query.Length == 0)
         {
-            shown = _all;
+            shown = pending;
         }
         else
         {
             var terms = NumberedList.Normalize(query).Split(' ', StringSplitOptions.RemoveEmptyEntries);
-            shown = _all.Where(a =>
+            shown = pending.Where(a =>
             {
                 string hay = $"{NumberedList.Normalize(a.Title)} {NumberedList.Normalize(a.Artist)}";
                 return terms.All(t => hay.Contains(t, StringComparison.Ordinal));
@@ -113,9 +129,9 @@ public partial class ReplacementsView : UserControl
         if (_sortColumn is { } column) shown = ReplacementCandidates.Sort(shown, column, _sortDescending);
 
         Rows.ItemsSource = shown;
-        string count = shown.Count == _all.Count
-            ? $"{_all.Count} candidates"
-            : $"{shown.Count} of {_all.Count} candidates";
+        string count = shown.Count == pending.Count
+            ? $"{pending.Count} candidates"
+            : $"{shown.Count} of {pending.Count} candidates";
         CountText.Text = _isLive ? $"{count} · live ✓" : count;
     }
 
@@ -158,6 +174,175 @@ public partial class ReplacementsView : UserControl
         bool added = _playlist2.Add(album.Title, album.Artist, album.Year);
         button.Content = added ? "✓ P2" : "· P2";
         button.IsEnabled = false;
+    }
+
+    // ---------- Deciding: Keep / Nah ----------
+
+    private async void OnKeepRow(object? sender, RoutedEventArgs e)
+    {
+        if (sender is not Button { DataContext: CandidateAlbum album }) return;
+        await KeepAsync(album);
+    }
+
+    /// <summary>
+    /// Puts the album on the replacements list — slotted into its year block, renumbering the sheet —
+    /// and takes it off the shortlist. Mirrors the desktop's Keep (see CandidatesWindow.KeepAsync).
+    /// </summary>
+    private async Task KeepAsync(CandidateAlbum album)
+    {
+        if (_busy) return;
+        if (!RequireSync()) return;
+
+        string year = album.Year.Trim();
+        string? lookedUp = null;
+
+        // No year typed in: look it up and carry straight on, rather than making them press twice.
+        if (year.Length == 0)
+        {
+            SetBusy(true, $"Looking up “{album.Title}” on Discogs…");
+            try { lookedUp = await LookUpYearAsync(album); }
+            finally { SetBusy(false); }
+
+            if (lookedUp is null)
+            {
+                album.Note = _discogs is null
+                    ? "No year — type one in (Discogs lookup isn't set up on this device)."
+                    : "Discogs didn't find a year — type one in.";
+                Status("");
+                return;
+            }
+
+            album.Year = lookedUp;   // persists via the Year watcher in SetAll
+            year = lookedUp;
+        }
+
+        if (!int.TryParse(year, out int parsed) || parsed < 1900 || parsed > DateTime.Now.Year + 1)
+        {
+            album.Note = "That year doesn't look right — four digits, please.";
+            return;
+        }
+
+        _sheets ??= MobileSheets.Create();
+        if (_sheets.Client is null)
+        {
+            Status($"✗ Can't reach the replacements list — Sheets sync {_sheets.Status}.");
+            return;
+        }
+
+        SetBusy(true, $"Adding “{album.Title}” ({parsed})…");
+        album.Note = "";
+
+        try
+        {
+            var result = await Operations.AddReplacementAlbumAsync(
+                _sheets.Client, _sheets.ReplacementsTab, _sheets.AlbumsTab, _sheets.StarredTab,
+                album.Title, album.Artist, parsed);
+
+            switch (result.Outcome)
+            {
+                case Operations.AddOutcome.Added:
+                    Decide(album, CandidateStatus.Added);
+                    // Name the year when it was looked up rather than seen — it's the one part of
+                    // the row they didn't get a chance to eye before it went in.
+                    Status($"✓ “{album.Title}” added at #{result.Position} — the list was renumbered."
+                           + (lookedUp is null ? "" : $" Year {parsed} came from Discogs.")
+                           + (result.Warning is null ? "" : $"\n{result.Warning}"));
+                    break;
+
+                case Operations.AddOutcome.AlreadyInReplacements:
+                    // Already where we wanted it: nothing to do, so take it off the shortlist.
+                    Decide(album, CandidateStatus.Added);
+                    Status($"“{album.Title}” was already there — taken off the shortlist. {result.Detail}");
+                    break;
+
+                case Operations.AddOutcome.AlreadyIn1001:
+                    // Left in place: it's the user's call whether that 1001 entry is really this album.
+                    album.Note = result.Detail ?? "Already on the 1001 list.";
+                    Status($"⚠ Not added — “{album.Title}” is already on the 1001 list. Drop it with Nah if that's the same album.");
+                    break;
+
+                case Operations.AddOutcome.NotConfigured:
+                    Status($"✗ {result.Detail}");
+                    break;
+
+                default:
+                    album.Note = result.Detail ?? "";
+                    Status($"✗ Couldn't add “{album.Title}”.");
+                    break;
+            }
+        }
+        catch (Exception ex)
+        {
+            Status($"✗ {ex.Message}");
+        }
+        finally
+        {
+            SetBusy(false);
+        }
+    }
+
+    private void OnDropRow(object? sender, RoutedEventArgs e)
+    {
+        if (_busy) return;
+        if (sender is not Button { DataContext: CandidateAlbum album }) return;
+        if (!RequireSync()) return;
+
+        Decide(album, CandidateStatus.Declined);
+        _lastDropped = album;
+        UndoButton.IsVisible = true;
+        Status($"Dropped “{album.Title}” — it won't be offered again.");
+    }
+
+    private void OnUndo(object? sender, RoutedEventArgs e)
+    {
+        if (_busy || _lastDropped is null) return;
+
+        var album = _lastDropped;
+        _lastDropped = null;
+        UndoButton.IsVisible = false;
+
+        Decide(album, CandidateStatus.Pending);
+        Status($"“{album.Title}” is back on the shortlist.");
+    }
+
+    /// <summary>Records a decision and pushes it up, so the album stops being offered on both devices.</summary>
+    private void Decide(CandidateAlbum album, CandidateStatus status)
+    {
+        album.Status = status;
+        album.Note = "";
+        PushToSheets();
+        ApplyFilter();
+    }
+
+    /// <summary>The album's year according to Discogs, or null if lookup is off or found nothing.</summary>
+    private async Task<string?> LookUpYearAsync(CandidateAlbum album)
+    {
+        if (_discogs is null) return null;
+        try { return (await _discogs.FindAlbumAsync(album.Title, album.Artist))?.Year; }
+        catch { return null; }   // One album failing to resolve isn't worth an error message.
+    }
+
+    /// <summary>
+    /// Decisions are only offered when they can be saved: with no sync there's nowhere on the phone
+    /// to keep them, so the album would silently come back on the next load.
+    /// </summary>
+    private bool RequireSync()
+    {
+        if (_repo.SyncEnabled) return true;
+        Status($"✗ Sheets sync {_repo.Status} — a decision made here couldn't be saved.");
+        return false;
+    }
+
+    private void SetBusy(bool busy, string? message = null)
+    {
+        _busy = busy;
+        if (message is not null) Status(message);
+    }
+
+    private void Status(string message)
+    {
+        StatusText.Text = message;
+        StatusText.IsVisible = message.Length > 0;
     }
 
     // ---------- Add to shortlist ----------

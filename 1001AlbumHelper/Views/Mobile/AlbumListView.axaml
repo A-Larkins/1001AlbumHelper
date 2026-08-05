@@ -62,8 +62,8 @@
               <TextBlock Text="{Binding Title}" FontWeight="SemiBold" TextWrapping="Wrap" />
               <TextBlock Text="{Binding Artist}" Opacity="0.65" FontSize="12" TextWrapping="Wrap" />
             </StackPanel>
-            <Button Grid.Column="3" Content="＋ P1" Click="OnAddToPlaylist1"
-                    VerticalAlignment="Center" Margin="8,0,0,0" />
+            <Button Grid.Column="3" Content="{Binding PlaylistLabel}" IsEnabled="{Binding CanQueue}"
+                    Click="OnAddToPlaylist" VerticalAlignment="Center" Margin="8,0,0,0" />
           </Grid>
         </DataTemplate>
       </ListBox.ItemTemplate>

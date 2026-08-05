@@ -797,10 +797,26 @@ public static class Operations
             return new AddResult(AddOutcome.NotConfigured, null,
                 "Google Sheets isn't configured or authentication failed.");
 
+        return await AddReplacementAlbumAsync(
+            writer, cfg.ReplacementsTab, cfg.AlbumsTab, cfg.StarredTab, title, artist, year);
+    }
+
+    /// <summary>
+    /// <inheritdoc cref="AddReplacementAlbumAsync(string, string, int)"/>
+    /// <para>
+    /// Takes the client and tab names outright so the phone can call it too: mobile reaches the same
+    /// spreadsheet over REST (<see cref="RestSheetsClient"/>) rather than the desktop's OAuth writer,
+    /// and reads its config from the embedded copy — see <see cref="EmbeddedConfig"/>.
+    /// </para>
+    /// </summary>
+    public static async Task<AddResult> AddReplacementAlbumAsync(
+        ISheetsClient client, string replacementsTab, string albumsTab, string starredTab,
+        string title, string artist, int year)
+    {
         try
         {
             // 1. Already a replacement?
-            var replacements = await NumberedList.ReadAsync(writer, cfg.ReplacementsTab);
+            var replacements = await NumberedList.ReadAsync(client, replacementsTab);
             if (NumberedList.Find(replacements, title, artist) is { } dupe)
             {
                 string detail = $"Already on your replacements list at #{dupe.Number} " +
@@ -810,7 +826,7 @@ public static class Operations
             }
 
             // 2. Already on the canonical 1001 list?
-            var master = await RatingSession.LoadAsync(writer, cfg.AlbumsTab, cfg.StarredTab);
+            var master = await RatingSession.LoadAsync(client, albumsTab, starredTab);
             var onMaster = master.AllAlbums.FirstOrDefault(a =>
                 NumberedList.Matches(a.Title, title) && NumberedList.Matches(a.Artist, artist));
             if (onMaster is not null)
@@ -841,8 +857,8 @@ public static class Operations
             if (warning is not null) Console.WriteLine($"ℹ️  {warning}");
 
             int position = await NumberedList.InsertByYearAsync(
-                writer, cfg.ReplacementsTab, title, artist, year);
-            Console.WriteLine($"✓ Added “{title}” ({year}) to \"{cfg.ReplacementsTab}\" at #{position}.");
+                client, replacementsTab, title, artist, year);
+            Console.WriteLine($"✓ Added “{title}” ({year}) to \"{replacementsTab}\" at #{position}.");
             return new AddResult(AddOutcome.Added, position, null, warning);
         }
         catch (Exception ex)

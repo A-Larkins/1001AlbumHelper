@@ -14,6 +14,7 @@ public partial class ListViewerWindow : Window
 
     private readonly Dictionary<Which, List<ViewRow>> _cache = new();
     private readonly PlaylistStore _playlist1 = PlaylistStore.Open(1);
+    private readonly PlaylistStore _playlist2 = PlaylistStore.Open(2);
     private Which _current = Which.Master;
 
     public ListViewerWindow()
@@ -47,7 +48,7 @@ public partial class ListViewerWindow : Window
             _cache[Which.MustHear] = loaded.MustHear
                 .Select(r => new ViewRow(r.Number, "", r.Title, r.Artist, r.Year)).ToList();
             _cache[Which.Replacements] = loaded.Replacements
-                .Select(r => new ViewRow(r.Number, "", r.Title, r.Artist, r.Year)).ToList();
+                .Select(r => new ViewRow(r.Number, "", r.Title, r.Artist, r.Year, playlist: 2)).ToList();
 
             SetButtonsEnabled(true);
             Show(_current);
@@ -142,11 +143,14 @@ public partial class ListViewerWindow : Window
     private async void OnReload(object? sender, RoutedEventArgs e) => await LoadAsync(force: true);
     private void OnClose(object? sender, RoutedEventArgs e) => Close();
 
-    private void OnAddToPlaylist1(object? sender, RoutedEventArgs e)
+    /// <summary>
+    /// Queues a row into its own working playlist — the 1001 and Must Hear feed Playlist 1, the
+    /// replacements list feeds Playlist 2, which is the one recommendations belong on.
+    /// </summary>
+    private void OnAddToPlaylist(object? sender, RoutedEventArgs e)
     {
-        if (sender is not Button button || button.DataContext is not ViewRow row) return;
-        bool added = _playlist1.Add(row.Title, row.Artist, row.Year);
-        button.Content = added ? "✓ P1" : "· P1";
-        button.IsEnabled = false;
+        if (sender is not Button { DataContext: ViewRow row }) return;
+        var playlist = row.Playlist == 2 ? _playlist2 : _playlist1;
+        row.MarkQueued(playlist.Add(row.Title, row.Artist, row.Year));
     }
 }

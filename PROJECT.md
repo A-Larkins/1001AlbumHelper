@@ -1,7 +1,7 @@
 # 1001 Albums Helper — Project Handbook
 
 A living reference for the app: what it is, how it's built, how to ship it, and where it's going.
-**Update this as we go.** Last updated: 2026-07-29 (Mac app parity session).
+**Update this as we go.** Last updated: 2026-08-04 (replacements → Playlist 2; mobile Keep/Nah).
 
 ---
 
@@ -33,7 +33,8 @@ framework).
 │   ├── Integrations/           DiscogsApiClient, GoogleSheetsWriter, CandidateSheet,
 │   │                           CandidateRepository, AppleMusicCatalog, SyncDiagnostic,
 │   │                           ISheetsClient (+ RestSheetsClient, GoogleServiceAccountAuth,
-│   │                           RestSheetsClientDiagnostic) — the REST path for mobile writes
+│   │                           RestSheetsClientDiagnostic) — the REST path for mobile writes,
+│   │                           MobileSheets — the phone's client for the *master* spreadsheet
 │   ├── Export/                 CsvGenerator, ExcelGenerator, PdfExporter
 │   ├── Views/Desktop/          the six desktop windows
 │   ├── Views/Mobile/           MainView + AlbumListView, RateView, ReplacementsView, PlaylistView
@@ -83,6 +84,7 @@ a **single view with four bottom tabs** (phones don't do windows).
 | 2026-07-29 | **Mobile: rate albums.** New "Rate" tab — the desktop rating window's one-album-at-a-time queue (⭐/👍/👎/❌), writing straight to the master "1001 albums" sheet. Needed a REST path for the *master list* too, not just Potentials: extracted `ISheetsClient` from `GoogleSheetsWriter` and added `RestSheetsClient`, a full REST reimplementation (including the insert-row-with-formatting call the ⭐→Must Hear side effect depends on). Verified end-to-end against the live spreadsheet via a new self-cleaning `resttest` diagnostic (scratch tab, never touches real data) before wiring up the UI. |
 | 2026-07-29 | **Mobile: browse Must Hear + Replacements.** The "List" tab gained a 1001 / Must Hear / Replacements switcher instead of two more bottom tabs — Must Hear and Replacements read live via the same `RestSheetsClient` the Rate feature added, no new plumbing needed. **Phase 2 is done.** |
 | 2026-07-29 | **iOS app icon.** Reused the Mac app's "1001 + music note" art, cropped past its baked-in macOS rounding into a flat opaque square, as a single-size `Assets.xcassets/AppIcon.appiconset`. The home screen no longer shows a blank placeholder. |
+| 2026-08-04 | **Two bug fixes, both apps.** (1) Browsing the **Replacements** list offered "＋ P1", so recommendations queued into PLAYLIST1; the ＋ button now follows the list you're in (1001/Must Hear → P1, Replacements → P2) on both `AlbumListView` and `ListViewerWindow`. The label and pressed-state moved onto `ViewRow` itself, since these lists virtualize and a label set directly on the button rode its recycled container onto other rows. (2) **Mobile had no way to keep or drop a candidate** — `ReplacementsView` gained Keep/Nah/Undo matching `CandidatesWindow`, and now hides decided rows like desktop does. Keep writes to the *master* spreadsheet, which the phone couldn't reach: `Operations.AddReplacementAlbumAsync` gained an `ISheetsClient` overload, and the config-and-key dance `AlbumListView` did inline became `MobileSheets`. |
 | 2026-07-29 | **Mac app parity pass.** Added a "Renew iPhone trial" button to `MainWindow` (shells out to `deploy-to-device.sh`, streaming its output into the activity log — see §4/§7) and "+P1"/"+P2" playlist buttons to `ListViewerWindow` (browse) and `CandidatesWindow` (potential replacements), matching the mobile app's `AlbumListView`/`ReplacementsView`. Both apps rebuilt, reinstalled, and committed (`f852195`). |
 
 ---
