@@ -1,4 +1,5 @@
 using System;
+using System.Threading;
 using System.Threading.Tasks;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
@@ -16,6 +17,9 @@ public partial class RateView : UserControl
 {
     private RatingSession? _session;
     private bool _busy;
+
+    /// <summary>Cancels the in-flight cover-art lookup when the card moves on to another album.</summary>
+    private CancellationTokenSource? _artCts;
 
     public RateView()
     {
@@ -128,6 +132,38 @@ public partial class RateView : UserControl
         TitleText.Text = album.Title;
         ArtistText.Text = album.Artist;
         YearText.Text = album.Year;
+        _ = ShowArtAsync(album);
+    }
+
+    /// <summary>
+    /// Fills in the cover art for <paramref name="album"/> once the lookup returns, and warms the
+    /// next album's art so it's already there when this one is rated. Runs alongside the rest of
+    /// the card rather than holding it up — art is decoration, not information.
+    /// </summary>
+    private async Task ShowArtAsync(AlbumEntry album)
+    {
+        _artCts?.Cancel();
+        _artCts = new CancellationTokenSource();
+        var token = _artCts.Token;
+
+        ArtImage.Source = null;
+        ArtImage.IsVisible = false;
+        ArtPlaceholder.IsVisible = true;
+
+        var art = await AlbumArtwork.LoadAsync(album.Artist, album.Title, token);
+
+        // The queue may have moved on while this was in flight — a cancelled lookup returns null,
+        // but a finished one still has to prove it's for the album currently on screen.
+        if (token.IsCancellationRequested || _session?.Current != album) return;
+
+        if (art is not null)
+        {
+            ArtImage.Source = art;
+            ArtImage.IsVisible = true;
+            ArtPlaceholder.IsVisible = false;
+        }
+
+        if (_session?.Next is { } next) AlbumArtwork.Prefetch(next.Artist, next.Title);
     }
 
     private void ShowMessage(string message)

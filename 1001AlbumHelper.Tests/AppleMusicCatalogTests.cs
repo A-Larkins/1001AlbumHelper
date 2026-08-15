@@ -109,4 +109,64 @@ public class AppleMusicCatalogTests
 
         Assert.Null(match);
     }
+
+    // ----- Cover art -----
+    // The rating card's artwork comes from the same lookup, so the art shown is the art of the
+    // album we'd actually add to a playlist.
+
+    [Fact]
+    public void Parsing_keeps_the_cover_art_url()
+    {
+        var albums = AppleMusicCatalog.ParseSearchResults("""
+        {
+          "results": [
+            { "collectionId": 1, "artistName": "Nirvana", "collectionName": "Nevermind", "trackCount": 13,
+              "artworkUrl100": "https://is1-ssl.mzstatic.com/image/thumb/Music/abc/source/100x100bb.jpg" }
+          ]
+        }
+        """);
+
+        Assert.Equal(
+            "https://is1-ssl.mzstatic.com/image/thumb/Music/abc/source/100x100bb.jpg",
+            albums[0].ArtworkUrl);
+    }
+
+    [Fact]
+    public void A_row_with_no_artwork_parses_to_a_blank_url_not_a_crash()
+    {
+        var albums = AppleMusicCatalog.ParseSearchResults(SampleJson);
+
+        Assert.Equal("", albums[0].ArtworkUrl);
+    }
+
+    [Fact]
+    public void Asking_for_a_bigger_cover_swaps_only_the_size()
+    {
+        var big = AppleMusicCatalog.ArtworkAtSize(
+            "https://is1-ssl.mzstatic.com/image/thumb/Music/abc/source/100x100bb.jpg", 600);
+
+        Assert.Equal("https://is1-ssl.mzstatic.com/image/thumb/Music/abc/source/600x600bb.jpg", big);
+    }
+
+    [Fact]
+    public void Asking_for_a_bigger_cover_keeps_whatever_crop_code_follows_the_size()
+    {
+        var big = AppleMusicCatalog.ArtworkAtSize("https://example.com/art/100x100bb-60.jpg", 300);
+
+        Assert.Equal("https://example.com/art/300x300bb-60.jpg", big);
+    }
+
+    [Fact]
+    public void There_is_no_bigger_copy_of_a_cover_that_doesnt_exist()
+    {
+        Assert.Null(AppleMusicCatalog.ArtworkAtSize(null, 600));
+        Assert.Null(AppleMusicCatalog.ArtworkAtSize("", 600));
+    }
+
+    [Fact]
+    public void A_cover_url_in_an_unexpected_shape_is_left_alone_rather_than_mangled()
+    {
+        Assert.Equal("https://example.com/cover.jpg",
+            AppleMusicCatalog.ArtworkAtSize("https://example.com/cover.jpg", 600));
+    }
 }

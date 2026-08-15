@@ -75,6 +75,9 @@ public sealed class RatingSession
     /// <summary>The album awaiting a rating, or null when the queue is finished.</summary>
     public AlbumEntry? Current => _index >= 0 && _index < _queue.Count ? _queue[_index] : null;
 
+    /// <summary>The album after <see cref="Current"/>, or null at the end — used to warm its cover art.</summary>
+    public AlbumEntry? Next => _index + 1 < _queue.Count ? _queue[_index + 1] : null;
+
     /// <summary>Whether <see cref="Back"/> has anything to step back to.</summary>
     public bool CanGoBack => _index > 0;
 

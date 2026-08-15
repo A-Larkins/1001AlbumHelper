@@ -1,7 +1,7 @@
 # 1001 Albums Helper — Project Handbook
 
 A living reference for the app: what it is, how it's built, how to ship it, and where it's going.
-**Update this as we go.** Last updated: 2026-08-04 (replacements → Playlist 2; mobile Keep/Nah).
+**Update this as we go.** Last updated: 2026-08-14 (cover art on the Rate screens).
 
 ---
 
@@ -58,6 +58,7 @@ a **single view with four bottom tabs** (phones don't do windows).
 | Discogs API | Both | Album/year lookups. Token in `appsettings.json`. |
 | Embedded CSV/JSON snapshots | iPhone | Baked into the app so it works offline (`MobileData`). |
 | Apple Music (MediaPlayer) | iPhone | Add albums to playlists. See §6. |
+| iTunes Search API | Both | Store IDs for playlist adds, and **cover art** for the Rate screens (`AlbumArtwork`). No auth. |
 | Local JSON | Both | `replacement-candidates.json`, per-device playlist working lists. |
 
 ---
@@ -85,6 +86,7 @@ a **single view with four bottom tabs** (phones don't do windows).
 | 2026-07-29 | **Mobile: browse Must Hear + Replacements.** The "List" tab gained a 1001 / Must Hear / Replacements switcher instead of two more bottom tabs — Must Hear and Replacements read live via the same `RestSheetsClient` the Rate feature added, no new plumbing needed. **Phase 2 is done.** |
 | 2026-07-29 | **iOS app icon.** Reused the Mac app's "1001 + music note" art, cropped past its baked-in macOS rounding into a flat opaque square, as a single-size `Assets.xcassets/AppIcon.appiconset`. The home screen no longer shows a blank placeholder. |
 | 2026-08-04 | **Two bug fixes, both apps.** (1) Browsing the **Replacements** list offered "＋ P1", so recommendations queued into PLAYLIST1; the ＋ button now follows the list you're in (1001/Must Hear → P1, Replacements → P2) on both `AlbumListView` and `ListViewerWindow`. The label and pressed-state moved onto `ViewRow` itself, since these lists virtualize and a label set directly on the button rode its recycled container onto other rows. (2) **Mobile had no way to keep or drop a candidate** — `ReplacementsView` gained Keep/Nah/Undo matching `CandidatesWindow`, and now hides decided rows like desktop does. Keep writes to the *master* spreadsheet, which the phone couldn't reach: `Operations.AddReplacementAlbumAsync` gained an `ISheetsClient` overload, and the config-and-key dance `AlbumListView` did inline became `MobileSheets`. |
+| 2026-08-14 | **Cover art on the Rate screens** (Mac *and* iPhone). The album card now shows the sleeve, fetched through the same `AppleMusicCatalog` lookup the playlist export uses — so the art shown is the art of the album we'd actually add to a playlist. New `AlbumArtwork` caches decoded covers in memory and the downloaded JPEGs on disk, and warms the *next* album's art while you're rating the current one, so it's usually already there. A "♫" sleeve placeholder holds the space while a lookup runs (and for albums with no art), so the card never jumps between two heights. The desktop window grew 600→680 tall to fit it. |
 | 2026-07-29 | **Mac app parity pass.** Added a "Renew iPhone trial" button to `MainWindow` (shells out to `deploy-to-device.sh`, streaming its output into the activity log — see §4/§7) and "+P1"/"+P2" playlist buttons to `ListViewerWindow` (browse) and `CandidatesWindow` (potential replacements), matching the mobile app's `AlbumListView`/`ReplacementsView`. Both apps rebuilt, reinstalled, and committed (`f852195`). |
 
 ---
@@ -270,6 +272,12 @@ tab it creates and deletes, so it never risks the real lists.
 - **Re-deploying:** double-click **`Re-deploy to iPhone.command`** (repo root) — it renews the 7-day
   profile via `xcodebuild -allowProvisioningUpdates`, rebuilds, and reinstalls. The signing stub lives
   in `1001AlbumHelper.iOS/SignHelper/`.
+- **The iTunes Search API is rate-limited** (roughly 20 calls a minute, unauthenticated). One call
+  per album on a Rate card is comfortably inside that; a *list* of thumbnails (the 1001 list, a
+  playlist) is not, and would start coming back empty. That's why cover art lives on the one-album-
+  at-a-time screens only. `AlbumArtwork`'s disk cache (in the app's writable folder, alongside the
+  playlist JSON) means each album costs a lookup once, ever — so lists become feasible later mainly
+  for albums already seen.
 - **Apple Music removal** is impossible (see §5).
 - **`devicectl install`/`launch` are flaky over the tunnel connection.** "Connection reset by peer"
   on install usually succeeds on a plain retry. "Launch failed... Locked" on `process launch` means
@@ -291,6 +299,11 @@ tab it creates and deletes, so it never risks the real lists.
 
 - **Backfill mode + shuffle on mobile Rate** — the desktop rating window offers both; mobile's
   RateView only exposes the "not yet listened" queue so far.
+- **Cover art elsewhere** — the browse lists (1001 / Must Hear / Shortlist) and the playlist tabs
+  are the obvious next places, but they'd need a way around the iTunes rate limit (§7): load only
+  the rows actually on screen, keep a real on-disk index rather than one-file-per-album, and accept
+  that a first scroll through unseen albums will be patchy. Worth doing for the playlist tabs first
+  — they're short lists of albums that have usually been looked up already.
 - **Weekly re-deploy pain** — mostly solved 2026-07-29 with an in-app "Renew iPhone trial" button on
   the Mac app (§3 table); still 7-day manual either way unless we spring for the $99 Apple Developer
   Program + TestFlight (install once, no expiry).

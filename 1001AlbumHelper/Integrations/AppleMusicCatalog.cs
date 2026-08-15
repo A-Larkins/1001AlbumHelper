@@ -3,7 +3,17 @@ using System.Text.Json;
 namespace _1001AlbumHelper;
 
 /// <summary>One album found in the Apple Music / iTunes catalog.</summary>
-public sealed record AppleMusicAlbum(long CollectionId, string CollectionName, string ArtistName, int TrackCount);
+/// <param name="ArtworkUrl">
+/// Cover art, as the 100×100 thumbnail iTunes reports. Blank when the row carried no artwork.
+/// Ask for a bigger copy with <see cref="AppleMusicCatalog.ArtworkAtSize"/> rather than using this
+/// URL directly — 100px looks like mush on a rating card.
+/// </param>
+public sealed record AppleMusicAlbum(
+    long CollectionId,
+    string CollectionName,
+    string ArtistName,
+    int TrackCount,
+    string ArtworkUrl = "");
 
 /// <summary>
 /// Looks albums up in the Apple Music catalog via the public iTunes Search API
@@ -85,7 +95,8 @@ public static class AppleMusicCatalog
                     id,
                     r.TryGetProperty("collectionName", out var n) ? n.GetString() ?? "" : "",
                     r.TryGetProperty("artistName", out var a) ? a.GetString() ?? "" : "",
-                    trackCount));
+                    trackCount,
+                    r.TryGetProperty("artworkUrl100", out var art) ? art.GetString() ?? "" : ""));
             }
         }
         return albums;
@@ -122,4 +133,28 @@ public static class AppleMusicCatalog
 
     private static AppleMusicAlbum? SmallestByTrackCount(IEnumerable<AppleMusicAlbum> candidates) =>
         candidates.OrderBy(c => c.TrackCount).FirstOrDefault();
+
+    /// <summary>
+    /// The same cover art at <paramref name="pixels"/> square. iTunes encodes the size in the file
+    /// name (…/100x100bb.jpg) and will serve any size asked for, so a bigger copy is a string swap —
+    /// there's no second API call for it. Returns null if there's no artwork to resize.
+    /// </summary>
+    public static string? ArtworkAtSize(string? artworkUrl, int pixels)
+    {
+        if (string.IsNullOrWhiteSpace(artworkUrl)) return null;
+
+        // Only the size segment of the file name is replaced, so the rest of the path — which
+        // includes a content hash — is left exactly as iTunes gave it.
+        int slash = artworkUrl.LastIndexOf('/');
+        if (slash < 0) return artworkUrl;
+
+        string name = artworkUrl[(slash + 1)..];
+        int x = name.IndexOf('x');
+        int dot = name.LastIndexOf('.');
+        if (x <= 0 || dot <= x) return artworkUrl;
+
+        // "100x100bb.jpg" → keep the "bb" (or whatever crop code follows) and the extension.
+        string suffix = name[(x + 1)..dot].TrimStart("0123456789".ToCharArray());
+        return $"{artworkUrl[..slash]}/{pixels}x{pixels}{suffix}{name[dot..]}";
+    }
 }
