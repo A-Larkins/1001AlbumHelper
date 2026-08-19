@@ -54,31 +54,14 @@ public sealed class MediaPlayerPlaylistWriter : IApplePlaylistWriter
         var playlist = FindPlaylistByName(playlistName);
         if (playlist is null) return Array.Empty<PlaylistEntry>();
 
-        // One MPMediaItem per track; collapse to one entry per album (title+artist), in first-seen
-        // order, counting tracks per album so a half-deleted album (some tracks removed by the user
-        // directly in Apple Music) is still visible with its actual remaining count.
-        var order = new List<string>();
-        var byKey = new Dictionary<string, (string Title, string Artist, int Count)>();
-        foreach (var item in playlist.Items ?? Array.Empty<MPMediaItem>())
-        {
-            string title = item.AlbumTitle ?? "";
-            string artist = item.AlbumArtist ?? item.Artist ?? "";
-            if (title.Length == 0) continue;
+        // A playlist holds tracks, not albums; PlaylistTracks does the collapsing (shared with
+        // the Mac's Music-app writer, which has to fold exactly the same way).
+        var tracks = (playlist.Items ?? Array.Empty<MPMediaItem>())
+            .Select(item => new PlaylistTrack(
+                Album: item.AlbumTitle ?? "",
+                Artist: item.AlbumArtist ?? item.Artist ?? ""));
 
-            string key = $"{NumberedList.Normalize(title)}|{NumberedList.Normalize(artist)}";
-            if (byKey.TryGetValue(key, out var existing))
-                byKey[key] = (existing.Title, existing.Artist, existing.Count + 1);
-            else
-            {
-                byKey[key] = (title, artist, 1);
-                order.Add(key);
-            }
-        }
-        return order.Select(key =>
-        {
-            var (title, artist, count) = byKey[key];
-            return new PlaylistEntry(title, artist, "") { TrackCount = count };
-        }).ToList();
+        return PlaylistTracks.CollapseToAlbums(tracks);
     }
 
     // ---- MediaPlayer plumbing (its APIs are callback-based; wrap them as tasks) ----

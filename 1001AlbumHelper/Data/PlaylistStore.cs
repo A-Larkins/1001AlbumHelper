@@ -19,15 +19,32 @@ public sealed record PlaylistEntry(string Title, string Artist, string Year)
     /// <summary>Track count from the last Apple Music read, or 0 if unknown — a low count can mean a half-deleted album.</summary>
     public int TrackCount { get; init; }
 
+    /// <summary>
+    /// True when Apple Music reported suspiciously few tracks for this album — the usual cause is
+    /// the user having deleted some of them by hand, leaving a stump behind.
+    /// </summary>
+    public bool IsPartial => TrackCount is > 0 and <= 3;
+
+    /// <summary>The half-deleted note on its own, for layouts that show it beside the title.</summary>
+    public string PartialWarning => IsPartial
+        ? $"only {TrackCount} track{(TrackCount == 1 ? "" : "s")} — check it's not partially deleted"
+        : "";
+
     public string Display
     {
         get
         {
             string s = string.IsNullOrEmpty(Year) ? $"{Title} — {Artist}" : $"{Title} — {Artist} ({Year})";
-            return TrackCount is > 0 and <= 3 ? $"{s} · only {TrackCount} track{(TrackCount == 1 ? "" : "s")} — check it's not partially deleted" : s;
+            return IsPartial ? $"{s} · {PartialWarning}" : s;
         }
     }
 }
+
+/// <summary>What a pull-down sync changed, so the UI can say more than "done".</summary>
+/// <param name="Added">Albums Apple Music had that the working list didn't.</param>
+/// <param name="Removed">Albums the working list had that Apple Music didn't — dropped.</param>
+/// <param name="ClearedFromChecklist">Albums awaiting manual deletion that have now gone from Apple Music.</param>
+public sealed record PlaylistSyncResult(int Added, int Removed, int ClearedFromChecklist);
 
 /// <summary>
 /// One of the two on-device playlists the mobile app builds up as the user works through the
@@ -140,28 +157,78 @@ public sealed class PlaylistStore
     }
 
     /// <summary>
-    /// Folds albums read back from the real Apple Music playlist into the working list: adds any
-    /// that aren't here yet and marks every matched entry as confirmed-in-Apple-Music (with its
-    /// current track count). Returns the number newly added.
+    /// Pulls the working list down from Apple Music, making that playlist the source of truth:
+    /// afterwards the list holds exactly what Apple Music holds, in its order. Albums queued here
+    /// but never pushed are dropped — that's what a pull-down means.
+    ///
+    /// <para>
+    /// Two things deliberately survive the wipe. Albums awaiting manual deletion stay on the
+    /// checklist rather than reappearing as active — Apple Music still has them, which is the whole
+    /// reason they're on it, so repopulating from Apple Music would otherwise undo the user's
+    /// removal every time they synced. And where an album is already known here, its
+    /// <see cref="PlaylistEntry.Year"/> is carried across, because Apple Music's read-back doesn't
+    /// report a year and our lists do.
+    /// </para>
+    ///
+    /// <para>
+    /// The flip side is a nice one: an album on the checklist that is <em>gone</em> from Apple Music
+    /// means the user has now deleted it by hand, so the sync ticks it off for them.
+    /// </para>
     /// </summary>
-    public int MergeFromAppleMusic(IEnumerable<PlaylistEntry> albums)
+    public PlaylistSyncResult SyncFromAppleMusic(IEnumerable<PlaylistEntry> albums)
     {
+        var incoming = albums.ToList();
+        var before = _entries.ToList();
+
+        // Titles are compared loosely — the same rule the push path matches on. Apple Music names
+        // an album by whichever edition it stocks, so a strict comparison would read the catalog's
+        // "Tago Mago (2011 Remastered)" as a different record from our "Tago Mago", and every sync
+        // would drop ours, re-add theirs, and lose the year in the process.
+        static bool SameAlbum(PlaylistEntry a, PlaylistEntry b) =>
+            DiscogsApiClient.TitlesLineUp(a.Title, b.Title) && NumberedList.Matches(a.Artist, b.Artist);
+
+        PlaylistEntry? Existing(PlaylistEntry album) => before.FirstOrDefault(e => SameAlbum(e, album));
+
+        bool StillInAppleMusic(PlaylistEntry entry) => incoming.Any(a => SameAlbum(a, entry));
+
+        // Kept on the checklist only while Apple Music still has them; the rest have been dealt with.
+        var pending = before.Where(e => e.PendingRemoval).ToList();
+        var stillPending = pending.Where(StillInAppleMusic).ToList();
+        int cleared = pending.Count - stillPending.Count;
+
+        var rebuilt = new List<PlaylistEntry>();
         int added = 0;
-        foreach (var album in albums)
+        foreach (var album in incoming)
         {
-            int i = _entries.FindIndex(e => NumberedList.Matches(e.Title, album.Title) && NumberedList.Matches(e.Artist, album.Artist));
-            if (i < 0)
+            var existing = Existing(album);
+
+            // Anything the user has already taken off the list stays off it, not resurrected here.
+            if (existing?.PendingRemoval == true) continue;
+
+            if (existing is null)
             {
-                _entries.Add(album with { InAppleMusic = true });
+                rebuilt.Add(album with { InAppleMusic = true });
                 added++;
             }
             else
             {
-                _entries[i] = _entries[i] with { InAppleMusic = true, TrackCount = album.TrackCount };
+                // Keep the name and year we already hold — ours read better than the catalog's
+                // ("Tago Mago" rather than "Tago Mago (2011 Remastered)") — but take Apple Music's
+                // current track count, which is what flags a half-deleted album.
+                rebuilt.Add(existing with { InAppleMusic = true, TrackCount = album.TrackCount });
             }
         }
+
+        // Whatever was on the working list and isn't in Apple Music has just been dropped.
+        int removed = before.Count(e => !e.PendingRemoval && !StillInAppleMusic(e));
+
+        rebuilt.AddRange(stillPending);
+
+        _entries.Clear();
+        _entries.AddRange(rebuilt);
         Save();
-        return added;
+
+        return new PlaylistSyncResult(added, removed, cleared);
     }
 
     private void Save()

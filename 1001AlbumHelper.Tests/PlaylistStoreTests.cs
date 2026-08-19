@@ -73,36 +73,131 @@ public class PlaylistStoreTests : IDisposable
     }
 
     [Fact]
-    public void Merging_from_apple_music_adds_albums_not_already_on_the_working_list()
+    public void Pulling_down_takes_in_albums_apple_music_has_that_the_list_doesnt()
     {
         var store = PlaylistStore.Open(_id);
 
-        int added = store.MergeFromAppleMusic(new[]
+        var sync = store.SyncFromAppleMusic(new[]
         {
             new PlaylistEntry("Zuma", "Neil Young", "") { TrackCount = 9 },
         });
 
-        Assert.Equal(1, added);
+        Assert.Equal(1, sync.Added);
         var album = Assert.Single(store.Active);
         Assert.True(album.InAppleMusic);
         Assert.Equal(9, album.TrackCount);
     }
 
     [Fact]
-    public void Merging_from_apple_music_marks_an_existing_entry_present_without_duplicating_it()
+    public void Pulling_down_drops_albums_apple_music_doesnt_have()
+    {
+        // The point of a pull-down: Apple Music is the source of truth, so a local album it doesn't
+        // have is gone afterwards — including one queued here but never pushed.
+        var store = PlaylistStore.Open(_id);
+        store.Add("Vs.", "Pearl Jam", "1993");
+        store.Add("Zuma", "Neil Young", "1975");
+
+        var sync = store.SyncFromAppleMusic(new[]
+        {
+            new PlaylistEntry("Zuma", "Neil Young", "") { TrackCount = 9 },
+        });
+
+        Assert.Equal(1, sync.Removed);
+        Assert.Equal(0, sync.Added);
+        Assert.Equal("Zuma", Assert.Single(store.Active).Title);
+    }
+
+    [Fact]
+    public void Pulling_down_into_an_empty_apple_music_playlist_empties_the_list()
     {
         var store = PlaylistStore.Open(_id);
         store.Add("Vs.", "Pearl Jam", "1993");
 
-        int added = store.MergeFromAppleMusic(new[]
+        var sync = store.SyncFromAppleMusic(Array.Empty<PlaylistEntry>());
+
+        Assert.Equal(1, sync.Removed);
+        Assert.Empty(store.Active);
+    }
+
+    [Fact]
+    public void Pulling_down_keeps_the_year_we_already_knew()
+    {
+        // Apple Music's read-back carries no year, but our lists do — losing it on every sync
+        // would strip the year off every album the user had queued from the 1001.
+        var store = PlaylistStore.Open(_id);
+        store.Add("Vs.", "Pearl Jam", "1993");
+
+        store.SyncFromAppleMusic(new[] { new PlaylistEntry("Vs.", "Pearl Jam", "") { TrackCount = 12 } });
+
+        var album = Assert.Single(store.Active);
+        Assert.Equal("1993", album.Year);
+        Assert.Equal(12, album.TrackCount);
+        Assert.True(album.InAppleMusic);
+    }
+
+    [Fact]
+    public void Pulling_down_prefers_our_album_name_over_the_catalogs_reissue_name()
+    {
+        var store = PlaylistStore.Open(_id);
+        store.Add("Tago Mago", "Can", "1971");
+
+        store.SyncFromAppleMusic(new[]
+        {
+            new PlaylistEntry("Tago Mago (2011 Remastered)", "Can", "") { TrackCount = 7 },
+        });
+
+        // Same album by our matching rules, so the tidier name we already hold is the one kept.
+        Assert.Equal("Tago Mago", Assert.Single(store.Active).Title);
+    }
+
+    [Fact]
+    public void Pulling_down_does_not_resurrect_an_album_awaiting_manual_deletion()
+    {
+        // The checklist exists precisely because Apple Music still has these. If a pull-down put
+        // them back on the working list, the user's removal would be undone every time they synced.
+        var store = PlaylistStore.Open(_id);
+        store.Add("Vs.", "Pearl Jam", "1993");
+        store.MarkInAppleMusic(store.Active[0]);
+        store.RequestRemoval(store.Active[0]);
+        Assert.Single(store.ToRemove);
+
+        var sync = store.SyncFromAppleMusic(new[]
         {
             new PlaylistEntry("Vs.", "Pearl Jam", "") { TrackCount = 12 },
         });
 
-        Assert.Equal(0, added);
-        var album = Assert.Single(store.Active);
-        Assert.True(album.InAppleMusic);
-        Assert.Equal(12, album.TrackCount);
+        Assert.Empty(store.Active);
+        Assert.Single(store.ToRemove);
+        Assert.Equal(0, sync.Added);
+        Assert.Equal(0, sync.ClearedFromChecklist);
+    }
+
+    [Fact]
+    public void Pulling_down_ticks_off_a_checklist_album_that_has_gone_from_apple_music()
+    {
+        // Gone from Apple Music means the user has done the manual deletion — so stop nagging.
+        var store = PlaylistStore.Open(_id);
+        store.Add("Vs.", "Pearl Jam", "1993");
+        store.MarkInAppleMusic(store.Active[0]);
+        store.RequestRemoval(store.Active[0]);
+
+        var sync = store.SyncFromAppleMusic(Array.Empty<PlaylistEntry>());
+
+        Assert.Equal(1, sync.ClearedFromChecklist);
+        Assert.Empty(store.ToRemove);
+        Assert.Empty(store.Active);
+    }
+
+    [Fact]
+    public void Pulling_down_survives_a_reopen()
+    {
+        var store = PlaylistStore.Open(_id);
+        store.Add("Vs.", "Pearl Jam", "1993");
+        store.SyncFromAppleMusic(new[] { new PlaylistEntry("Zuma", "Neil Young", "") { TrackCount = 9 } });
+
+        var reopened = PlaylistStore.Open(_id);
+
+        Assert.Equal("Zuma", Assert.Single(reopened.Active).Title);
     }
 
     [Fact]

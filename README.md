@@ -10,7 +10,7 @@ C# codebase.
 - Tracks your progress through the 1001 list and lets you rate albums (⭐ / 👍 / 👎 / ❌) as you listen.
 - Keeps a shortlist of potential replacement albums, with Discogs lookups for missing years.
 - Builds two working playlists (from the 1001, and recommendations) and pushes them straight into
-  real Apple Music playlists on your phone.
+  real Apple Music playlists — from the phone (MediaPlayer) or the Mac (Music.app over AppleScript).
 - Syncs the shortlist and ratings across devices via a Google Sheet.
 - Exports the combined "must hear" + replacements list to PDF.
 
@@ -31,8 +31,9 @@ iPhone shows a single view with bottom tabs (phones don't do windows).
 **Sync** goes through the Google Sheets REST API directly with a service-account JWT (no
 Google.Apis, no OAuth login screen) — that's what lets the phone sync with no browser sign-in.
 
-**Apple Music** integration uses Apple's public `MediaPlayer` framework — no paid developer
-entitlement needed, but it's *add-only*: there's no public API to remove tracks from a playlist,
+**Apple Music** integration is per-platform behind one interface: the iPhone uses Apple's public
+`MediaPlayer` framework (no paid developer entitlement needed), and the Mac drives Music.app over
+AppleScript. MediaPlayer is *add-only* — there's no public API to remove tracks from a playlist —
 so the app tracks removals as a checklist you work through by hand in Apple Music.
 
 See [`PROJECT.md`](PROJECT.md) for the full internal handbook — build flags, deploy steps, known

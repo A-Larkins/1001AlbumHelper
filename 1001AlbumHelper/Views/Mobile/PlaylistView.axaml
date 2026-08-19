@@ -7,10 +7,10 @@
       <TextBlock x:Name="TitleText" FontSize="22" FontWeight="SemiBold" />
       <TextBlock x:Name="CountText" Opacity="0.55" FontSize="12" />
       <Grid ColumnDefinitions="*,*" ColumnSpacing="6">
-        <Button x:Name="ImportButton" Grid.Column="0" Content="⬇ Import"
+        <Button x:Name="ImportButton" Grid.Column="0" Content="⬇ Pull down"
                 Click="OnImportFromAppleMusic" HorizontalAlignment="Stretch"
                 HorizontalContentAlignment="Center" FontSize="12"
-                ToolTip.Tip="Import from Apple Music" />
+                ToolTip.Tip="Replace this list with what Apple Music has" />
         <Button x:Name="PushButton" Grid.Column="1" Content="⬆ Push all"
                 Click="OnPushToAppleMusic" HorizontalAlignment="Stretch"
                 HorizontalContentAlignment="Center" FontSize="12"

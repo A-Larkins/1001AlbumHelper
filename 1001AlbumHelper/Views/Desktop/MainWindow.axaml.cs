@@ -237,6 +237,12 @@ public partial class MainWindow : Window
         new ListViewerWindow().ShowDialog(this);
     }
 
+    private void OnPlaylists(object? sender, RoutedEventArgs e)
+    {
+        if (!PlaylistsButton.IsEnabled) return;
+        new PlaylistWindow().ShowDialog(this);
+    }
+
     private async void OnAddAlbum(object? sender, RoutedEventArgs e)
     {
         if (!AddAlbumButton.IsEnabled) return;

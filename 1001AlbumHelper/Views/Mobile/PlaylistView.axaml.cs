@@ -8,8 +8,9 @@ namespace _1001AlbumHelper;
 /// <summary>
 /// One playlist "working list" (1 = from the 1001, 2 = potential replacements). This is the clean,
 /// fully add/remove list the user manages; it maps to an Apple Music playlist by name for listening.
-/// "Import" seeds it from what's already in that Apple Music playlist; "Push all" adds the working
-/// list into Apple Music (add-only — Apple has no remove, so cleanup happens here in the app).
+/// "Pull down" replaces it with whatever that Apple Music playlist currently holds; "Push all" adds
+/// the working list into Apple Music (add-only — Apple has no remove, so cleanup happens here in
+/// the app). Pulling is a full sync, pushing can only add — see PROJECT.md §5.
 /// </summary>
 public partial class PlaylistView : UserControl
 {
@@ -61,7 +62,10 @@ public partial class PlaylistView : UserControl
         Refresh();
     }
 
-    /// <summary>Reads the existing Apple Music playlist and merges anything new into the working list.</summary>
+    /// <summary>
+    /// Pulls the working list down from Apple Music, which becomes the source of truth — afterwards
+    /// this list holds exactly what that playlist holds. See <see cref="PlaylistStore.SyncFromAppleMusic"/>.
+    /// </summary>
     private async void OnImportFromAppleMusic(object? sender, RoutedEventArgs e)
     {
         if (_store is null) return;
@@ -71,12 +75,26 @@ public partial class PlaylistView : UserControl
         try
         {
             var albums = await AppleMusic.Writer!.ReadAlbumsAsync(_appleMusicName);
-            int added = _store.MergeFromAppleMusic(albums);
+            var sync = _store.SyncFromAppleMusic(albums);
             Refresh();
-            Note($"Imported {added} new ({albums.Count} in “{_appleMusicName}”).");
+            Note(albums.Count == 0
+                ? $"“{_appleMusicName}” is empty — so this list is now too."
+                : Summarise(sync, albums.Count));
         }
         catch (Exception ex) { Note($"Couldn't read “{_appleMusicName}”: {ex.Message}"); }
         finally { SetBusy(false); }
+    }
+
+    /// <summary>Spells out what the pull actually changed, rather than just saying it finished.</summary>
+    private static string Summarise(PlaylistSyncResult sync, int inAppleMusic)
+    {
+        var parts = new List<string>();
+        if (sync.Added > 0) parts.Add($"{sync.Added} new");
+        if (sync.Removed > 0) parts.Add($"{sync.Removed} dropped");
+        if (sync.ClearedFromChecklist > 0) parts.Add($"{sync.ClearedFromChecklist} ticked off");
+
+        string what = parts.Count > 0 ? string.Join(", ", parts) : "no changes";
+        return $"Pulled {inAppleMusic} — {what}.";
     }
 
     /// <summary>Adds every album in the working list to the Apple Music playlist, naming any that fail and why.</summary>

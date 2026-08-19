@@ -28,6 +28,14 @@ internal static class Program
             return;
         }
 
+        // Headless, self-cleaning check of the Mac's Apple Music path (scratch playlist, never
+        // touches PLAYLIST1/PLAYLIST2).
+        if (args.Contains("musictest"))
+        {
+            MusicAppDiagnostic.RunAsync().GetAwaiter().GetResult();
+            return;
+        }
+
         // Headless genre backfill: fills column F on the master list for every rated album
         // missing one, via Discogs lookups. Resumable — safe to re-run.
         if (args.Contains("backfill-genres"))
@@ -45,6 +53,11 @@ internal static class Program
         // The Analytics window needs LiveCharts, which only this head references (see
         // AnalyticsWindowHost) — wire the factory so MainWindow's button can open it.
         AnalyticsWindowHost.Factory = () => new AnalyticsWindow();
+
+        // Apple Music, the Mac way: the iPhone's MediaPlayer framework doesn't exist here, so the
+        // Mac drives the Music app over AppleScript instead. Windows/Linux get no writer, and the
+        // playlist UI shows its Apple Music buttons as unavailable there, exactly as before.
+        if (OperatingSystem.IsMacOS()) AppleMusic.Writer = new MusicAppPlaylistWriter();
 
         BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
     }

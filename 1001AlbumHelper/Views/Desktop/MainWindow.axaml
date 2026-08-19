@@ -258,6 +258,21 @@
         </StackPanel>
       </StackPanel>
 
+      <StackPanel Spacing="10">
+        <TextBlock Classes="sectionLabel" Text="APPLE MUSIC" />
+        <Button x:Name="PlaylistsButton" Classes="card" Click="OnPlaylists">
+          <Grid ColumnDefinitions="Auto,*">
+            <Border Grid.Column="0" Classes="badge">
+              <TextBlock Text="🎵" />
+            </Border>
+            <StackPanel Grid.Column="1" Margin="16,0,0,0" VerticalAlignment="Center">
+              <TextBlock Classes="title" Text="Playlists" />
+              <TextBlock Classes="desc" Text="Your two working lists — Playlist 1 from the 1001, Playlist 2 for recommendations. Push them into the Music app, pull back what's already there, and drop what you're done with." />
+            </StackPanel>
+          </Grid>
+        </Button>
+      </StackPanel>
+
       <StackPanel Spacing="10" x:Name="InsightsSection" IsVisible="False">
         <TextBlock Classes="sectionLabel" Text="INSIGHTS" />
         <Button x:Name="AnalyticsButton" Classes="card" Click="OnAnalytics">
