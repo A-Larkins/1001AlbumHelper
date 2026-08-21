@@ -31,6 +31,15 @@ public partial class MainView : UserControl
         };
     }
 
+    /// <summary>
+    /// Opens the app on a given tab. Used by <see cref="MobilePreviewWindow"/> so a preview run can
+    /// be pointed straight at the screen being worked on instead of always starting on List.
+    /// </summary>
+    public void SelectTab(int index)
+    {
+        if (index >= 0 && index < _navButtons.Count) Tabs.SelectedIndex = index;
+    }
+
     /// <summary>The bar replaces the TabControl's hidden strip, so a press has to move the selection.</summary>
     private void OnNavigate(object? sender, RoutedEventArgs e)
     {

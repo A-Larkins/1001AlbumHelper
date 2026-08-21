@@ -232,6 +232,14 @@
   <!-- Bare text, not buttons: they label the list rather than inviting a press, and the active
        one is called out in gold with its direction arrow. -->
 
+  <!-- A rule above the sort row ties the four labels to the list they order; without it they float
+       between the search box and the status line looking like stray text. -->
+  <Style Selector="Border.sortBar">
+    <Setter Property="BorderBrush" Value="{StaticResource HairlineSoft}" />
+    <Setter Property="BorderThickness" Value="0,1,0,0" />
+    <Setter Property="Padding" Value="0,4,0,0" />
+  </Style>
+
   <Style Selector="Button.sort">
     <Setter Property="FontSize" Value="11" />
     <Setter Property="FontWeight" Value="Medium" />

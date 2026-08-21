@@ -32,14 +32,18 @@
         <TextBox x:Name="SearchBox" Watermark="Search title or artist…" />
 
         <!-- Sort: tap a column to sort by it; tap the active one again to flip direction. -->
-        <Grid ColumnDefinitions="*,*,*,*" ColumnSpacing="2">
-          <Button Grid.Column="0" x:Name="SortTitleButton" Classes="sort" Tag="Title" Click="OnSortHeader" />
-          <Button Grid.Column="1" x:Name="SortArtistButton" Classes="sort" Tag="Artist" Click="OnSortHeader" />
-          <Button Grid.Column="2" x:Name="SortYearButton" Classes="sort" Tag="Year" Click="OnSortHeader" />
-          <Button Grid.Column="3" x:Name="SortRatingButton" Classes="sort" Tag="Rating" Click="OnSortHeader" />
-        </Grid>
+        <Border Classes="sortBar">
+          <Grid ColumnDefinitions="*,*,*,*" ColumnSpacing="2">
+            <Button Grid.Column="0" x:Name="SortTitleButton" Classes="sort" Tag="Title" Click="OnSortHeader" />
+            <Button Grid.Column="1" x:Name="SortArtistButton" Classes="sort" Tag="Artist" Click="OnSortHeader" />
+            <Button Grid.Column="2" x:Name="SortYearButton" Classes="sort" Tag="Year" Click="OnSortHeader" />
+            <Button Grid.Column="3" x:Name="SortRatingButton" Classes="sort" Tag="Rating" Click="OnSortHeader" />
+          </Grid>
+        </Border>
 
-        <TextBlock x:Name="SyncText" Classes="caption" TextWrapping="Wrap" />
+        <!-- Collapses when empty — see the note on the same line in ReplacementsView. -->
+        <TextBlock x:Name="SyncText" Classes="caption" TextWrapping="Wrap"
+                   IsVisible="{Binding #SyncText.Text, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
 
       </StackPanel>
     </Border>
@@ -48,11 +52,13 @@
     <ListBox x:Name="Rows">
       <ListBox.ItemTemplate>
         <DataTemplate x:DataType="local:ViewRow">
-          <Grid ColumnDefinitions="30,Auto,*,Auto" Margin="0,11">
+          <!-- The rating column is a fixed width, not Auto: an unrated album has nothing in it, and
+               an Auto column would collapse and shunt that row's title left of its neighbours'. -->
+          <Grid ColumnDefinitions="30,22,*,Auto" Margin="0,11">
             <TextBlock Grid.Column="0" Classes="rowIndex" Text="{Binding Number}"
                        VerticalAlignment="Center" />
             <TextBlock Grid.Column="1" Text="{Binding Rating}" VerticalAlignment="Center"
-                       FontSize="13" Margin="0,0,7,0" />
+                       FontSize="13" />
             <StackPanel Grid.Column="2" VerticalAlignment="Center" Spacing="2">
               <TextBlock Classes="rowTitle" Text="{Binding Title}" TextWrapping="Wrap" />
               <TextBlock Classes="rowSub" Text="{Binding Artist}" TextWrapping="Wrap" />

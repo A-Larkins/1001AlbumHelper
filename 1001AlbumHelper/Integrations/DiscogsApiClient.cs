@@ -242,8 +242,9 @@ public class DiscogsApiClient
             var url = $"https://api.discogs.com/database/search?type=master&per_page=50"
                     + $"&token={_token}{rungs[i].Url}";
 
-            var found = RankAlbumResults(await GetSearchResultsAsync(url, ct))
-                .FirstOrDefault(s => s.Year.Length > 0 && rungs[i].Accept(s));
+            var found = PreferOriginalRelease(
+                RankAlbumResults(await GetSearchResultsAsync(url, ct))
+                    .Where(s => s.Year.Length > 0 && rungs[i].Accept(s)));
 
             if (found is not null) return found;
         }
@@ -284,6 +285,39 @@ public class DiscogsApiClient
             .Split(' ', StringSplitOptions.RemoveEmptyEntries)
             .Where(w => w is not ("and" or "the"))
             .ToArray();
+
+    /// <summary>
+    /// Of the masters that all verify as the album we asked about, the one that dates it to its
+    /// <em>first</em> release rather than to a reissue — so a 1970 record remastered in 2010 is
+    /// dated 1970.
+    /// <para>
+    /// The rule is about titles, not years. Discogs files a reissue under an extended name
+    /// ("Abbey Road (2019 Mix)"), so where one candidate's title is a whole-word prefix of
+    /// another's, the shorter one is the album and the longer one an edition of it — and the
+    /// edition is set aside. Candidates nothing is a shorter form of all survive, keeping the
+    /// most-owned-first order <see cref="RankAlbumResults"/> put them in.
+    /// </para>
+    /// <para>
+    /// Deliberately <em>not</em> "take the earliest year": Discogs also carries recording-date and
+    /// pre-release masters under the album's own name, so the earliest year is often before the
+    /// record actually came out. Blue Train has masters at 1957, 1958 and 2010, and 1958 is the
+    /// answer — see the ranking tests. Most-owned decides between same-named masters; this only
+    /// steps in when one title is an extension of another.
+    /// </para>
+    /// </summary>
+    public static AlbumSuggestion? PreferOriginalRelease(IEnumerable<AlbumSuggestion> candidates)
+    {
+        var all = candidates.ToList();
+        if (all.Count == 0) return null;
+
+        bool IsEditionOfAnother(int index) =>
+            all.Where((_, other) => other != index)
+               .Any(other => other.Title.Length < all[index].Title.Length
+                          && TitlesLineUp(other.Title, all[index].Title));
+
+        var albums = all.Where((_, i) => !IsEditionOfAnother(i)).ToList();
+        return albums.Count > 0 ? albums[0] : all[0];
+    }
 
     /// <summary>
     /// A title with its edition furniture removed: a trailing "(Live)" or "[Remastered]", and any

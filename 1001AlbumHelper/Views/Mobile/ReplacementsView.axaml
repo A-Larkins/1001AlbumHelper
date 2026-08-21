@@ -22,14 +22,20 @@
         <TextBox x:Name="SearchBox" Watermark="Search title or artist…" />
 
         <!-- Sort: tap a column to sort by it; tap the active one again to flip direction. -->
-        <Grid ColumnDefinitions="*,*,*,*" ColumnSpacing="2">
-          <Button Grid.Column="0" x:Name="SortTitleButton" Classes="sort" Tag="Title" Click="OnSortHeader" />
-          <Button Grid.Column="1" x:Name="SortArtistButton" Classes="sort" Tag="Artist" Click="OnSortHeader" />
-          <Button Grid.Column="2" x:Name="SortGenreButton" Classes="sort" Tag="Genre" Click="OnSortHeader" />
-          <Button Grid.Column="3" x:Name="SortYearButton" Classes="sort" Tag="Year" Click="OnSortHeader" />
-        </Grid>
+        <Border Classes="sortBar">
+          <Grid ColumnDefinitions="*,*,*,*" ColumnSpacing="2">
+            <Button Grid.Column="0" x:Name="SortTitleButton" Classes="sort" Tag="Title" Click="OnSortHeader" />
+            <Button Grid.Column="1" x:Name="SortArtistButton" Classes="sort" Tag="Artist" Click="OnSortHeader" />
+            <Button Grid.Column="2" x:Name="SortGenreButton" Classes="sort" Tag="Genre" Click="OnSortHeader" />
+            <Button Grid.Column="3" x:Name="SortYearButton" Classes="sort" Tag="Year" Click="OnSortHeader" />
+          </Grid>
+        </Border>
 
-        <TextBlock x:Name="SyncText" Classes="caption" TextWrapping="Wrap" />
+        <!-- Collapses when it has nothing to say. On a good sync this line is set to "", and an
+             empty TextBlock still reserves its line height — which left a visible gap above the
+             list for the case that happens nearly every time. -->
+        <TextBlock x:Name="SyncText" Classes="caption" TextWrapping="Wrap"
+                   IsVisible="{Binding #SyncText.Text, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
 
         <!-- Undo sits with the message it undoes ("Dropped …"), not up in the header. -->
         <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
@@ -77,29 +83,27 @@
     <ListBox x:Name="Rows">
       <ListBox.ItemTemplate>
         <DataTemplate x:DataType="local:CandidateAlbum">
-          <!-- Title and artist read as one block; year and genre sit together on a meta line under
-               them; the three verdicts get a row of their own. Three buttons plus the year box
-               don't fit beside a wrapping title at phone width, so they can't share a line with it. -->
+          <!-- Title over artist, then one line carrying everything else: the editable year, the
+               genre, and the three verdicts pushed right. They can't share a line with the title
+               (which wraps), but on a line of their own they fit with room to spare — and keeping
+               them on one line stops the buttons drifting closer to the next album than to theirs. -->
           <StackPanel Margin="0,13" Spacing="2">
             <TextBlock Classes="rowTitle" Text="{Binding Title}" TextWrapping="Wrap" />
             <TextBlock Classes="rowSub" Text="{Binding Artist}" TextWrapping="Wrap" />
-
-            <Grid ColumnDefinitions="Auto,Auto,*" ColumnSpacing="7" Margin="0,5,0,0">
-              <TextBox Grid.Column="0" Classes="inline" Text="{Binding Year, Mode=TwoWay}"
-                       Watermark="year" Width="44" VerticalAlignment="Center" />
-              <TextBlock Grid.Column="1" Classes="caption" Text="{Binding Genre}"
-                         IsVisible="{Binding HasGenre}" VerticalAlignment="Center"
-                         TextTrimming="CharacterEllipsis" />
-            </Grid>
 
             <!-- Why a Keep didn't go through ("Discogs didn't find a year", "already on the 1001"). -->
             <TextBlock Classes="caption warn" Text="{Binding Note}" IsVisible="{Binding HasNote}"
                        TextWrapping="Wrap" Margin="0,4,0,0" />
 
-            <Grid ColumnDefinitions="*,Auto,Auto,Auto" ColumnSpacing="6" Margin="0,9,0,0">
-              <Button Grid.Column="1" Classes="chip quiet" Content="＋ P2" Click="OnAddToPlaylist2" />
-              <Button Grid.Column="2" Classes="chip gold" Content="Keep" Click="OnKeepRow" />
-              <Button Grid.Column="3" Classes="chip quiet" Content="Nah" Click="OnDropRow" />
+            <Grid ColumnDefinitions="Auto,*,Auto,Auto,Auto" ColumnSpacing="6" Margin="0,7,0,0">
+              <TextBox Grid.Column="0" Classes="inline" Text="{Binding Year, Mode=TwoWay}"
+                       Watermark="year" Width="44" VerticalAlignment="Center" />
+              <TextBlock Grid.Column="1" Classes="caption" Text="{Binding Genre}"
+                         IsVisible="{Binding HasGenre}" VerticalAlignment="Center"
+                         Margin="2,0,6,0" TextTrimming="CharacterEllipsis" />
+              <Button Grid.Column="2" Classes="chip quiet" Content="＋ P2" Click="OnAddToPlaylist2" />
+              <Button Grid.Column="3" Classes="chip gold" Content="Keep" Click="OnKeepRow" />
+              <Button Grid.Column="4" Classes="chip quiet" Content="Nah" Click="OnDropRow" />
             </Grid>
           </StackPanel>
         </DataTemplate>

@@ -140,4 +140,72 @@ public class AlbumRankingTests
         Assert.Equal(12, DiscogsApiClient.RankAlbumResults(many).Count);
         Assert.Equal(5, DiscogsApiClient.RankAlbumResults(many, take: 5).Count);
     }
+
+    // ---------- Dating an album to its first release, not to a reissue ----------
+
+    [Fact]
+    public void Dates_an_album_from_the_original_rather_than_the_remaster()
+    {
+        // The whole point: a 1969 record remixed in 2019 is a 1969 record. Discogs files the
+        // remix under an extended name, which is what gives it away.
+        var candidates = new[]
+        {
+            new AlbumSuggestion("Abbey Road (2019 Mix)", "The Beatles", "2019", 41000),
+            new AlbumSuggestion("Abbey Road", "The Beatles", "1969", 38000),
+        };
+
+        var picked = DiscogsApiClient.PreferOriginalRelease(candidates);
+
+        Assert.Equal("1969", picked!.Year);
+    }
+
+    [Fact]
+    public void Keeps_a_subtitled_album_when_nothing_shorter_names_the_same_record()
+    {
+        // "Tical 2000: Judgement Day" only looks like edition furniture. With no plainer sibling
+        // among the candidates there's nothing to prefer over it, so it stands.
+        var candidates = new[]
+        {
+            new AlbumSuggestion("Tical 2000: Judgement Day", "Method Man", "1998", 9000),
+        };
+
+        var picked = DiscogsApiClient.PreferOriginalRelease(candidates);
+
+        Assert.Equal("Tical 2000: Judgement Day", picked!.Title);
+        Assert.Equal("1998", picked.Year);
+    }
+
+    [Fact]
+    public void Leaves_same_named_masters_to_the_most_owned_rule()
+    {
+        // No title here is an extension of another, so this rule must not fire — the 1957
+        // recording-date master would otherwise beat the 1958 release everyone owns.
+        var candidates = new[]
+        {
+            new AlbumSuggestion("Blue Train", "John Coltrane", "1958", 115688),
+            new AlbumSuggestion("Blue Train", "John Coltrane", "1957", 812),
+        };
+
+        var picked = DiscogsApiClient.PreferOriginalRelease(candidates);
+
+        Assert.Equal("1958", picked!.Year);
+    }
+
+    [Fact]
+    public void Falls_back_to_the_best_edition_when_every_candidate_is_one()
+    {
+        // A reissue-only answer still beats no answer at all.
+        var candidates = new[]
+        {
+            new AlbumSuggestion("Pet Sounds (Remastered)", "The Beach Boys", "1999", 5000),
+        };
+
+        Assert.Equal("1999", DiscogsApiClient.PreferOriginalRelease(candidates)!.Year);
+    }
+
+    [Fact]
+    public void Has_nothing_to_offer_from_an_empty_shortlist()
+    {
+        Assert.Null(DiscogsApiClient.PreferOriginalRelease(Array.Empty<AlbumSuggestion>()));
+    }
 }
