@@ -20,11 +20,14 @@ public sealed class ViewRow : INotifyPropertyChanged
 {
     /// <summary>Null until the ＋ button is pressed; then true if it was added, false if it was already there.</summary>
     private bool? _queued;
+    private string _rating;
 
-    public ViewRow(string number, string rating, string title, string artist, string year, int playlist = 1)
+    public ViewRow(string number, string rating, string title, string artist, string year,
+                   int playlist = 1, int sheetRow = 0)
     {
         Number = number;
-        Rating = rating;
+        _rating = rating;
+        SheetRow = sheetRow;
         Title = title;
         Artist = artist;
         Year = year;
@@ -34,7 +37,32 @@ public sealed class ViewRow : INotifyPropertyChanged
     }
 
     public string Number { get; }
-    public string Rating { get; }
+
+    /// <summary>
+    /// The rating shown in the row. Settable because re-rating an album from the browse list has
+    /// to show up there straight away — the alternative is re-reading the whole sheet for one cell.
+    /// </summary>
+    public string Rating
+    {
+        get => _rating;
+        set
+        {
+            if (_rating == value) return;
+            _rating = value;
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Rating)));
+        }
+    }
+
+    /// <summary>
+    /// This album's 1-indexed row on the master sheet, or 0 for rows that don't have one — the
+    /// Must Hear and replacements lists, and the phone's offline snapshot. Non-zero is what makes
+    /// a row rateable, since the rater writes to <c>B{SheetRow}</c>.
+    /// </summary>
+    public int SheetRow { get; }
+
+    /// <summary>Whether this row can be sent to the rater — see <see cref="SheetRow"/>.</summary>
+    public bool CanRate => SheetRow > 0;
+
     public string Title { get; }
     public string Artist { get; }
     public string Year { get; }

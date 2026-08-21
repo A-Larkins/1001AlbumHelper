@@ -139,6 +139,7 @@ public partial class MainWindow : Window
         RenewTrialButton.IsEnabled = !on;
         RateNextButton.IsEnabled = !on;
         BackfillButton.IsEnabled = !on;
+        RevisitButton.IsEnabled = !on;
         AddAlbumButton.IsEnabled = !on;
         BrowseButton.IsEnabled = !on;
         CandidatesButton.IsEnabled = !on;
@@ -223,6 +224,7 @@ public partial class MainWindow : Window
     // ---------- Rating & adding ----------
     private void OnRateNext(object? sender, RoutedEventArgs e) => OpenRater(RatingMode.NextUp);
     private void OnBackfill(object? sender, RoutedEventArgs e) => OpenRater(RatingMode.Backfill);
+    private void OnRevisit(object? sender, RoutedEventArgs e) => OpenRater(RatingMode.Revisit);
 
     private void OpenRater(RatingMode mode)
     {

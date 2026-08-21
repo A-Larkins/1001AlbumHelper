@@ -8,6 +8,9 @@ public enum RatingMode
 
     /// <summary>Albums marked "listened" (✓) but never given a real rating.</summary>
     Backfill,
+
+    /// <summary>Albums that already carry one of the four ratings — for changing your mind.</summary>
+    Revisit,
 }
 
 /// <summary>One album row on the master list.</summary>
@@ -62,6 +65,9 @@ public sealed class RatingSession
 
     public RatingMode Mode { get; private set; }
     public bool Shuffle { get; private set; }
+
+    /// <summary>In <see cref="RatingMode.Revisit"/>, the one rating being revisited — null for all four.</summary>
+    public string? RatingFilter { get; private set; }
 
     /// <summary>Total rows on the master list.</summary>
     public int TotalAlbums => _all.Count;
@@ -119,15 +125,27 @@ public sealed class RatingSession
         return new RatingSession(writer, tab, mustHearTab, all);
     }
 
-    /// <summary>Rebuilds the queue for a mode/order. Albums rated during this session drop out.</summary>
-    public void Rebuild(RatingMode mode, bool shuffle)
+    /// <summary>
+    /// Rebuilds the queue for a mode/order. Albums rated during this session drop out — except in
+    /// <see cref="RatingMode.Revisit"/>, whose queue is defined by a rating being *present*, so a
+    /// re-rated album stays in it (under the new symbol) rather than vanishing mid-run.
+    /// <para>
+    /// <paramref name="ratingFilter"/> narrows Revisit to a single symbol. The other two modes
+    /// ignore it: their queues are defined by the rating being absent.
+    /// </para>
+    /// </summary>
+    public void Rebuild(RatingMode mode, bool shuffle, string? ratingFilter = null)
     {
         Mode = mode;
         Shuffle = shuffle;
+        RatingFilter = mode == RatingMode.Revisit ? ratingFilter : null;
 
-        var matching = _all.Where(a => mode == RatingMode.NextUp
-            ? string.IsNullOrWhiteSpace(a.Rating)
-            : a.Rating == Listened);
+        var matching = _all.Where(a => mode switch
+        {
+            RatingMode.NextUp => string.IsNullOrWhiteSpace(a.Rating),
+            RatingMode.Backfill => a.Rating == Listened,
+            _ => RatingFilter is null ? IsRated(a.Rating) : a.Rating == RatingFilter,
+        });
 
         // Ascending means "by position on the list", which is what the # column encodes.
         _queue = matching.OrderBy(a => a.SheetRow).ToList();
@@ -160,6 +178,53 @@ public sealed class RatingSession
         if (_index > 0) _index--;
     }
 
+    /// <summary>
+    /// True for the four real ratings. A blank cell and a "✓ listened" mark are both *not* a
+    /// rating — they're what Next up and Backfill exist to clear.
+    /// </summary>
+    public static bool IsRated(string rating) =>
+        Choices.Any(c => c.Symbol == rating.Trim());
+
+    /// <summary>
+    /// Points the session at one album, whatever its rating — how an album that's already rated
+    /// gets corrected without walking a queue to reach it. An album the current queue doesn't hold
+    /// is spliced in at the current position, so carrying on afterwards resumes the queue where it
+    /// was. False if no row on the master list has that number.
+    /// </summary>
+    public bool FocusOn(int sheetRow)
+    {
+        int at = _queue.FindIndex(a => a.SheetRow == sheetRow);
+        if (at >= 0) { _index = at; return true; }
+
+        var album = _all.FirstOrDefault(a => a.SheetRow == sheetRow);
+        if (album is null) return false;
+
+        _index = Math.Clamp(_index, 0, _queue.Count);
+        _queue.Insert(_index, album);
+        return true;
+    }
+
+    /// <summary>
+    /// Albums whose title, artist or year matches every whitespace-separated term in
+    /// <paramref name="query"/> — the same narrowing rule the browse lists' search boxes use, so
+    /// "nirvana 1993" cuts down rather than widening. A blank query matches nothing, not everything.
+    /// </summary>
+    public IReadOnlyList<AlbumEntry> Search(string query, int limit = 20)
+    {
+        var terms = NumberedList.Normalize(query ?? "")
+            .Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (terms.Length == 0) return Array.Empty<AlbumEntry>();
+
+        return _all
+            .Where(a =>
+            {
+                string hay = $"{NumberedList.Normalize(a.Title)} {NumberedList.Normalize(a.Artist)} {a.Year}";
+                return terms.All(t => hay.Contains(t, StringComparison.Ordinal));
+            })
+            .Take(limit)
+            .ToList();
+    }
+
     /// <summary>What a rating did: the cell written, plus how the Must Hear list reacted.</summary>
     public sealed record RateResult(AlbumEntry Album, string Cell, string? MustHearNote);
 
@@ -180,33 +245,48 @@ public sealed class RatingSession
                 $"Row {album.SheetRow} now holds \"{liveTitle}\" but this session expected " +
                 $"\"{album.Title}\". The sheet changed — reopen the rater to reload it.");
 
+        // The rating being replaced, read from the master snapshot rather than the queue entry —
+        // the queue still holds the album as it looked when the queue was built.
+        string previous = (_all.FirstOrDefault(a => a.SheetRow == album.SheetRow) ?? album).Rating;
+
         string cell = $"B{album.SheetRow}";
         await _writer.UpdateCellAsync(_tab, cell, rating);
         Console.WriteLine($"{rating} → {cell}  {album.Title} — {album.Artist} ({album.Year})");
 
-        // Keep the in-memory copy in step so a rebuild won't offer this album again.
+        // Keep both in-memory copies in step: the master snapshot so a rebuild won't offer this
+        // album again, and the queue entry so stepping Back onto it shows what's now on the sheet.
         int at = _all.FindIndex(a => a.SheetRow == album.SheetRow);
         if (at >= 0) _all[at] = _all[at] with { Rating = rating };
+        _queue[_index] = _queue[_index] with { Rating = rating };
+
+        // …and tell the rest of the app, whose lists may be showing an older copy of this album.
+        RatingChanges.Record(album.Title, album.Artist, rating);
 
         _index++;
 
-        // A star earns a place on the Must Hear list. This is deliberately best-effort: the
-        // rating itself is already saved, so a failure here must not look like a failed rating.
+        // A star earns a place on the Must Hear list — and a star taken away gives that place back,
+        // so re-rating a ⭐ down doesn't leave the album on a list it no longer belongs on. Both
+        // sides are deliberately best-effort: the rating itself is already saved, so a failure here
+        // must not look like a failed rating.
+        bool starGained = rating == Starred;
+        bool starLost = previous == Starred && rating != Starred;
+
         string? note = null;
-        if (rating == Starred)
+        if (starGained || starLost)
         {
-            Console.WriteLine($"⭐ {album.Title} — adding to \"{_mustHearTab}\"…");
+            string what = starGained ? "adding to" : "removing from";
+            Console.WriteLine($"{(starGained ? Starred : previous)} {album.Title} — {what} \"{_mustHearTab}\"…");
             try
             {
-                note = await AddToMustHearAsync(album);
+                note = starGained ? await AddToMustHearAsync(album) : await RemoveFromMustHearAsync(album);
                 Console.WriteLine($"   {note}");
             }
             catch (Exception ex)
             {
-                note = $"⚠️ rating saved, but adding to Must Hear failed: {ex.Message}";
+                note = $"⚠️ rating saved, but {what} Must Hear failed: {ex.Message}";
                 // Log the full exception: the one-line note in the window loses the detail that
                 // makes a failure here diagnosable.
-                Console.WriteLine($"   ✗ Must Hear add failed: {ex}");
+                Console.WriteLine($"   ✗ Must Hear {what} failed: {ex}");
             }
         }
 
@@ -225,5 +305,21 @@ public sealed class RatingSession
         int position = await NumberedList.InsertByYearAsync(
             _writer, _mustHearTab, album.Title, album.Artist, year);
         return $"added to “{_mustHearTab}” at #{position}";
+    }
+
+    /// <summary>
+    /// Takes an album off the Must Hear list and renumbers what's left, so dropping a ⭐ leaves no
+    /// gap in the numbering. Matching is <see cref="NumberedList.Matches"/>, so punctuation and
+    /// case drifting between the two tabs can't strand an entry that should have gone.
+    /// </summary>
+    private async Task<string> RemoveFromMustHearAsync(AlbumEntry album)
+    {
+        var plan = await NumberedList.ApplyAsync(_writer, _mustHearTab,
+            r => NumberedList.Matches(r.Title, album.Title)
+              && NumberedList.Matches(r.Artist, album.Artist));
+
+        return plan.Removed.Count > 0
+            ? $"removed from “{_mustHearTab}”"
+            : $"wasn’t on “{_mustHearTab}”";
     }
 }

@@ -8,12 +8,13 @@ using Avalonia.Threading;
 namespace _1001AlbumHelper;
 
 /// <summary>
-/// Mobile browser over all three lists — the 1001 (offline snapshot), Must Hear, and the final
-/// numbered Replacements list — with a search box and a per-row "add to playlist" that follows the
-/// list you're in: the 1001 and Must Hear go to Playlist 1, Replacements to Playlist 2. The 1001 is
-/// instant and always available; Must Hear/Replacements are read live from Google Sheets via the
-/// REST client (mobile's OAuth-free path — see RestSheetsClient) the first time each is opened, then
-/// cached for the rest of the session.
+/// Mobile browser over all three lists — the 1001, Must Hear, and the final numbered Replacements
+/// list — with a search box and a per-row "add to playlist" that follows the list you're in: the
+/// 1001 and Must Hear go to Playlist 1, Replacements to Playlist 2. Must Hear/Replacements are read
+/// live from Google Sheets via the REST client (mobile's OAuth-free path — see RestSheetsClient) the
+/// first time each is opened, then cached for the rest of the session. The 1001 opens instantly from
+/// the offline snapshot and is then replaced by the live list (see <see cref="Refresh1001Async"/>),
+/// so it works with no signal but doesn't strand you on the ratings the app was built with.
 /// </summary>
 public partial class AlbumListView : UserControl
 {
@@ -28,6 +29,9 @@ public partial class AlbumListView : UserControl
     private readonly PlaylistStore _playlist2 = PlaylistStore.Open(2);
     private ViewRowSortColumn? _sortColumn;
     private bool _sortDescending;
+
+    /// <summary>True once the 1001 tab is showing the sheet's copy rather than the built-in one.</summary>
+    private bool _live1001;
 
     public AlbumListView()
     {
@@ -46,6 +50,44 @@ public partial class AlbumListView : UserControl
             CountText.Text = $"Couldn't load the list: {ex.Message}";
         }
         ShowList(Tab1001);
+
+        // The snapshot is only as fresh as the last build, so bring it up to date behind the scenes.
+        _ = Refresh1001Async();
+    }
+
+    /// <summary>
+    /// Replaces the built-in 1001 snapshot with what the sheet says now. That snapshot is baked in
+    /// at build time, so the ratings in it are the first thing to go stale — this catches them up,
+    /// including ratings given on the Mac. Deliberately runs *after* the snapshot is already on
+    /// screen: the tab still opens instantly, and still works with no signal.
+    /// </summary>
+    private async System.Threading.Tasks.Task Refresh1001Async()
+    {
+        var sheets = MobileSheets.Create();
+        if (sheets.Client is null) return; // not set up here — the snapshot is all there is
+
+        try
+        {
+            var live = await RatingSession.LoadAsync(sheets.Client, sheets.AlbumsTab, sheets.StarredTab);
+            var rows = live.AllAlbums
+                .Select(a => new ViewRow(a.Number, a.Rating, a.Title, a.Artist, a.Year,
+                                         sheetRow: a.SheetRow))
+                .ToList();
+
+            _cache[Tab1001] = rows;
+            _live1001 = true;
+            if (_active != Tab1001) return;
+
+            _all = rows;
+            SyncText.Text = $"✓ Live from Google Sheets ({rows.Count})";
+            ApplyFilter();
+            ScrollToProgress();
+        }
+        catch (Exception ex)
+        {
+            // Not fatal: the snapshot on screen is still perfectly usable, just older.
+            if (_active == Tab1001) SyncText.Text = $"⚠ Showing the built-in copy — {ex.Message}";
+        }
     }
 
     private void ShowList(string list)
@@ -57,8 +99,11 @@ public partial class AlbumListView : UserControl
 
         if (_cache.TryGetValue(list, out var cached))
         {
+            // Anything rated this run is newer than what any cached list holds.
+            if (RatingChanges.Count > 0) RatingChanges.ApplyTo(cached);
+
             _all = cached;
-            SyncText.Text = list == Tab1001 ? "" : "✓ Live from Google Sheets";
+            SyncText.Text = list == Tab1001 && !_live1001 ? "" : "✓ Live from Google Sheets";
             ApplyFilter();
             if (list == Tab1001) ScrollToProgress();
         }

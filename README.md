@@ -7,7 +7,9 @@ C# codebase.
 
 ## What it does
 
-- Tracks your progress through the 1001 list and lets you rate albums (⭐ / 👍 / 👎 / ❌) as you listen.
+- Tracks your progress through the 1001 list and lets you rate albums (⭐ / 👍 / 👎 / ❌) as you listen —
+  and change a rating later, either by walking the albums you've already rated or by jumping straight
+  to one from the browse list (Mac) or the find box (iPhone).
 - Keeps a shortlist of potential replacement albums, with Discogs lookups for missing years.
 - Builds two working playlists (from the 1001, and recommendations) and pushes them straight into
   real Apple Music playlists — from the phone (MediaPlayer) or the Mac (Music.app over AppleScript).

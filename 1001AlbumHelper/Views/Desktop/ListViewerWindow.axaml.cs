@@ -44,7 +44,8 @@ public partial class ListViewerWindow : Window
             }
 
             _cache[Which.Master] = loaded.Master
-                .Select(a => new ViewRow(a.Number, a.Rating, a.Title, a.Artist, a.Year)).ToList();
+                .Select(a => new ViewRow(a.Number, a.Rating, a.Title, a.Artist, a.Year,
+                                         sheetRow: a.SheetRow)).ToList();
             _cache[Which.MustHear] = loaded.MustHear
                 .Select(r => new ViewRow(r.Number, "", r.Title, r.Artist, r.Year)).ToList();
             _cache[Which.Replacements] = loaded.Replacements
@@ -65,7 +66,7 @@ public partial class ListViewerWindow : Window
     private void OnPickMustHear(object? sender, RoutedEventArgs e) => Show(Which.MustHear);
     private void OnPickReplacements(object? sender, RoutedEventArgs e) => Show(Which.Replacements);
 
-    private void Show(Which which)
+    private async void Show(Which which)
     {
         _current = which;
         MasterButton.Classes.Set("on", which == Which.Master);
@@ -74,6 +75,10 @@ public partial class ListViewerWindow : Window
 
         // Only the master list carries ratings.
         RatingHeader.Text = which == Which.Master ? "RATING" : "";
+
+        // A list can be missing because rating dropped it as stale (see OnRate) — fetch it again
+        // rather than leaving the previous list on screen under the new tab's heading.
+        if (!_cache.ContainsKey(which)) { await LoadAsync(force: true); return; }
 
         ApplyFilter();
     }
@@ -142,6 +147,37 @@ public partial class ListViewerWindow : Window
 
     private async void OnReload(object? sender, RoutedEventArgs e) => await LoadAsync(force: true);
     private void OnClose(object? sender, RoutedEventArgs e) => Close();
+
+    /// <summary>
+    /// Opens the rater on this one album, whatever it's rated now — the way an existing rating gets
+    /// changed. Modal, so the window can fold the result back into the row it came from when it
+    /// closes rather than making the whole list reload for one cell.
+    /// </summary>
+    private async void OnRate(object? sender, RoutedEventArgs e)
+    {
+        if (sender is not Button { DataContext: ViewRow row } || !row.CanRate) return;
+
+        var rater = new RatingWindow(RatingMode.Revisit, row.SheetRow);
+        await rater.ShowDialog(this);
+
+        if (rater.RatingsApplied.Count == 0) return;
+
+        // The rater can move on down the queue, so more than the one row may have changed.
+        if (_cache.TryGetValue(Which.Master, out var master))
+        {
+            foreach (var (sheetRow, rating) in rater.RatingsApplied)
+            {
+                var changed = master.FirstOrDefault(r => r.SheetRow == sheetRow);
+                if (changed is not null) changed.Rating = rating;
+            }
+        }
+
+        // A ⭐ given or taken away rewrites Must Hear, so the copy cached here is now a guess.
+        // Drop it and let the tab reload from the sheet next time it's opened.
+        _cache.Remove(Which.MustHear);
+
+        ApplyFilter();
+    }
 
     /// <summary>
     /// Queues a row into its own working playlist — the 1001 and Must Hear feed Playlist 1, the

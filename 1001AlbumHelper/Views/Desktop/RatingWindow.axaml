@@ -90,7 +90,7 @@
     </Style>
   </Window.Styles>
 
-  <Grid Margin="22,18,22,16" RowDefinitions="Auto,Auto,*,Auto,Auto">
+  <Grid Margin="22,18,22,16" RowDefinitions="Auto,Auto,Auto,*,Auto,Auto">
 
     <!-- Mode switch + counter -->
     <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto" Margin="0,0,0,14">
@@ -99,6 +99,8 @@
                 ToolTip.Tip="Albums with no mark yet — in list order." />
         <Button x:Name="BackfillButton" Classes="seg" Content="📼  Backfill ✓" Click="OnPickBackfill"
                 ToolTip.Tip="Albums you marked listened (✓) but never rated." />
+        <Button x:Name="RevisitButton" Classes="seg" Content="🔁  Revisit" Click="OnPickRevisit"
+                ToolTip.Tip="Albums you've already rated — for changing your mind." />
       </StackPanel>
       <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
         <CheckBox x:Name="ShuffleBox" Content="Shuffle" FontSize="12" Foreground="#b3a394"
@@ -108,10 +110,23 @@
       </StackPanel>
     </Grid>
 
-    <Border Grid.Row="1" Height="1" Margin="0,0,0,16" Background="#3a2e25" />
+    <!-- Which ratings Revisit walks through. Hidden for the other two queues, whose albums have
+         no rating to filter by. -->
+    <StackPanel Grid.Row="1" x:Name="FilterPanel" Orientation="Horizontal" Spacing="6"
+                Margin="0,0,0,14" IsVisible="False">
+      <TextBlock Text="Revisit:" FontSize="12" Foreground="#8a7a6c" VerticalAlignment="Center"
+                 Margin="0,0,4,0" />
+      <Button Classes="seg on" Tag="" Content="All" Click="OnPickFilter" />
+      <Button Classes="seg" Tag="⭐" Content="⭐" Click="OnPickFilter" />
+      <Button Classes="seg" Tag="👍" Content="👍" Click="OnPickFilter" />
+      <Button Classes="seg" Tag="👎" Content="👎" Click="OnPickFilter" />
+      <Button Classes="seg" Tag="❌" Content="❌" Click="OnPickFilter" />
+    </StackPanel>
+
+    <Border Grid.Row="2" Height="1" Margin="0,0,0,16" Background="#3a2e25" />
 
     <!-- The album -->
-    <Border Grid.Row="2" CornerRadius="14" Background="#141010" BorderBrush="#2a211b" BorderThickness="1"
+    <Border Grid.Row="3" CornerRadius="14" Background="#141010" BorderBrush="#2a211b" BorderThickness="1"
             Padding="20">
       <Panel>
         <!-- Album card -->
@@ -136,6 +151,9 @@
                      TextWrapping="Wrap" TextAlignment="Center" Margin="0,8,0,0" />
           <TextBlock x:Name="YearText" Text="" FontSize="14" Foreground="#9c8b7c"
                      HorizontalAlignment="Center" Margin="0,8,0,0" />
+          <!-- Only shown for an album that already has a rating — otherwise there's nothing to say. -->
+          <TextBlock x:Name="CurrentRatingText" Text="" FontSize="13" Foreground="#e0b479"
+                     HorizontalAlignment="Center" Margin="0,8,0,0" IsVisible="False" />
         </StackPanel>
 
         <!-- Shown while loading, and when a queue runs out -->
@@ -146,7 +164,7 @@
     </Border>
 
     <!-- Ratings -->
-    <Grid Grid.Row="3" x:Name="RatingRow" ColumnDefinitions="*,*,*,*" Margin="0,16,0,0">
+    <Grid Grid.Row="4" x:Name="RatingRow" ColumnDefinitions="*,*,*,*" Margin="0,16,0,0">
       <Button Grid.Column="0" Classes="rate" Tag="⭐" Click="OnRate" Margin="0,0,5,0">
         <StackPanel>
           <TextBlock Classes="sym" Text="⭐" />
@@ -178,7 +196,7 @@
     </Grid>
 
     <!-- Footer -->
-    <Grid Grid.Row="4" ColumnDefinitions="*,Auto" Margin="0,14,0,0">
+    <Grid Grid.Row="5" ColumnDefinitions="*,Auto" Margin="0,14,0,0">
       <TextBlock x:Name="StatusText" Grid.Column="0" Text="" FontSize="12" Foreground="#8a7a6c"
                  TextWrapping="Wrap" VerticalAlignment="Center" />
       <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">

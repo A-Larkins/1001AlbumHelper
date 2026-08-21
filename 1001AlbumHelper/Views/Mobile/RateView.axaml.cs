@@ -10,12 +10,15 @@ namespace _1001AlbumHelper;
 /// Mobile counterpart to the desktop rating window: works through albums that still need a rating,
 /// one at a time, writing each choice straight back to the master Google Sheet. Uses the REST Sheets
 /// client (service account) rather than the desktop's OAuth writer, which needs a browser login that
-/// doesn't work on iOS — see <see cref="RestSheetsClient"/>. Only the "not yet listened" queue is
-/// offered on mobile; the desktop window's backfill/shuffle options aren't exposed here yet.
+/// doesn't work on iOS — see <see cref="RestSheetsClient"/>. It offers the same three queues as the
+/// desktop window (shuffle is still Mac-only), plus a find box that jumps straight to any album by
+/// name — the quickest way to re-rate one particular album on a phone.
 /// </summary>
 public partial class RateView : UserControl
 {
     private RatingSession? _session;
+    private RatingMode _mode = RatingMode.NextUp;
+    private string? _ratingFilter;
     private bool _busy;
 
     /// <summary>Cancels the in-flight cover-art lookup when the card moves on to another album.</summary>
@@ -24,6 +27,7 @@ public partial class RateView : UserControl
     public RateView()
     {
         InitializeComponent();
+        FindBox.TextChanged += (_, _) => ShowMatches();
         Loaded += async (_, _) => await LoadAsync();
     }
 
@@ -56,7 +60,74 @@ public partial class RateView : UserControl
             return;
         }
 
-        _session.Rebuild(RatingMode.NextUp, shuffle: false);
+        _session.Rebuild(_mode, shuffle: false, _ratingFilter);
+        SetControlsEnabled(true);
+        Render();
+    }
+
+    // ---------- Which queue ----------
+
+    /// <summary>Switches queues. The filter strip only means anything for Revisit, so it follows.</summary>
+    private void OnPickMode(object? sender, RoutedEventArgs e)
+    {
+        if (_busy || sender is not Button { Tag: string tag }
+            || !Enum.TryParse(tag, out RatingMode mode)) return;
+
+        _mode = mode;
+        NextUpButton.Classes.Set("on", mode == RatingMode.NextUp);
+        BackfillButton.Classes.Set("on", mode == RatingMode.Backfill);
+        RevisitButton.Classes.Set("on", mode == RatingMode.Revisit);
+        FilterRow.IsVisible = mode == RatingMode.Revisit;
+
+        if (_session is null) return;
+        _session.Rebuild(_mode, shuffle: false, _ratingFilter);
+        StatusText.Text = "";
+        Render();
+    }
+
+    /// <summary>Narrows Revisit to one rating — the "All" button carries an empty tag.</summary>
+    private void OnPickFilter(object? sender, RoutedEventArgs e)
+    {
+        if (_busy || sender is not Button { Tag: string tag }) return;
+
+        _ratingFilter = string.IsNullOrEmpty(tag) ? null : tag;
+        foreach (var child in FilterRow.Children)
+            if (child is Button b) b.Classes.Set("on", (b.Tag as string ?? "") == (_ratingFilter ?? ""));
+
+        if (_session is null) return;
+        _session.Rebuild(RatingMode.Revisit, shuffle: false, _ratingFilter);
+        StatusText.Text = "";
+        Render();
+    }
+
+    // ---------- Finding an album ----------
+
+    /// <summary>Lists what the find box matches, hiding itself again when the box is emptied.</summary>
+    private void ShowMatches()
+    {
+        string query = FindBox.Text?.Trim() ?? "";
+        var matches = _session?.Search(query) ?? Array.Empty<AlbumEntry>();
+
+        FindResults.ItemsSource = matches;
+        FindResults.IsVisible = matches.Count > 0;
+    }
+
+    /// <summary>
+    /// Jumps the card to the tapped album, whatever it's rated now, and clears the search so the
+    /// list gets out of the way of the rating buttons.
+    /// </summary>
+    private void OnPickFound(object? sender, SelectionChangedEventArgs e)
+    {
+        if (_busy || _session is null || FindResults.SelectedItem is not AlbumEntry album) return;
+
+        FindResults.SelectedItem = null;
+        FindBox.Text = "";
+        ShowMatches();
+
+        _session.FocusOn(album.SheetRow);
+        StatusText.Text = RatingSession.IsRated(album.Rating)
+            ? $"Jumped to “{album.Title}” — rated {album.Rating}."
+            : $"Jumped to “{album.Title}”.";
         SetControlsEnabled(true);
         Render();
     }
@@ -95,8 +166,13 @@ public partial class RateView : UserControl
     private void OnSkip(object? sender, RoutedEventArgs e)
     {
         if (_busy || _session is null) return;
+
+        // Read the album being skipped before stepping past it — afterwards Current is the next one.
+        bool wasRated = RatingSession.IsRated(_session.Current?.Rating ?? "");
         _session.Skip();
-        StatusText.Text = "Skipped — left unrated.";
+        StatusText.Text = wasRated
+            ? "Skipped — rating left as it was."
+            : "Skipped — left unrated.";
         Render();
     }
 
@@ -112,13 +188,27 @@ public partial class RateView : UserControl
     {
         if (_session is null) return;
 
-        RemainingText.Text = $"{_session.Remaining} left to rate";
+        RemainingText.Text = _session.Mode switch
+        {
+            RatingMode.NextUp => $"{_session.Remaining} left to rate",
+            RatingMode.Backfill => $"{_session.Remaining} left to backfill",
+            _ => _session.RatingFilter is { } only
+                ? $"{_session.Remaining} rated {only}"
+                : $"{_session.Remaining} already rated",
+        };
         BackButton.IsEnabled = _session.CanGoBack;
 
         var album = _session.Current;
         if (album is null)
         {
-            ShowMessage("🎉 Nothing left in the queue — every album on the list has a mark.");
+            ShowMessage(_session.Mode switch
+            {
+                RatingMode.NextUp => "🎉 Nothing left in the queue — every album on the list has a mark.",
+                RatingMode.Backfill => "🎉 Nothing left to backfill — every ✓ album has a real rating.",
+                _ => _session.RatingFilter is { } only
+                    ? $"Nothing on the list is rated {only}."
+                    : "Nothing on the list is rated yet — there's nothing to revisit.",
+            });
             SetRatingButtonsEnabled(false);
             SkipButton.IsEnabled = false;
             return;
@@ -132,6 +222,11 @@ public partial class RateView : UserControl
         TitleText.Text = album.Title;
         ArtistText.Text = album.Artist;
         YearText.Text = album.Year;
+
+        // Rating an album that already has one is a *change*, so say what's being changed from.
+        CurrentRatingText.IsVisible = RatingSession.IsRated(album.Rating);
+        CurrentRatingText.Text = $"currently rated {album.Rating} — pick again to change it";
+
         _ = ShowArtAsync(album);
     }
 
@@ -178,6 +273,10 @@ public partial class RateView : UserControl
         SetRatingButtonsEnabled(on && _session?.Current is not null);
         SkipButton.IsEnabled = on && _session?.Current is not null;
         BackButton.IsEnabled = on && (_session?.CanGoBack ?? false);
+        FindBox.IsEnabled = on && _session is not null;
+        foreach (var row in new[] { ModeRow, FilterRow })
+            foreach (var child in row.Children)
+                if (child is Button b) b.IsEnabled = on && _session is not null;
     }
 
     private void SetRatingButtonsEnabled(bool on)
