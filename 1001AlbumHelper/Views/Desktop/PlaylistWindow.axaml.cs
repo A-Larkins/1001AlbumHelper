@@ -116,20 +116,42 @@ public partial class PlaylistWindow : Window
     /// <summary>
     /// Pulls the working list down from the Music app, which becomes the source of truth — the
     /// list ends up holding exactly what that playlist holds. See <see cref="PlaylistStore.SyncFromAppleMusic"/>.
+    /// <para>
+    /// On Playlist 2 the pull does one thing more: albums it finds there for the first time were
+    /// queued in the Music app by hand, which is exactly what a potential replacement is, so they
+    /// go on to the shortlist as well (see <see cref="ShortlistIntake"/>).
+    /// </para>
     /// </summary>
     private async void OnImportFromAppleMusic(object? sender, RoutedEventArgs e)
     {
         if (_store is null || _busy) return;
         if (!AppleMusic.IsAvailable) { Note("The Music app isn't available on this platform."); return; }
 
+        bool isRecommendations = _current == 2;
         SetBusy(true, $"Reading “{AppleMusicName}” from the Music app…");
         try
         {
             var albums = await AppleMusic.Writer!.ReadAlbumsAsync(AppleMusicName);
             var sync = _store.SyncFromAppleMusic(albums);
-            Note(albums.Count == 0
+            string note = albums.Count == 0
                 ? $"“{AppleMusicName}” is empty, or the Music app has no playlist by that name — the working list is now empty too."
-                : Summarise(sync, albums.Count));
+                : Summarise(sync, albums.Count);
+
+            if (isRecommendations && albums.Count > 0)
+            {
+                // The pulled list is already on disk, so show it before the shortlist round trip —
+                // that one talks to Google Sheets and can take a moment.
+                Refresh();
+                Note($"{note} Checking the shortlist…");
+
+                // The whole playlist, not just what the pull found new: see ShortlistIntake. The
+                // Discogs year lookups take a second each, so they report their way down the list.
+                var intake = await ShortlistIntake.AbsorbAsync(
+                    albums, cacheLocally: true, progress: line => Note($"{note} {line}"));
+                note = $"{note} {intake.Summary}".TrimEnd();
+            }
+
+            Note(note);
         }
         catch (Exception ex)
         {

@@ -36,6 +36,14 @@ internal static class Program
             return;
         }
 
+        // Read-only rehearsal of a PLAYLIST2 pull: says which albums would join the shortlist,
+        // and writes nothing anywhere.
+        if (args.Contains("intaketest"))
+        {
+            ShortlistIntakeDiagnostic.RunAsync().GetAwaiter().GetResult();
+            return;
+        }
+
         // Headless genre backfill: fills column F on the master list for every rated album
         // missing one, via Discogs lookups. Resumable — safe to re-run.
         if (args.Contains("backfill-genres"))

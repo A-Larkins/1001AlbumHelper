@@ -67,9 +67,22 @@ public sealed class CandidateRepository
         return await _sheet.LoadAsync();
     }
 
-    /// <summary>Pushes the shortlist up to Sheets (a no-op when sync is off).</summary>
+    /// <summary>
+    /// Pushes the shortlist up to Sheets (a no-op when sync is off).
+    /// <para>
+    /// The write is a merge, not a replacement: the sheet is read first and <paramref name="candidates"/>
+    /// folded into it (see <see cref="ReplacementCandidates.Merge"/>). Callers hold the shortlist for as
+    /// long as their screen is open, so by the time one saves, the sheet may have grown underneath it —
+    /// a Playlist 2 pull adds candidates from the other device. Writing the held copy wholesale would
+    /// delete those, which is a wipe rather than a save; merging can only ever add. The extra read costs
+    /// one round trip on a path that runs once per decision.
+    /// </para>
+    /// </summary>
     public async Task PushAsync(IReadOnlyList<CandidateAlbum> candidates)
     {
-        if (_sheet is not null) await _sheet.SaveAsync(candidates);
+        if (_sheet is null) return;
+
+        var onSheet = await _sheet.LoadAsync();
+        await _sheet.SaveAsync(ReplacementCandidates.Merge(onSheet, candidates));
     }
 }

@@ -121,10 +121,18 @@ public static class ReplacementCandidates
     /// </para>
     /// </summary>
     public static (CandidateAddOutcome Outcome, CandidateAlbum? Match) Classify(
-        IEnumerable<CandidateAlbum> shortlist, string title, string artist)
+        IEnumerable<CandidateAlbum> shortlist, string title, string artist) =>
+        Classify(shortlist, a => NumberedList.Matches(a.Title, title) && NumberedList.Matches(a.Artist, artist));
+
+    /// <summary>
+    /// The same question asked with the caller's own idea of when two rows are the same album —
+    /// for albums arriving from somewhere that names its own pressing, where a title has to be
+    /// matched more loosely than the sheet's rule allows (see <see cref="ShortlistIntake"/>).
+    /// </summary>
+    public static (CandidateAddOutcome Outcome, CandidateAlbum? Match) Classify(
+        IEnumerable<CandidateAlbum> shortlist, Func<CandidateAlbum, bool> isSameAlbum)
     {
-        var match = shortlist.FirstOrDefault(a =>
-            NumberedList.Matches(a.Title, title) && NumberedList.Matches(a.Artist, artist));
+        var match = shortlist.FirstOrDefault(isSameAlbum);
 
         if (match is null) return (CandidateAddOutcome.New, null);
 
@@ -134,6 +142,53 @@ public static class ReplacementCandidates
             CandidateStatus.Added => (CandidateAddOutcome.AlreadyKept, match),
             _ => (CandidateAddOutcome.Reopen, match),
         };
+    }
+
+    /// <summary>
+    /// Folds <paramref name="mine"/> into <paramref name="existing"/> — the shared list as it stands
+    /// — and returns the result, so a device writing its changes can't delete what it hasn't heard of.
+    /// <para>
+    /// Nothing in the app ever removes a candidate: rows are appended, and a decision is a change of
+    /// <see cref="CandidateAlbum.Status"/> on a row that stays. A write that made the list shorter is
+    /// therefore always a stale copy overwriting a newer one — which is exactly what happened when a
+    /// screen loaded the shortlist, a Playlist 2 pull added to it elsewhere, and the screen then saved
+    /// the list it had been holding all along. So the merged list only ever grows.
+    /// </para>
+    /// <para>
+    /// Where both sides know an album, the writer's row wins: they're the one making the change, and
+    /// a decision has to be able to travel — including an undo, which walks a candidate back from
+    /// dropped to pending. A year or genre is the exception, taken from whichever side has one, since
+    /// a blank there is an absence rather than an edit and shouldn't erase a value someone else found.
+    /// </para>
+    /// </summary>
+    public static List<CandidateAlbum> Merge(
+        IEnumerable<CandidateAlbum> existing, IEnumerable<CandidateAlbum> mine)
+    {
+        var merged = existing.ToList();
+
+        foreach (var album in mine)
+        {
+            int i = merged.FindIndex(e =>
+                NumberedList.Matches(e.Title, album.Title) && NumberedList.Matches(e.Artist, album.Artist));
+
+            if (i < 0)
+            {
+                merged.Add(album);
+                continue;
+            }
+
+            var theirs = merged[i];
+            merged[i] = new CandidateAlbum
+            {
+                Title = album.Title,
+                Artist = album.Artist,
+                Status = album.Status,
+                Year = album.Year.Trim().Length > 0 ? album.Year : theirs.Year,
+                Genre = album.Genre.Trim().Length > 0 ? album.Genre : theirs.Genre,
+            };
+        }
+
+        return merged;
     }
 
     /// <summary>

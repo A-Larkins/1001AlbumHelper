@@ -1,7 +1,7 @@
 # 1001 Albums Helper — Project Handbook
 
 A living reference for the app: what it is, how it's built, how to ship it, and where it's going.
-**Update this as we go.** Last updated: 2026-08-19 (Apple Music playlists on the Mac).
+**Update this as we go.** Last updated: 2026-08-21 (Playlist 2 → shortlist, years and all).
 
 ---
 
@@ -29,7 +29,8 @@ framework).
 │   ├── App.axaml               Avalonia application (runs windowed OR single-view)
 │   ├── Models/                 Album, AlbumSuggestion, CandidateAlbum, ViewRow
 │   ├── Data/                   NumberedList, ReplacementCandidates, MobileData,
-│   │                           PlaylistStore, Operations, RatingSession, AlbumProcessor
+│   │                           PlaylistStore, ShortlistIntake, Operations, RatingSession,
+│   │                           AlbumProcessor
 │   ├── Integrations/           DiscogsApiClient, GoogleSheetsWriter, CandidateSheet,
 │   │                           CandidateRepository, AppleMusicCatalog, PlaylistTracks,
 │   │                           SyncDiagnostic,
@@ -44,9 +45,10 @@ framework).
 │
 ├── 1001AlbumHelper.Desktop/    → Mac/Win/Linux head (produces the "1001AlbumHelper" executable)
 │                               also: MusicAppPlaylistWriter (Apple Music on the Mac) +
-│                               MusicAppDiagnostic (its `musictest` check)
+│                               MusicAppDiagnostic (its `musictest` check) +
+│                               ShortlistIntakeDiagnostic (the read-only `intaketest` rehearsal)
 ├── 1001AlbumHelper.iOS/        → iPhone head (bundle id: com.larkins.albumhelper)
-└── 1001AlbumHelper.Tests/      → xUnit tests (110 as of this writing)
+└── 1001AlbumHelper.Tests/      → xUnit tests (158 as of this writing)
 ```
 
 **Key idea:** all the real code lives in the shared library. The two "head" projects are thin —
@@ -94,6 +96,12 @@ a **single view with four bottom tabs** (phones don't do windows).
 | 2026-08-19 | **Apple Music playlists on the Mac.** The Mac could queue albums into Playlist 1/2 but had nowhere to see them and no way to push them — `AppleMusic.Writer` was set only by the iOS head. Added `MusicAppPlaylistWriter`, which drives **Music.app over AppleScript** (`osascript`), and a `PlaylistWindow` with the phone's Import / Push all / remove / "delete these" checklist. Where iOS resolves a store id via the iTunes Search API and adds by id, the Mac asks Music to `search` and duplicates the resulting tracks — and with Sync Library on that search reaches the **whole Apple Music catalog**, so obscure 1001 entries resolve just like on the phone, with no iTunes rate limit in play. Album choice runs through the very same `AppleMusicCatalog.FindBestMatch` the phone uses, so both apps prefer the original release over a "(Deluxe Edition)" identically. Track→album folding moved into a shared `PlaylistTracks` both writers use. Verified end-to-end by a new self-cleaning `musictest` diagnostic (scratch playlist, created and deleted, never touches PLAYLIST1/2). |
 | 2026-08-19 | **Import became a pull-down sync** (both apps). It used to *merge* — add what Apple Music had, never remove — so the working list only ever grew. Now the Apple Music playlist is the source of truth: after a pull the list holds exactly what that playlist holds, and anything queued locally but not in Apple Music is dropped. Two things deliberately survive: albums on the **"delete these" checklist stay on it** rather than being resurrected as active (Apple Music still having them is the whole reason they're listed — a merge-back would undo the user's removal on every sync), and a known album's **year is carried across**, since Apple Music's read-back has no year and our lists do. The nice inverse: a checklist album that's *gone* from Apple Music means the user has now deleted it by hand, so the sync ticks it off. Matching had to loosen to `DiscogsApiClient.TitlesLineUp` — with strict matching the catalog's "Tago Mago (2011 Remastered)" read as a different record from our "Tago Mago", so every sync would drop ours, re-add theirs, and lose the year. Buttons relabelled Import → **Pull down**. |
 | 2026-07-29 | **Mac app parity pass.** Added a "Renew iPhone trial" button to `MainWindow` (shells out to `deploy-to-device.sh`, streaming its output into the activity log — see §4/§7) and "+P1"/"+P2" playlist buttons to `ListViewerWindow` (browse) and `CandidatesWindow` (potential replacements), matching the mobile app's `AlbumListView`/`ReplacementsView`. Both apps rebuilt, reinstalled, and committed (`f852195`). |
+| 2026-08-21 | **Changing a rating you already gave.** Ratings used to be write-once in practice: both queues (`NextUp`, `Backfill`) are defined by a rating being *absent*, so a rated album never came up again and only `Back` within a live session could correct a mis-tap. Added a third queue, **`RatingMode.Revisit`** — albums that already carry one of the four symbols, optionally narrowed to one of them — reachable from a new "Change a rating" card on `MainWindow` and a Revisit segment in `RatingWindow`, whose card now says what the album is rated now. `RatingSession.FocusOn(sheetRow)` points a session at one album whatever its rating (splicing it into the queue if it isn't there), which is how the browse list's new per-row ✎ button opens the rater straight onto that album — the window hands its changes back by sheet row so the list updates without re-reading the sheet. On the phone, where there's no queue picker, the Rate tab gained a **find box** over `RatingSession.Search` that jumps to any album by name. The Must Hear side effect became symmetric: gaining a ⭐ still adds, and **losing one now removes** (via `NumberedList.ApplyAsync`, which renumbers what's left) so a downgraded album doesn't sit on a list it no longer belongs on. |
+| 2026-08-21 | **Two rating fixes.** (1) **Mobile had no queue picker** — the Rate tab always walked "not yet listened", so the ✓ backfill the Mac offers was unreachable on the phone. It now has the same three queues (Next up · Backfill ✓ · Revisit, with Revisit's symbol filter); shuffle stays Mac-only. (2) **Lists didn't catch up with a rating just given.** The phone's 1001 tab renders a snapshot baked into the app at build time, so a rating made on the Rate tab still showed its old symbol next door — and ratings given on the Mac never showed at all. Two halves: `RatingChanges` records every save this run (keyed loosely on title+artist, since snapshot rows carry no sheet row) and cached lists apply it when shown; and the 1001 tab now opens on the snapshot as before, then **replaces it with the live sheet** in the background, so it stays instant and offline-safe but no longer stale. On the Mac, the browse window drops its cached Must Hear after a rating, since a ⭐ given or taken away rewrites that list. |
+| 2026-08-21 | **Playlist 2 pull-downs feed the shortlist.** Albums queued into PLAYLIST2 by hand in Apple Music used to arrive as playlist rows and stop there — a recommendation the shortlist never heard about, so it could never be kept, dropped, or synced to the phone. A pull of Playlist 2 (and only Playlist 2 — Playlist 1 is the 1001 itself) now hands its new arrivals to a shared `ShortlistIntake`, which adds each one to the potentials shortlist as a pending candidate and saves it the way that list is saved on the device: local JSON plus Google Sheets on the Mac, Sheets alone on the phone. `PlaylistSyncResult` had to start naming the albums it took in rather than counting them. A decision already made is never undone — kept, waiting and dropped albums are left exactly as they are, since the shortlist is the record of what has been ruled on — though a dropped one is named in the status line rather than silently skipped. Matching uses the pull-down’s own loose title rule, not the sheet’s stricter one, or the catalogue’s “Cassini (5th Anniversary Remaster)” would earn a second row beside our “Cassini”; a new candidate is stored under the album’s name rather than the pressing’s for the same reason. Rehearse a pull without writing anything: `dotnet run --project 1001AlbumHelper.Desktop -- intaketest`. |
+| 2026-08-21 | **A save could wipe the shortlist — fixed.** The intake above surfaced it immediately: a Playlist 2 pull put twelve new candidates on the Potentials sheet, and the next Keep on the phone’s Shortlist tab deleted them again. Two causes, both fixed. (1) **`PushAsync` replaced the whole sheet.** Every screen holds the shortlist for as long as it’s open and is never told when the other device changes it, so the older copy overwrote the newer one. Nothing in the app ever *deletes* a candidate — rows are appended, and a decision is a status change on a row that stays — so a write that shortens the list is always a stale copy winning. The push now reads the sheet and folds the caller’s rows into it (`ReplacementCandidates.Merge`): the writer’s row wins where both know an album, so decisions and undos still travel, but a year or genre comes from whichever side has one, and rows the writer never heard of survive. (2) **The phone’s Shortlist tab never reloaded** once visited, so it sat on the list it loaded at launch; it now refreshes when the tab comes forward, like the playlist tabs already did. |
+| 2026-08-21 | **The intake compares against the shortlist, not against "what's new".** The first cut only offered up albums a pull found new to that device's working list, and that turned out to be the wrong question: pulling on the phone consumed the newness, so the Mac's next pull saw nothing new and twelve albums that had reached neither shortlist stayed stranded. Every pull now hands the **whole** playlist over and adds whatever the shortlist doesn't already hold, which has no per-device memory in it — same answer on either device, however many times it runs. A dropped album still sitting in the playlist is named on each pull rather than re-offered, so that line is phrased as a standing state ("in the playlist but dropped from the shortlist") rather than as news. |
+| 2026-08-21 | **Candidates from a playlist arrive with a year.** Apple Music's read-back carries no year, so albums taken off Playlist 2 landed blank — and a year is what the shortlist sorts by and what keeping an album demands. The Mac's shortlist window has always back-filled years from Discogs, but only once you opened it, and the phone had no such thing at all. The intake now looks them up as part of the pull, paced at the same 1.1s the window's prefetch uses (a 429 reads as "no year found" and sticks), counting its way down the status line since a dozen lookups take a dozen seconds. It covers **every undecided candidate the playlist points at**, not just today's arrivals, so albums that landed yearless on an earlier pull are picked up on the next one. Anything Discogs can't answer for is named as still needing a year rather than passing quietly. |
 
 ---
 
@@ -122,6 +130,12 @@ manual bookkeeping.
   fill the screen around mostly empty space, clipped Apple Music button labels on the Playlist tabs,
   a missing (and once added, invisible-due-to-z-order) empty-state message there, and a redundant
   sync-status line on the Shortlist tab.
+- ✅ **Ratings are editable.** A Revisit queue (filterable to one symbol), a ✎ on every 1001 row in
+  the browse window, and a find box on the phone's Rate tab all lead to the same thing: re-rating an
+  album that already has a rating. Dropping a ⭐ takes the album off Must Hear again.
+- ✅ **Mobile Rate has all three queues** (Next up · Backfill ✓ · Revisit) — shuffle is still Mac-only.
+- ✅ **Lists show the rating you just gave**, on both apps, and the phone's 1001 tab now refreshes
+  itself from the sheet instead of living on the snapshot it was built with.
 - **The whole roadmap (Phases 1–4) is now done.**
 
 **User stories (what Andrew wants):**
@@ -241,6 +255,21 @@ app can't remove it there. Instead it moves to a checklist ("Delete these from A
 the bottom of that tab, so nothing pushed there is ever silently forgotten; check it off once you've
 deleted it yourself — or just pull down again, which ticks off anything that has actually gone.
 
+**Pulling Playlist 2 also feeds the shortlist.** PLAYLIST2 is the recommendations queue, so an
+album sitting in it that the shortlist has never heard of is a potential replacement nobody wrote
+down. Every pull of Playlist 2 hands the **whole playlist** to `ShortlistIntake`, which puts anything
+missing on the potentials shortlist as a pending candidate (with the edition furniture trimmed off
+its title) and saves the list where that device saves it — the local JSON *and* the Potentials sheet
+on the Mac, the sheet alone on the phone, which has no writable copy. Albums already ruled on are
+left alone, dropped ones included; the status line says what went on.
+
+It compares against the shortlist rather than against the pull's new arrivals, and that distinction
+cost us a round trip to find: "new" means new to *this device's* working list, so a pull on the phone
+left the Mac's next pull with nothing to offer and an album that had reached neither shortlist stayed
+lost. Comparing against the shortlist itself is stateless — same answer on either device, and running
+it twice changes nothing. Playlist 1 doesn't do this at all: it holds the 1001 itself, not candidates
+to replace it.
+
 **Pull down vs Push all are deliberately asymmetric.** *Pull down* is a full sync: the Apple Music
 playlist wins, and the working list is rebuilt to match it (see `PlaylistStore.SyncFromAppleMusic`) —
 so albums queued in the app but never pushed are dropped. *Push all* can only ever add, because
@@ -268,6 +297,8 @@ Keeps the potentials shortlist in sync across devices via a **"Potentials" tab**
   it loads the config + key from **embedded resources** (baked into the assembly — the phone has no
   data folder). First sync **seeds** the sheet from local so an empty sheet never wipes it.
 - Verify / seed headlessly: `dotnet run --project 1001AlbumHelper.Desktop -- synctest`.
+- Rehearse what a Playlist 2 pull would add to the shortlist, writing nothing anywhere:
+  `dotnet run --project 1001AlbumHelper.Desktop -- intaketest`.
 
 **Status:** working + verified on both desktop and the phone (Replacements tab reads live).
 
@@ -313,6 +344,12 @@ tab it creates and deletes, so it never risks the real lists.
 - **Re-deploying:** double-click **`Re-deploy to iPhone.command`** (repo root) — it renews the 7-day
   profile via `xcodebuild -allowProvisioningUpdates`, rebuilds, and reinstalls. The signing stub lives
   in `1001AlbumHelper.iOS/SignHelper/`.
+- **Never write the potentials sheet wholesale.** Two screens hold the shortlist at once and
+  neither hears about the other's changes, so a plain "save my list" deletes whatever arrived
+  meanwhile — this is how a Playlist 2 pull's new candidates vanished on 2026-08-21. Writes go
+  through `CandidateRepository.PushAsync`, which reads the sheet and merges. It's safe because the
+  app has no delete: if a candidate ever does need removing, it has to be done on the sheet by hand,
+  and a device still holding the old row will put it back.
 - **The iTunes Search API is rate-limited** (roughly 20 calls a minute, unauthenticated). One call
   per album on a Rate card is comfortably inside that; a *list* of thumbnails (the 1001 list, a
   playlist) is not, and would start coming back empty. That's why cover art lives on the one-album-
@@ -357,8 +394,8 @@ tab it creates and deletes, so it never risks the real lists.
 
 ## 8. Future features & ideas
 
-- **Backfill mode + shuffle on mobile Rate** — the desktop rating window offers both; mobile's
-  RateView only exposes the "not yet listened" queue so far.
+- **Shuffle on mobile Rate** — the desktop rating window offers it; the phone now has all three
+  queues but still walks each in list order.
 - **Cover art elsewhere** — the browse lists (1001 / Must Hear / Shortlist) and the playlist tabs
   are the obvious next places, but they'd need a way around the iTunes rate limit (§7): load only
   the rows actually on screen, keep a real on-disk index rather than one-file-per-album, and accept

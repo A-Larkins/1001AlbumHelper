@@ -41,10 +41,19 @@ public sealed record PlaylistEntry(string Title, string Artist, string Year)
 }
 
 /// <summary>What a pull-down sync changed, so the UI can say more than "done".</summary>
-/// <param name="Added">Albums Apple Music had that the working list didn't.</param>
+/// <param name="NewAlbums">
+/// Albums Apple Music had that the working list didn't — named rather than counted, because these
+/// are the ones the user queued in Apple Music by hand, and Playlist 2's pull feeds them on to the
+/// potentials shortlist (see <see cref="ShortlistIntake"/>).
+/// </param>
 /// <param name="Removed">Albums the working list had that Apple Music didn't — dropped.</param>
 /// <param name="ClearedFromChecklist">Albums awaiting manual deletion that have now gone from Apple Music.</param>
-public sealed record PlaylistSyncResult(int Added, int Removed, int ClearedFromChecklist);
+public sealed record PlaylistSyncResult(
+    IReadOnlyList<PlaylistEntry> NewAlbums, int Removed, int ClearedFromChecklist)
+{
+    /// <summary>How many albums the pull brought in.</summary>
+    public int Added => NewAlbums.Count;
+}
 
 /// <summary>
 /// One of the two on-device playlists the mobile app builds up as the user works through the
@@ -157,6 +166,15 @@ public sealed class PlaylistStore
     }
 
     /// <summary>
+    /// Whether two entries name the same record. Titles are compared loosely — the same rule the
+    /// push path matches on. Apple Music names an album by whichever edition it stocks, so a strict
+    /// comparison would read the catalog's "Tago Mago (2011 Remastered)" as a different record from
+    /// our "Tago Mago", and every sync would drop ours, re-add theirs, and lose the year in the process.
+    /// </summary>
+    public static bool SameAlbum(PlaylistEntry a, PlaylistEntry b) =>
+        DiscogsApiClient.TitlesLineUp(a.Title, b.Title) && NumberedList.Matches(a.Artist, b.Artist);
+
+    /// <summary>
     /// Pulls the working list down from Apple Music, making that playlist the source of truth:
     /// afterwards the list holds exactly what Apple Music holds, in its order. Albums queued here
     /// but never pushed are dropped — that's what a pull-down means.
@@ -180,13 +198,6 @@ public sealed class PlaylistStore
         var incoming = albums.ToList();
         var before = _entries.ToList();
 
-        // Titles are compared loosely — the same rule the push path matches on. Apple Music names
-        // an album by whichever edition it stocks, so a strict comparison would read the catalog's
-        // "Tago Mago (2011 Remastered)" as a different record from our "Tago Mago", and every sync
-        // would drop ours, re-add theirs, and lose the year in the process.
-        static bool SameAlbum(PlaylistEntry a, PlaylistEntry b) =>
-            DiscogsApiClient.TitlesLineUp(a.Title, b.Title) && NumberedList.Matches(a.Artist, b.Artist);
-
         PlaylistEntry? Existing(PlaylistEntry album) => before.FirstOrDefault(e => SameAlbum(e, album));
 
         bool StillInAppleMusic(PlaylistEntry entry) => incoming.Any(a => SameAlbum(a, entry));
@@ -197,7 +208,7 @@ public sealed class PlaylistStore
         int cleared = pending.Count - stillPending.Count;
 
         var rebuilt = new List<PlaylistEntry>();
-        int added = 0;
+        var arrived = new List<PlaylistEntry>();
         foreach (var album in incoming)
         {
             var existing = Existing(album);
@@ -207,8 +218,9 @@ public sealed class PlaylistStore
 
             if (existing is null)
             {
-                rebuilt.Add(album with { InAppleMusic = true });
-                added++;
+                var arrival = album with { InAppleMusic = true };
+                rebuilt.Add(arrival);
+                arrived.Add(arrival);
             }
             else
             {
@@ -228,7 +240,7 @@ public sealed class PlaylistStore
         _entries.AddRange(rebuilt);
         Save();
 
-        return new PlaylistSyncResult(added, removed, cleared);
+        return new PlaylistSyncResult(arrived, removed, cleared);
     }
 
     private void Save()

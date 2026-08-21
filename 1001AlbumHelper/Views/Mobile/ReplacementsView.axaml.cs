@@ -41,7 +41,7 @@ public partial class ReplacementsView : UserControl
     {
         InitializeComponent();
         SearchBox.TextChanged += (_, _) => ApplyFilter();
-        Loaded += (_, _) => Load();
+        Loaded += (_, _) => Load(fromSnapshot: true);
 
         LookupHint.Text = AlbumLookup.Attach(
             _discogs, TitleBox, ArtistBox, YearBox,
@@ -50,11 +50,30 @@ public partial class ReplacementsView : UserControl
         UpdateSortIndicators();
     }
 
-    private async void Load()
+    /// <summary>
+    /// Re-reads the shortlist when the tab comes forward, so candidates added elsewhere — a Playlist 2
+    /// pull, or the Mac — are here rather than a screenful of what the list held when the app started.
+    /// Held off while a decision is in flight, which is the one time the list on screen is the truth.
+    /// </summary>
+    public void Refresh()
+    {
+        if (_busy) return;
+        Load(fromSnapshot: false);
+    }
+
+    /// <param name="fromSnapshot">
+    /// True on first load, where the baked-in snapshot fills the tab instantly and Sheets replaces it
+    /// a moment later. False on a refresh: the live list is already on screen, and dropping back to a
+    /// build-time snapshot in front of the user would be a step backwards, not a step faster.
+    /// </param>
+    private async void Load(bool fromSnapshot)
     {
         // Instant: the snapshot baked into the app.
-        try { SetAll(MobileData.LoadCandidates()); }
-        catch (Exception ex) { CountText.Text = $"Couldn't load candidates: {ex.Message}"; }
+        if (fromSnapshot)
+        {
+            try { SetAll(MobileData.LoadCandidates()); }
+            catch (Exception ex) { CountText.Text = $"Couldn't load candidates: {ex.Message}"; }
+        }
 
         // Then: the live shared list from Google Sheets. Show exactly what happened either way.
         if (!_repo.SyncEnabled)

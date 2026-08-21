@@ -29,7 +29,7 @@
       <local:RateView />
     </TabItem>
     <TabItem Header="Shortlist">
-      <local:ReplacementsView />
+      <local:ReplacementsView x:Name="ShortlistView" />
     </TabItem>
     <TabItem Header="Playlist 1">
       <local:PlaylistView x:Name="Playlist1View" />

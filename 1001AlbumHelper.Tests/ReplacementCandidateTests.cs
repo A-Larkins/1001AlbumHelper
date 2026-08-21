@@ -267,4 +267,97 @@ public class ReplacementCandidateTests : IDisposable
             .ToList();
         Assert.Empty(duplicates);
     }
+
+    // ---------- Merging on the way up to Sheets ----------
+    //
+    // Two screens hold the shortlist at once (the Mac's window, the phone's tab) and neither is told
+    // when the other changes it. A save therefore has to fold into what's on the sheet rather than
+    // replace it, or the older copy silently deletes the newer one's rows — which is what happened
+    // when a Playlist 2 pull added candidates and the phone's Shortlist tab then saved a decision.
+
+    [Fact]
+    public void A_stale_copy_cannot_delete_rows_it_never_knew_about()
+    {
+        var onSheet = new List<CandidateAlbum>
+        {
+            Album("Vs.", "Pearl Jam"),
+            Album("Raising Sand", "Robert Plant & Alison Krauss"),  // added by a Playlist 2 pull
+        };
+        var stale = new List<CandidateAlbum> { Album("Vs.", "Pearl Jam") };
+
+        var merged = ReplacementCandidates.Merge(onSheet, stale);
+
+        Assert.Equal(2, merged.Count);
+        Assert.Contains(merged, a => a.Title == "Raising Sand");
+    }
+
+    [Fact]
+    public void A_decision_still_travels()
+    {
+        var onSheet = new List<CandidateAlbum> { Album("Vs.", "Pearl Jam") };
+        var mine = new List<CandidateAlbum> { Album("Vs.", "Pearl Jam", status: CandidateStatus.Added) };
+
+        var merged = ReplacementCandidates.Merge(onSheet, mine);
+
+        Assert.Equal(CandidateStatus.Added, Assert.Single(merged).Status);
+    }
+
+    [Fact]
+    public void An_undo_still_travels_so_a_decision_is_not_one_way()
+    {
+        var onSheet = new List<CandidateAlbum> { Album("Vs.", "Pearl Jam", status: CandidateStatus.Declined) };
+        var mine = new List<CandidateAlbum> { Album("Vs.", "Pearl Jam", status: CandidateStatus.Pending) };
+
+        var merged = ReplacementCandidates.Merge(onSheet, mine);
+
+        Assert.Equal(CandidateStatus.Pending, Assert.Single(merged).Status);
+    }
+
+    [Fact]
+    public void A_year_found_elsewhere_survives_a_save_from_a_copy_that_never_had_it()
+    {
+        var onSheet = new List<CandidateAlbum> { Album("Vs.", "Pearl Jam", year: "1993") };
+        var mine = new List<CandidateAlbum> { Album("Vs.", "Pearl Jam") };  // blank: absence, not an edit
+
+        var merged = ReplacementCandidates.Merge(onSheet, mine);
+
+        Assert.Equal("1993", Assert.Single(merged).Year);
+    }
+
+    [Fact]
+    public void A_year_typed_in_still_wins_over_the_one_on_the_sheet()
+    {
+        var onSheet = new List<CandidateAlbum> { Album("Vs.", "Pearl Jam", year: "1994") };
+        var mine = new List<CandidateAlbum> { Album("Vs.", "Pearl Jam", year: "1993") };
+
+        var merged = ReplacementCandidates.Merge(onSheet, mine);
+
+        Assert.Equal("1993", Assert.Single(merged).Year);
+    }
+
+    [Fact]
+    public void A_brand_new_candidate_is_appended()
+    {
+        var onSheet = new List<CandidateAlbum> { Album("Vs.", "Pearl Jam") };
+        var mine = new List<CandidateAlbum> { Album("Vs.", "Pearl Jam"), Album("Zuma", "Neil Young") };
+
+        var merged = ReplacementCandidates.Merge(onSheet, mine);
+
+        Assert.Equal(2, merged.Count);
+        Assert.Equal("Zuma", merged[1].Title);
+    }
+
+    [Fact]
+    public void Seeding_an_empty_sheet_writes_the_list_as_it_stands()
+    {
+        var mine = new List<CandidateAlbum> { Album("Vs.", "Pearl Jam"), Album("Zuma", "Neil Young") };
+
+        var merged = ReplacementCandidates.Merge(new List<CandidateAlbum>(), mine);
+
+        Assert.Equal(2, merged.Count);
+    }
+
+    private static CandidateAlbum Album(
+        string title, string artist, string year = "", CandidateStatus status = CandidateStatus.Pending) =>
+        new() { Title = title, Artist = artist, Year = year, Status = status };
 }

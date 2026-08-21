@@ -65,21 +65,43 @@ public partial class PlaylistView : UserControl
     /// <summary>
     /// Pulls the working list down from Apple Music, which becomes the source of truth — afterwards
     /// this list holds exactly what that playlist holds. See <see cref="PlaylistStore.SyncFromAppleMusic"/>.
+    /// <para>
+    /// On Playlist 2 the pull does one thing more: albums it finds there for the first time were
+    /// queued in Apple Music by hand, which is exactly what a potential replacement is, so they go
+    /// on to the shortlist as well (see <see cref="ShortlistIntake"/>).
+    /// </para>
     /// </summary>
     private async void OnImportFromAppleMusic(object? sender, RoutedEventArgs e)
     {
         if (_store is null) return;
         if (!AppleMusic.IsAvailable) { Note("Apple Music is only available in the iPhone app."); return; }
 
+        bool isRecommendations = _playlistId == 2;
         SetBusy(true, $"Reading “{_appleMusicName}” from Apple Music…");
         try
         {
             var albums = await AppleMusic.Writer!.ReadAlbumsAsync(_appleMusicName);
             var sync = _store.SyncFromAppleMusic(albums);
             Refresh();
-            Note(albums.Count == 0
+
+            string note = albums.Count == 0
                 ? $"“{_appleMusicName}” is empty — so this list is now too."
-                : Summarise(sync, albums.Count));
+                : Summarise(sync, albums.Count);
+
+            if (isRecommendations && albums.Count > 0)
+            {
+                // The list itself is already up to date; the shortlist round trip talks to Google
+                // Sheets, so say what's happening rather than leaving the line stale meanwhile.
+                Note($"{note} Checking the shortlist…");
+
+                // The whole playlist, not just what the pull found new: see ShortlistIntake. The
+                // Discogs year lookups take a second each, so they report their way down the list.
+                var intake = await ShortlistIntake.AbsorbAsync(
+                    albums, cacheLocally: false, progress: line => Note($"{note} {line}"));
+                note = $"{note} {intake.Summary}".TrimEnd();
+            }
+
+            Note(note);
         }
         catch (Exception ex) { Note($"Couldn't read “{_appleMusicName}”: {ex.Message}"); }
         finally { SetBusy(false); }

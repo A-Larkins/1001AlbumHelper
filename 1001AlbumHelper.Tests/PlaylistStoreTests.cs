@@ -89,6 +89,26 @@ public class PlaylistStoreTests : IDisposable
     }
 
     [Fact]
+    public void Pulling_down_names_the_albums_it_took_in_not_just_how_many()
+    {
+        // Playlist 2's pull passes these on to the potentials shortlist, so which albums arrived
+        // matters, not merely the count.
+        var store = PlaylistStore.Open(_id);
+        store.Add("Vs.", "Pearl Jam", "1993");
+        store.MarkInAppleMusic(store.Active[0]);
+
+        var sync = store.SyncFromAppleMusic(new[]
+        {
+            new PlaylistEntry("Vs.", "Pearl Jam", ""),
+            new PlaylistEntry("Zuma", "Neil Young", ""),
+        });
+
+        var arrived = Assert.Single(sync.NewAlbums);
+        Assert.Equal("Zuma", arrived.Title);   // the album already on the list isn't "new"
+        Assert.True(arrived.InAppleMusic);
+    }
+
+    [Fact]
     public void Pulling_down_drops_albums_apple_music_doesnt_have()
     {
         // The point of a pull-down: Apple Music is the source of truth, so a local album it doesn't
