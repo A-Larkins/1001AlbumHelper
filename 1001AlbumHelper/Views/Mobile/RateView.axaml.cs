@@ -77,7 +77,7 @@ public partial class RateView : UserControl
         NextUpButton.Classes.Set("on", mode == RatingMode.NextUp);
         BackfillButton.Classes.Set("on", mode == RatingMode.Backfill);
         RevisitButton.Classes.Set("on", mode == RatingMode.Revisit);
-        FilterRow.IsVisible = mode == RatingMode.Revisit;
+        FilterTrack.IsVisible = mode == RatingMode.Revisit;
 
         if (_session is null) return;
         _session.Rebuild(_mode, shuffle: false, _ratingFilter);

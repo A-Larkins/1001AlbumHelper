@@ -20,12 +20,17 @@ public partial class PlaylistView : UserControl
 
     public PlaylistView() => InitializeComponent();
 
-    /// <summary>Points this view at playlist <paramref name="id"/>, with a heading and the Apple Music playlist name.</summary>
-    public void Configure(int id, string title, string appleMusicName)
+    /// <summary>
+    /// Points this view at playlist <paramref name="id"/>, with a heading, the line under it, and the
+    /// Apple Music playlist name. Title and subtitle are separate so the heading can stay one short
+    /// phrase at heading size while "from the 1001" sits beneath it as small print.
+    /// </summary>
+    public void Configure(int id, string title, string appleMusicName, string subtitle)
     {
         _playlistId = id;
         _appleMusicName = appleMusicName;
         TitleText.Text = title;
+        SubtitleText.Text = subtitle;
         Refresh();
     }
 

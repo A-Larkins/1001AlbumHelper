@@ -1,0 +1,554 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <!--
+    The mobile design system — every colour, type size and control look the phone app uses.
+
+    Scoped deliberately: this is included by MainView (the mobile root), NOT by App.axaml, because
+    App is shared with the Mac head. Styles included at MainView cascade to all five phone screens
+    and reach nothing on the desktop.
+
+    The look is "late-night record shop": a near-black canvas, warm gold accent (the colour the
+    Keep button already used), Inter throughout, hairline rules instead of boxes, and one rounding
+    radius family so nothing looks borrowed from a different app.
+
+    Where a style reaches into `/template/`, that's to beat FluentTheme's own per-state setters —
+    setting Background on the control alone loses to the theme the moment you touch the control.
+  -->
+
+  <Styles.Resources>
+
+    <!-- ── Palette ─────────────────────────────────────────────────────────────────────────── -->
+
+    <!-- Surfaces, darkest first. Ink is the page; each step up is a layer nearer the reader. -->
+    <SolidColorBrush x:Key="Ink" Color="#0A0B0E" />
+    <SolidColorBrush x:Key="InkRaised" Color="#101218" />
+    <SolidColorBrush x:Key="Surface" Color="#171A21" />
+    <SolidColorBrush x:Key="SurfaceHi" Color="#1F232C" />
+    <SolidColorBrush x:Key="SurfacePressed" Color="#272C37" />
+
+    <!-- Rules. Solid boxes make a phone screen busy; hairlines carry the same structure quietly. -->
+    <SolidColorBrush x:Key="Hairline" Color="#FFFFFF" Opacity="0.10" />
+    <SolidColorBrush x:Key="HairlineSoft" Color="#FFFFFF" Opacity="0.055" />
+
+    <!-- Text, in three weights of attention: the thing, the detail, the aside. -->
+    <SolidColorBrush x:Key="TextHi" Color="#F4F6F8" />
+    <SolidColorBrush x:Key="TextMid" Color="#9BA3B0" />
+    <SolidColorBrush x:Key="TextLow" Color="#69707D" />
+
+    <!-- Gold is the one accent. It was already here on the Keep button; now it means "active". -->
+    <SolidColorBrush x:Key="Gold" Color="#E9B872" />
+    <SolidColorBrush x:Key="GoldBright" Color="#F7DCAE" />
+    <SolidColorBrush x:Key="GoldDim" Color="#8A6B3A" />
+    <SolidColorBrush x:Key="GoldWash" Color="#E9B872" Opacity="0.14" />
+    <SolidColorBrush x:Key="GoldWashHi" Color="#E9B872" Opacity="0.22" />
+    <SolidColorBrush x:Key="GoldEdge" Color="#E9B872" Opacity="0.38" />
+
+    <!-- Verdict colours, used only by the four rating tiles and error text. -->
+    <SolidColorBrush x:Key="Good" Color="#86C79B" />
+    <SolidColorBrush x:Key="GoodWash" Color="#86C79B" Opacity="0.13" />
+    <SolidColorBrush x:Key="Meh" Color="#D9A05B" />
+    <SolidColorBrush x:Key="MehWash" Color="#D9A05B" Opacity="0.13" />
+    <SolidColorBrush x:Key="Bad" Color="#E2695F" />
+    <SolidColorBrush x:Key="BadWash" Color="#E2695F" Opacity="0.13" />
+
+    <FontFamily x:Key="UiFont">fonts:Inter#Inter, $Default</FontFamily>
+
+    <!-- ── FluentTheme overrides ───────────────────────────────────────────────────────────── -->
+    <!-- Re-point the theme's own keys so untouched controls already land in the palette, and the
+         stock blue selection/focus never appears. -->
+
+    <SolidColorBrush x:Key="SystemControlHighlightAccentBrush" Color="#E9B872" />
+    <SolidColorBrush x:Key="SystemAccentColorBrush" Color="#E9B872" />
+    <SolidColorBrush x:Key="TextControlSelectionHighlightColor" Color="#E9B872" Opacity="0.32" />
+
+    <!-- Buttons: flat surface chips. Per-class looks below override these where they differ. -->
+    <SolidColorBrush x:Key="ButtonBackground" Color="#171A21" />
+    <SolidColorBrush x:Key="ButtonBackgroundPointerOver" Color="#1F232C" />
+    <SolidColorBrush x:Key="ButtonBackgroundPressed" Color="#272C37" />
+    <SolidColorBrush x:Key="ButtonBackgroundDisabled" Color="#121419" />
+    <SolidColorBrush x:Key="ButtonForeground" Color="#F4F6F8" />
+    <SolidColorBrush x:Key="ButtonForegroundPointerOver" Color="#FFFFFF" />
+    <SolidColorBrush x:Key="ButtonForegroundPressed" Color="#FFFFFF" />
+    <SolidColorBrush x:Key="ButtonForegroundDisabled" Color="#69707D" />
+    <SolidColorBrush x:Key="ButtonBorderBrush" Color="#FFFFFF" Opacity="0.10" />
+    <SolidColorBrush x:Key="ButtonBorderBrushPointerOver" Color="#FFFFFF" Opacity="0.16" />
+    <SolidColorBrush x:Key="ButtonBorderBrushPressed" Color="#FFFFFF" Opacity="0.16" />
+    <SolidColorBrush x:Key="ButtonBorderBrushDisabled" Color="#FFFFFF" Opacity="0.05" />
+
+    <!-- Text fields: a filled well, gold hairline on focus. -->
+    <SolidColorBrush x:Key="TextControlBackground" Color="#171A21" />
+    <SolidColorBrush x:Key="TextControlBackgroundPointerOver" Color="#1F232C" />
+    <SolidColorBrush x:Key="TextControlBackgroundFocused" Color="#1F232C" />
+    <SolidColorBrush x:Key="TextControlBorderBrush" Color="#FFFFFF" Opacity="0.10" />
+    <SolidColorBrush x:Key="TextControlBorderBrushPointerOver" Color="#FFFFFF" Opacity="0.16" />
+    <SolidColorBrush x:Key="TextControlBorderBrushFocused" Color="#E9B872" />
+    <SolidColorBrush x:Key="TextControlForeground" Color="#F4F6F8" />
+    <SolidColorBrush x:Key="TextControlForegroundPointerOver" Color="#F4F6F8" />
+    <SolidColorBrush x:Key="TextControlForegroundFocused" Color="#F4F6F8" />
+    <SolidColorBrush x:Key="TextControlPlaceholderForeground" Color="#69707D" />
+    <SolidColorBrush x:Key="TextControlPlaceholderForegroundPointerOver" Color="#69707D" />
+    <SolidColorBrush x:Key="TextControlPlaceholderForegroundFocused" Color="#69707D" />
+    <Thickness x:Key="TextControlBorderThemeThickness">1</Thickness>
+    <Thickness x:Key="TextControlBorderThemeThicknessFocused">1</Thickness>
+
+    <!-- The screen-edge inset for list rows. It has to be set here rather than on the row's
+         ContentPresenter: Fluent template-binds that padding to the ListBoxItem's own, which beats
+         a style setter, and rows end up flush to the edge with their buttons clipped. -->
+    <Thickness x:Key="ListBoxItemPadding">16,0</Thickness>
+
+  </Styles.Resources>
+
+  <!-- ── Typography ────────────────────────────────────────────────────────────────────────── -->
+
+  <Style Selector="UserControl">
+    <Setter Property="FontFamily" Value="{StaticResource UiFont}" />
+  </Style>
+
+  <!-- The screen name. One per tab, and the only type this big. -->
+  <Style Selector="TextBlock.title">
+    <Setter Property="FontSize" Value="27" />
+    <Setter Property="FontWeight" Value="Bold" />
+    <Setter Property="LetterSpacing" Value="-0.6" />
+    <Setter Property="Foreground" Value="{StaticResource TextHi}" />
+  </Style>
+
+  <!-- A count or a subtitle sitting under the screen name. -->
+  <Style Selector="TextBlock.subtitle">
+    <Setter Property="FontSize" Value="12.5" />
+    <Setter Property="Foreground" Value="{StaticResource TextMid}" />
+  </Style>
+
+  <!-- Small print: sync state, hints, "1089 albums". -->
+  <Style Selector="TextBlock.caption">
+    <Setter Property="FontSize" Value="11.5" />
+    <Setter Property="Foreground" Value="{StaticResource TextLow}" />
+  </Style>
+
+  <!-- A tiny all-caps rubric over a group of things. -->
+  <Style Selector="TextBlock.rubric">
+    <Setter Property="FontSize" Value="10" />
+    <Setter Property="FontWeight" Value="Bold" />
+    <Setter Property="LetterSpacing" Value="1.4" />
+    <Setter Property="Foreground" Value="{StaticResource TextLow}" />
+  </Style>
+
+  <Style Selector="TextBlock.rowTitle">
+    <Setter Property="FontSize" Value="14.5" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="LetterSpacing" Value="-0.2" />
+    <Setter Property="Foreground" Value="{StaticResource TextHi}" />
+  </Style>
+
+  <Style Selector="TextBlock.rowSub">
+    <Setter Property="FontSize" Value="12.5" />
+    <Setter Property="Foreground" Value="{StaticResource TextMid}" />
+  </Style>
+
+  <!-- The 1-1001 index down the left of the browse list. Tabular so the digits line up. -->
+  <Style Selector="TextBlock.rowIndex">
+    <Setter Property="FontSize" Value="11.5" />
+    <Setter Property="FontWeight" Value="Medium" />
+    <Setter Property="Foreground" Value="{StaticResource TextLow}" />
+  </Style>
+
+  <Style Selector="TextBlock.gold">
+    <Setter Property="Foreground" Value="{StaticResource Gold}" />
+  </Style>
+
+  <Style Selector="TextBlock.warn">
+    <Setter Property="Foreground" Value="{StaticResource Meh}" />
+  </Style>
+
+  <Style Selector="TextBlock.error">
+    <Setter Property="Foreground" Value="{StaticResource Bad}" />
+  </Style>
+
+  <!-- ── Screen scaffolding ────────────────────────────────────────────────────────────────── -->
+
+  <!-- The page itself. Every tab's root gets this so the canvas is one colour throughout. -->
+  <Style Selector="Border.page">
+    <Setter Property="Background" Value="{StaticResource Ink}" />
+  </Style>
+
+  <!-- The block of controls above a list: title, switcher, search, sort. Divided from the list
+       by a hairline rather than a box, so the list reads as the main event. -->
+  <Style Selector="Border.header">
+    <Setter Property="Background" Value="{StaticResource Ink}" />
+    <Setter Property="BorderBrush" Value="{StaticResource HairlineSoft}" />
+    <Setter Property="BorderThickness" Value="0,0,0,1" />
+    <Setter Property="Padding" Value="16,12,16,12" />
+  </Style>
+
+  <!-- A raised panel: the rate card, the add-album form, the deletion checklist. -->
+  <Style Selector="Border.card">
+    <Setter Property="Background" Value="{StaticResource Surface}" />
+    <Setter Property="BorderBrush" Value="{StaticResource Hairline}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="18" />
+  </Style>
+
+  <!-- ── Segmented control ─────────────────────────────────────────────────────────────────── -->
+  <!-- A real inset track with a filled pill on the active item, replacing the old approach of
+       three plain buttons distinguished only by opacity. -->
+
+  <Style Selector="Border.segTrack">
+    <Setter Property="Background" Value="{StaticResource InkRaised}" />
+    <Setter Property="BorderBrush" Value="{StaticResource HairlineSoft}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="12" />
+    <Setter Property="Padding" Value="3" />
+  </Style>
+
+  <Style Selector="Button.seg">
+    <Setter Property="FontSize" Value="12.5" />
+    <Setter Property="FontWeight" Value="Medium" />
+    <Setter Property="Padding" Value="4,8" />
+    <Setter Property="MinHeight" Value="0" />
+    <Setter Property="CornerRadius" Value="9" />
+    <Setter Property="HorizontalAlignment" Value="Stretch" />
+    <Setter Property="HorizontalContentAlignment" Value="Center" />
+    <Setter Property="Foreground" Value="{StaticResource TextMid}" />
+  </Style>
+  <Style Selector="Button.seg /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="CornerRadius" Value="9" />
+  </Style>
+  <Style Selector="Button.seg:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="{StaticResource SurfaceHi}" />
+  </Style>
+  <Style Selector="Button.seg.on">
+    <Setter Property="Foreground" Value="{StaticResource GoldBright}" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+  </Style>
+  <Style Selector="Button.seg.on /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="{StaticResource GoldWash}" />
+  </Style>
+  <Style Selector="Button.seg.on:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="{StaticResource GoldWashHi}" />
+  </Style>
+
+  <!-- ── Sort headers ──────────────────────────────────────────────────────────────────────── -->
+  <!-- Bare text, not buttons: they label the list rather than inviting a press, and the active
+       one is called out in gold with its direction arrow. -->
+
+  <Style Selector="Button.sort">
+    <Setter Property="FontSize" Value="11" />
+    <Setter Property="FontWeight" Value="Medium" />
+    <Setter Property="Padding" Value="2,6" />
+    <Setter Property="MinHeight" Value="0" />
+    <Setter Property="CornerRadius" Value="7" />
+    <Setter Property="HorizontalAlignment" Value="Stretch" />
+    <Setter Property="HorizontalContentAlignment" Value="Center" />
+    <Setter Property="Foreground" Value="{StaticResource TextLow}" />
+  </Style>
+  <Style Selector="Button.sort /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="CornerRadius" Value="7" />
+  </Style>
+  <Style Selector="Button.sort:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="{StaticResource Surface}" />
+  </Style>
+  <Style Selector="Button.sort.on">
+    <Setter Property="Foreground" Value="{StaticResource Gold}" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+  </Style>
+
+  <!-- ── Buttons ───────────────────────────────────────────────────────────────────────────── -->
+
+  <!-- The default: a surface chip with a hairline edge. -->
+  <Style Selector="Button">
+    <Setter Property="CornerRadius" Value="11" />
+    <Setter Property="Padding" Value="14,9" />
+    <Setter Property="FontSize" Value="12.5" />
+    <Setter Property="FontWeight" Value="Medium" />
+  </Style>
+  <Style Selector="Button /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="CornerRadius" Value="11" />
+  </Style>
+
+  <!-- The one affirmative action on a screen: solid gold, dark text. -->
+  <Style Selector="Button.primary">
+    <Setter Property="Foreground" Value="#14100A" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+  </Style>
+  <Style Selector="Button.primary /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="{StaticResource Gold}" />
+    <Setter Property="BorderThickness" Value="0" />
+  </Style>
+  <Style Selector="Button.primary:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="{StaticResource GoldBright}" />
+  </Style>
+  <Style Selector="Button.primary:pressed /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="{StaticResource GoldBright}" />
+  </Style>
+
+  <!-- Gold, but outlined rather than filled — for a pair of equal actions like Pull / Push. -->
+  <Style Selector="Button.accent">
+    <Setter Property="Foreground" Value="{StaticResource Gold}" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+  </Style>
+  <Style Selector="Button.accent /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="{StaticResource GoldWash}" />
+    <Setter Property="BorderBrush" Value="{StaticResource GoldEdge}" />
+    <Setter Property="BorderThickness" Value="1" />
+  </Style>
+  <Style Selector="Button.accent:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="{StaticResource GoldWashHi}" />
+    <Setter Property="BorderBrush" Value="{StaticResource GoldEdge}" />
+  </Style>
+
+  <!-- No chrome until you touch it. For secondary actions that shouldn't compete. -->
+  <Style Selector="Button.ghost">
+    <Setter Property="Foreground" Value="{StaticResource TextMid}" />
+  </Style>
+  <Style Selector="Button.ghost /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderBrush" Value="{StaticResource Hairline}" />
+    <Setter Property="BorderThickness" Value="1" />
+  </Style>
+  <Style Selector="Button.ghost:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="{StaticResource Surface}" />
+  </Style>
+
+  <!-- Small action riding on a list row: ＋ P1, Keep, Nah, ✕. -->
+  <Style Selector="Button.chip">
+    <Setter Property="FontSize" Value="11.5" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="Padding" Value="11,6" />
+    <Setter Property="MinHeight" Value="0" />
+    <Setter Property="CornerRadius" Value="9" />
+    <Setter Property="Foreground" Value="{StaticResource TextMid}" />
+  </Style>
+  <Style Selector="Button.chip /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="CornerRadius" Value="9" />
+    <Setter Property="Background" Value="{StaticResource SurfaceHi}" />
+    <Setter Property="BorderThickness" Value="0" />
+  </Style>
+  <Style Selector="Button.chip:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="{StaticResource SurfacePressed}" />
+  </Style>
+  <!-- Spent: the ＋ has been pressed and the row is already queued. -->
+  <Style Selector="Button.chip:disabled">
+    <Setter Property="Foreground" Value="{StaticResource TextLow}" />
+    <Setter Property="Opacity" Value="0.55" />
+  </Style>
+  <Style Selector="Button.chip:disabled /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="Transparent" />
+  </Style>
+
+  <Style Selector="Button.chip.gold">
+    <Setter Property="Foreground" Value="{StaticResource Gold}" />
+  </Style>
+  <Style Selector="Button.chip.gold /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="{StaticResource GoldWash}" />
+  </Style>
+  <Style Selector="Button.chip.gold:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="{StaticResource GoldWashHi}" />
+  </Style>
+
+  <Style Selector="Button.chip.quiet">
+    <Setter Property="Foreground" Value="{StaticResource TextLow}" />
+  </Style>
+  <Style Selector="Button.chip.quiet /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderBrush" Value="{StaticResource Hairline}" />
+    <Setter Property="BorderThickness" Value="1" />
+  </Style>
+  <Style Selector="Button.chip.quiet:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="{StaticResource Surface}" />
+  </Style>
+
+  <!-- ── Rating tiles ──────────────────────────────────────────────────────────────────────── -->
+  <!-- The four verdicts, each in its own colour so the row reads at a glance from ⭐ down to ❌
+       instead of as four identical grey boxes. -->
+
+  <!-- Stretch, not hug: "Mostly enjoyable" wraps to two lines where "Trash" doesn't, and tiles
+       sized to their own content come out visibly uneven next to each other. -->
+  <Style Selector="Button.rate">
+    <Setter Property="MinHeight" Value="0" />
+    <Setter Property="Padding" Value="2,10" />
+    <Setter Property="CornerRadius" Value="14" />
+    <Setter Property="HorizontalAlignment" Value="Stretch" />
+    <Setter Property="VerticalAlignment" Value="Stretch" />
+    <Setter Property="HorizontalContentAlignment" Value="Center" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+  </Style>
+  <Style Selector="Button.rate /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="CornerRadius" Value="14" />
+    <Setter Property="BorderThickness" Value="1" />
+  </Style>
+
+  <Style Selector="Button.rate.star /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="{StaticResource GoldWash}" />
+    <Setter Property="BorderBrush" Value="{StaticResource GoldEdge}" />
+  </Style>
+  <Style Selector="Button.rate.star:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="{StaticResource GoldWashHi}" />
+    <Setter Property="BorderBrush" Value="{StaticResource Gold}" />
+  </Style>
+
+  <Style Selector="Button.rate.up /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="{StaticResource GoodWash}" />
+    <Setter Property="BorderBrush" Value="{StaticResource GoodWash}" />
+  </Style>
+  <Style Selector="Button.rate.up:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="{StaticResource GoodWash}" />
+    <Setter Property="BorderBrush" Value="{StaticResource Good}" />
+  </Style>
+
+  <Style Selector="Button.rate.down /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="{StaticResource MehWash}" />
+    <Setter Property="BorderBrush" Value="{StaticResource MehWash}" />
+  </Style>
+  <Style Selector="Button.rate.down:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="{StaticResource MehWash}" />
+    <Setter Property="BorderBrush" Value="{StaticResource Meh}" />
+  </Style>
+
+  <Style Selector="Button.rate.trash /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="{StaticResource BadWash}" />
+    <Setter Property="BorderBrush" Value="{StaticResource BadWash}" />
+  </Style>
+  <Style Selector="Button.rate.trash:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="{StaticResource BadWash}" />
+    <Setter Property="BorderBrush" Value="{StaticResource Bad}" />
+  </Style>
+
+  <Style Selector="Button.rate TextBlock.glyph">
+    <Setter Property="FontSize" Value="21" />
+    <Setter Property="HorizontalAlignment" Value="Center" />
+  </Style>
+  <!-- Two lines' worth of room whether the label needs it or not, so the four glyphs sit on one
+       line across the row instead of stepping up and down. -->
+  <Style Selector="Button.rate TextBlock.label">
+    <Setter Property="FontSize" Value="9.5" />
+    <Setter Property="LineHeight" Value="12" />
+    <Setter Property="Height" Value="24" />
+    <Setter Property="Foreground" Value="{StaticResource TextMid}" />
+    <Setter Property="TextWrapping" Value="Wrap" />
+    <Setter Property="TextAlignment" Value="Center" />
+    <Setter Property="Margin" Value="0,5,0,0" />
+  </Style>
+
+  <!-- ── Text fields ───────────────────────────────────────────────────────────────────────── -->
+
+  <Style Selector="TextBox">
+    <Setter Property="CornerRadius" Value="12" />
+    <Setter Property="Padding" Value="12,9" />
+    <Setter Property="MinHeight" Value="40" />
+    <Setter Property="FontSize" Value="13.5" />
+  </Style>
+
+  <!-- The bare year field inside a shortlist row: a rule to type on, not a box. -->
+  <Style Selector="TextBox.inline">
+    <Setter Property="MinHeight" Value="0" />
+    <Setter Property="CornerRadius" Value="0" />
+    <Setter Property="Padding" Value="2,2" />
+    <Setter Property="FontSize" Value="11.5" />
+  </Style>
+  <Style Selector="TextBox.inline /template/ Border#PART_BorderElement">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0,0,0,1" />
+    <Setter Property="CornerRadius" Value="0" />
+  </Style>
+
+  <Style Selector="AutoCompleteBox">
+    <Setter Property="FontSize" Value="13.5" />
+  </Style>
+
+  <!-- ── Lists ─────────────────────────────────────────────────────────────────────────────── -->
+
+  <Style Selector="ListBox">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="Padding" Value="0" />
+  </Style>
+
+  <!-- Rows are separated by a hairline and lit only faintly on touch. The stock Fluent selection
+       fill is a solid accent bar, which on a 1000-row list reads as an error. -->
+  <Style Selector="ListBoxItem">
+    <Setter Property="MinHeight" Value="0" />
+    <Setter Property="CornerRadius" Value="0" />
+  </Style>
+  <Style Selector="ListBoxItem /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderBrush" Value="{StaticResource HairlineSoft}" />
+    <Setter Property="BorderThickness" Value="0,0,0,1" />
+    <Setter Property="CornerRadius" Value="0" />
+  </Style>
+  <Style Selector="ListBoxItem:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="{StaticResource InkRaised}" />
+  </Style>
+  <Style Selector="ListBoxItem:selected /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="{StaticResource InkRaised}" />
+  </Style>
+  <Style Selector="ListBoxItem:selected:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="{StaticResource Surface}" />
+  </Style>
+
+  <!-- A list already inside a padded container (the Rate tab's find results) — it supplies its own
+       margin, so the rows mustn't add the screen-edge inset again. -->
+  <Style Selector="ListBox.flush ListBoxItem">
+    <Setter Property="Padding" Value="0" />
+  </Style>
+
+  <!-- ── Scrollbars ────────────────────────────────────────────────────────────────────────── -->
+
+  <Style Selector="ScrollBar">
+    <Setter Property="Background" Value="Transparent" />
+  </Style>
+  <Style Selector="ScrollBar /template/ Border#TrackRect">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+  </Style>
+
+  <!-- ── Bottom navigation ─────────────────────────────────────────────────────────────────── -->
+  <!-- MainView hides the TabControl's own strip and draws this instead, so the bar is a designed
+       object rather than five stock tab headers. -->
+
+  <Style Selector="Border.navBar">
+    <Setter Property="Background" Value="{StaticResource InkRaised}" />
+    <Setter Property="BorderBrush" Value="{StaticResource Hairline}" />
+    <Setter Property="BorderThickness" Value="0,1,0,0" />
+    <Setter Property="Padding" Value="6,7,6,9" />
+  </Style>
+
+  <!-- Icon over label. The whole item takes the state colour, and the active one sits in a soft
+       gold pill — the same accent the segmented control and rating tiles use. -->
+  <Style Selector="Button.nav">
+    <Setter Property="MinHeight" Value="0" />
+    <Setter Property="Padding" Value="0,6" />
+    <Setter Property="CornerRadius" Value="13" />
+    <Setter Property="HorizontalAlignment" Value="Stretch" />
+    <Setter Property="HorizontalContentAlignment" Value="Center" />
+    <Setter Property="Foreground" Value="{StaticResource TextLow}" />
+  </Style>
+  <Style Selector="Button.nav /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="CornerRadius" Value="13" />
+  </Style>
+  <Style Selector="Button.nav:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="{StaticResource Surface}" />
+  </Style>
+  <Style Selector="Button.nav.on">
+    <Setter Property="Foreground" Value="{StaticResource GoldBright}" />
+  </Style>
+  <Style Selector="Button.nav.on /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="{StaticResource GoldWash}" />
+  </Style>
+  <Style Selector="Button.nav.on:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="{StaticResource GoldWashHi}" />
+  </Style>
+
+  <!-- The TabControl is kept only for switching content; its header strip is replaced above. -->
+  <Style Selector="TabControl.headless">
+    <Setter Property="Padding" Value="0" />
+  </Style>
+  <Style Selector="TabControl.headless /template/ ItemsPresenter#PART_ItemsPresenter">
+    <Setter Property="IsVisible" Value="False" />
+  </Style>
+
+</Styles>

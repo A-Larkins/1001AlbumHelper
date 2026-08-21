@@ -2,64 +2,89 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:local="clr-namespace:_1001AlbumHelper"
              x:Class="_1001AlbumHelper.PlaylistView">
-  <DockPanel Margin="12,8">
-    <StackPanel DockPanel.Dock="Top" Spacing="6" Margin="0,0,0,8">
-      <TextBlock x:Name="TitleText" FontSize="22" FontWeight="SemiBold" />
-      <TextBlock x:Name="CountText" Opacity="0.55" FontSize="12" />
-      <Grid ColumnDefinitions="*,*" ColumnSpacing="6">
-        <Button x:Name="ImportButton" Grid.Column="0" Content="⬇ Pull down"
-                Click="OnImportFromAppleMusic" HorizontalAlignment="Stretch"
-                HorizontalContentAlignment="Center" FontSize="12"
-                ToolTip.Tip="Replace this list with what Apple Music has" />
-        <Button x:Name="PushButton" Grid.Column="1" Content="⬆ Push all"
-                Click="OnPushToAppleMusic" HorizontalAlignment="Stretch"
-                HorizontalContentAlignment="Center" FontSize="12"
-                ToolTip.Tip="Push all to Apple Music" />
-      </Grid>
-      <TextBlock x:Name="StatusText" Opacity="0.7" FontSize="12" TextWrapping="Wrap" IsVisible="False" />
-      <ItemsControl x:Name="FailuresList" IsVisible="False">
-        <ItemsControl.ItemTemplate>
-          <DataTemplate>
-            <TextBlock Text="{Binding}" FontSize="11" Foreground="IndianRed" TextWrapping="Wrap" Margin="0,1" />
-          </DataTemplate>
-        </ItemsControl.ItemTemplate>
-      </ItemsControl>
-    </StackPanel>
+  <!--
+    One working playlist. Used twice — Playlist 1 (from the 1001) and Playlist 2 (recommendations)
+    — so the heading, subtitle and Apple Music name all arrive via Configure.
+  -->
+  <DockPanel>
+    <Border DockPanel.Dock="Top" Classes="header">
+      <StackPanel Spacing="10">
 
-    <StackPanel x:Name="ToRemoveSection" DockPanel.Dock="Bottom" IsVisible="False" Spacing="4" Margin="0,8,0,0">
-      <TextBlock x:Name="ToRemoveHeader" FontSize="12" FontWeight="SemiBold" Opacity="0.8" />
-      <TextBlock Text="Apple Music can't remove these for you — delete them there yourself, then check them off."
-                 FontSize="11" Opacity="0.55" TextWrapping="Wrap" />
-      <ItemsControl x:Name="ToRemoveRows">
-        <ItemsControl.ItemTemplate>
-          <DataTemplate x:DataType="local:PlaylistEntry">
-            <Grid ColumnDefinitions="*,Auto" Margin="0,3">
-              <TextBlock Grid.Column="0" Text="{Binding Display}" VerticalAlignment="Center"
-                         TextWrapping="Wrap" Opacity="0.7" />
-              <Button Grid.Column="1" Content="✓ Deleted" Click="OnConfirmRemoved" VerticalAlignment="Center"
-                      Margin="8,0,0,0" FontSize="11" />
-            </Grid>
-          </DataTemplate>
-        </ItemsControl.ItemTemplate>
-      </ItemsControl>
-    </StackPanel>
+        <Grid ColumnDefinitions="*,Auto">
+          <StackPanel Grid.Column="0" Spacing="1" VerticalAlignment="Center">
+            <TextBlock x:Name="TitleText" Classes="title" />
+            <TextBlock x:Name="SubtitleText" Classes="caption" />
+          </StackPanel>
+          <TextBlock Grid.Column="1" x:Name="CountText" Classes="caption" VerticalAlignment="Bottom"
+                     Margin="8,0,0,3" />
+        </Grid>
+
+        <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
+          <Button x:Name="ImportButton" Grid.Column="0" Classes="ghost" Content="⬇  Pull down"
+                  Click="OnImportFromAppleMusic" HorizontalAlignment="Stretch"
+                  HorizontalContentAlignment="Center"
+                  ToolTip.Tip="Replace this list with what Apple Music has" />
+          <Button x:Name="PushButton" Grid.Column="1" Classes="accent" Content="⬆  Push all"
+                  Click="OnPushToAppleMusic" HorizontalAlignment="Stretch"
+                  HorizontalContentAlignment="Center"
+                  ToolTip.Tip="Push all to Apple Music" />
+        </Grid>
+
+        <TextBlock x:Name="StatusText" Classes="caption" TextWrapping="Wrap" IsVisible="False" />
+        <ItemsControl x:Name="FailuresList" IsVisible="False">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate>
+              <TextBlock Classes="caption error" Text="{Binding}" TextWrapping="Wrap" Margin="0,1" />
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+
+      </StackPanel>
+    </Border>
+
+    <!-- Apple Music has no remove API, so cleanup is a checklist you work through by hand. -->
+    <Border x:Name="ToRemoveSection" DockPanel.Dock="Bottom" Classes="card" IsVisible="False"
+            Padding="14" Margin="16,8,16,14">
+      <StackPanel Spacing="6">
+        <TextBlock x:Name="ToRemoveHeader" Classes="rubric" />
+        <TextBlock Classes="caption"
+                   Text="Apple Music can't remove these for you — delete them there yourself, then check them off."
+                   TextWrapping="Wrap" />
+        <ItemsControl x:Name="ToRemoveRows" Margin="0,4,0,0">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="local:PlaylistEntry">
+              <Grid ColumnDefinitions="*,Auto" Margin="0,4">
+                <TextBlock Grid.Column="0" Classes="rowSub" Text="{Binding Display}"
+                           VerticalAlignment="Center" TextWrapping="Wrap" />
+                <Button Grid.Column="1" Classes="chip quiet" Content="✓ Deleted"
+                        Click="OnConfirmRemoved" VerticalAlignment="Center" Margin="8,0,0,0" />
+              </Grid>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </StackPanel>
+    </Border>
 
     <Panel>
       <ListBox x:Name="Rows">
         <ListBox.ItemTemplate>
           <DataTemplate x:DataType="local:PlaylistEntry">
-            <Grid ColumnDefinitions="*,Auto" Margin="0,4">
-              <TextBlock Grid.Column="0" Text="{Binding Display}" VerticalAlignment="Center"
-                         TextWrapping="Wrap" />
-              <Button Grid.Column="1" Content="✕" Click="OnRemove" VerticalAlignment="Center"
-                      Margin="8,0,0,0" />
+            <!-- Title over artist, matching the browse list, rather than one run-together line. -->
+            <Grid ColumnDefinitions="*,Auto" Margin="0,11">
+              <StackPanel Grid.Column="0" Spacing="2" VerticalAlignment="Center">
+                <TextBlock Classes="rowTitle" Text="{Binding Title}" TextWrapping="Wrap" />
+                <TextBlock Classes="rowSub" Text="{Binding Artist}" TextWrapping="Wrap" />
+              </StackPanel>
+              <Button Grid.Column="1" Classes="chip quiet" Content="✕" Click="OnRemove"
+                      VerticalAlignment="Center" Margin="10,0,0,0" />
             </Grid>
           </DataTemplate>
         </ListBox.ItemTemplate>
       </ListBox>
-      <TextBlock x:Name="EmptyText" Text="Nothing here yet — add albums from the List or Shortlist tab."
-                 Opacity="0.5" FontSize="13" TextWrapping="Wrap" TextAlignment="Center"
-                 HorizontalAlignment="Center" VerticalAlignment="Center" Margin="24"
+      <TextBlock x:Name="EmptyText" Classes="caption"
+                 Text="Nothing here yet — add albums from the List or Shortlist tab."
+                 TextWrapping="Wrap" TextAlignment="Center"
+                 HorizontalAlignment="Center" VerticalAlignment="Center" Margin="40"
                  IsHitTestVisible="False" IsVisible="False" />
     </Panel>
   </DockPanel>

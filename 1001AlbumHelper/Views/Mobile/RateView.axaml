@@ -2,156 +2,150 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:local="clr-namespace:_1001AlbumHelper"
              x:Class="_1001AlbumHelper.RateView">
-  <UserControl.Styles>
-    <!-- Same segmented look the Browse tab uses for its list picker. -->
-    <Style Selector="Button.seg">
-      <Setter Property="Opacity" Value="0.55" />
-      <Setter Property="FontSize" Value="12" />
-      <Setter Property="HorizontalAlignment" Value="Stretch" />
-      <Setter Property="HorizontalContentAlignment" Value="Center" />
-    </Style>
-    <Style Selector="Button.seg.on">
-      <Setter Property="Opacity" Value="1" />
-      <Setter Property="FontWeight" Value="Bold" />
-    </Style>
-  </UserControl.Styles>
+  <!--
+    Rate. The album card is the screen: sleeve, title, artist, year, centred and given room, with
+    the four verdicts as coloured tiles directly under your thumb. Queue pickers sit up in the
+    header, and the find box — the phone's way of re-rating a specific album — sits at the bottom
+    out of the way until it's typed in.
+  -->
+  <DockPanel>
+    <Border DockPanel.Dock="Top" Classes="header">
+      <StackPanel Spacing="10">
 
-  <Grid Margin="12,8">
-    <Grid.RowDefinitions>
-      <RowDefinition Height="Auto" />
-      <RowDefinition Height="Auto" />
-      <RowDefinition Height="Auto" />
-      <RowDefinition Height="Auto" />
-      <RowDefinition Height="Auto" />
-      <RowDefinition Height="Auto" />
-      <RowDefinition Height="*" />
-    </Grid.RowDefinitions>
+        <Grid ColumnDefinitions="*,Auto">
+          <TextBlock Grid.Column="0" Classes="title" Text="Rate" VerticalAlignment="Center" />
+          <TextBlock Grid.Column="1" x:Name="RemainingText" Classes="caption" Text=""
+                     VerticalAlignment="Bottom" Margin="8,0,0,4" />
+        </Grid>
 
-    <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="0,0,0,8">
-      <TextBlock Grid.Column="0" Text="Rate" FontSize="22" FontWeight="SemiBold" />
-      <TextBlock Grid.Column="1" x:Name="RemainingText" Text="" Opacity="0.55" FontSize="12"
-                 VerticalAlignment="Center" />
-    </Grid>
+        <!-- Which albums this run walks. The three queues the Mac window offers, minus shuffle. -->
+        <Border Classes="segTrack">
+          <Grid x:Name="ModeRow" ColumnDefinitions="*,*,*" ColumnSpacing="3">
+            <Button Grid.Column="0" x:Name="NextUpButton" Classes="seg on" Tag="NextUp"
+                    Content="Next up" Click="OnPickMode" />
+            <Button Grid.Column="1" x:Name="BackfillButton" Classes="seg" Tag="Backfill"
+                    Content="Backfill ✓" Click="OnPickMode" />
+            <Button Grid.Column="2" x:Name="RevisitButton" Classes="seg" Tag="Revisit"
+                    Content="Revisit" Click="OnPickMode" />
+          </Grid>
+        </Border>
 
-    <!-- Which albums this run walks. The three queues the Mac window offers, minus shuffle. -->
-    <Grid Grid.Row="1" x:Name="ModeRow" ColumnDefinitions="*,*,*" ColumnSpacing="6" Margin="0,0,0,6">
-      <Button Grid.Column="0" x:Name="NextUpButton" Classes="seg on" Tag="NextUp" Content="Next up"
-              Click="OnPickMode" />
-      <Button Grid.Column="1" x:Name="BackfillButton" Classes="seg" Tag="Backfill" Content="Backfill ✓"
-              Click="OnPickMode" />
-      <Button Grid.Column="2" x:Name="RevisitButton" Classes="seg" Tag="Revisit" Content="Revisit"
-              Click="OnPickMode" />
-    </Grid>
+        <!-- Which ratings Revisit walks. Hidden for the other two, whose albums have none to
+             filter by — the visibility is set on the track so the whole control disappears. -->
+        <Border x:Name="FilterTrack" Classes="segTrack" IsVisible="False">
+          <Grid x:Name="FilterRow" ColumnDefinitions="*,*,*,*,*" ColumnSpacing="3">
+            <Button Grid.Column="0" Classes="seg on" Tag="" Content="All" Click="OnPickFilter" />
+            <Button Grid.Column="1" Classes="seg" Tag="⭐" Content="⭐" Click="OnPickFilter" />
+            <Button Grid.Column="2" Classes="seg" Tag="👍" Content="👍" Click="OnPickFilter" />
+            <Button Grid.Column="3" Classes="seg" Tag="👎" Content="👎" Click="OnPickFilter" />
+            <Button Grid.Column="4" Classes="seg" Tag="❌" Content="❌" Click="OnPickFilter" />
+          </Grid>
+        </Border>
 
-    <!-- Which ratings Revisit walks. Hidden for the other two, whose albums have none to filter by. -->
-    <Grid Grid.Row="2" x:Name="FilterRow" ColumnDefinitions="*,*,*,*,*" ColumnSpacing="4"
-          Margin="0,0,0,6" IsVisible="False">
-      <Button Grid.Column="0" Classes="seg on" Tag="" Content="All" Click="OnPickFilter" />
-      <Button Grid.Column="1" Classes="seg" Tag="⭐" Content="⭐" Click="OnPickFilter" />
-      <Button Grid.Column="2" Classes="seg" Tag="👍" Content="👍" Click="OnPickFilter" />
-      <Button Grid.Column="3" Classes="seg" Tag="👎" Content="👎" Click="OnPickFilter" />
-      <Button Grid.Column="4" Classes="seg" Tag="❌" Content="❌" Click="OnPickFilter" />
-    </Grid>
-
-    <Border Grid.Row="3" CornerRadius="14" BorderBrush="#33808080" BorderThickness="1" Padding="24"
-            MinHeight="220">
-      <Panel>
-        <StackPanel x:Name="AlbumPanel" VerticalAlignment="Center" Spacing="0">
-          <TextBlock x:Name="PositionText" Text="" FontSize="12" Opacity="0.5"
-                     HorizontalAlignment="Center" />
-
-          <!-- Cover art. The sleeve placeholder holds the space while the lookup runs (and for
-               albums with no art), so the card doesn't jump between two heights. -->
-          <Border Width="150" Height="150" CornerRadius="10" ClipToBounds="True"
-                  BorderBrush="#33808080" BorderThickness="1"
-                  HorizontalAlignment="Center" Margin="0,12,0,0">
-            <Panel>
-              <TextBlock x:Name="ArtPlaceholder" Text="♫" FontSize="40" Opacity="0.25"
-                         HorizontalAlignment="Center" VerticalAlignment="Center" />
-              <Image x:Name="ArtImage" Stretch="UniformToFill" IsVisible="False" />
-            </Panel>
-          </Border>
-          <TextBlock x:Name="TitleText" Text="" FontSize="24" FontWeight="Bold"
-                     TextWrapping="Wrap" TextAlignment="Center" Margin="0,10,0,0" />
-          <TextBlock x:Name="ArtistText" Text="" FontSize="16" Opacity="0.75"
-                     TextWrapping="Wrap" TextAlignment="Center" Margin="0,6,0,0" />
-          <TextBlock x:Name="YearText" Text="" FontSize="13" Opacity="0.5"
-                     HorizontalAlignment="Center" Margin="0,6,0,0" />
-          <!-- Only shown for an album that already has a rating — otherwise there's nothing to say. -->
-          <TextBlock x:Name="CurrentRatingText" Text="" FontSize="12.5" Opacity="0.85"
-                     TextAlignment="Center" TextWrapping="Wrap" Margin="0,6,0,0" IsVisible="False" />
-        </StackPanel>
-
-        <TextBlock x:Name="MessageText" Text="Loading…" FontSize="15" Opacity="0.7"
-                   TextWrapping="Wrap" TextAlignment="Center"
-                   HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="False" />
-      </Panel>
+      </StackPanel>
     </Border>
 
-    <Grid Grid.Row="4" x:Name="RatingRow" ColumnDefinitions="*,*,*,*" ColumnSpacing="6" Margin="0,10,0,0">
-      <Button Grid.Column="0" Tag="⭐" Click="OnRate" HorizontalAlignment="Stretch"
-              HorizontalContentAlignment="Center" Padding="4,10">
-        <StackPanel>
-          <TextBlock Text="⭐" FontSize="22" HorizontalAlignment="Center" />
-          <TextBlock Text="Really enjoyable" FontSize="10" Opacity="0.65" TextWrapping="Wrap"
-                     TextAlignment="Center" Margin="0,4,0,0" />
-        </StackPanel>
-      </Button>
-      <Button Grid.Column="1" Tag="👍" Click="OnRate" HorizontalAlignment="Stretch"
-              HorizontalContentAlignment="Center" Padding="4,10">
-        <StackPanel>
-          <TextBlock Text="👍" FontSize="22" HorizontalAlignment="Center" />
-          <TextBlock Text="Mostly enjoyable" FontSize="10" Opacity="0.65" TextWrapping="Wrap"
-                     TextAlignment="Center" Margin="0,4,0,0" />
-        </StackPanel>
-      </Button>
-      <Button Grid.Column="2" Tag="👎" Click="OnRate" HorizontalAlignment="Stretch"
-              HorizontalContentAlignment="Center" Padding="4,10">
-        <StackPanel>
-          <TextBlock Text="👎" FontSize="22" HorizontalAlignment="Center" />
-          <TextBlock Text="Mostly sucks" FontSize="10" Opacity="0.65" TextWrapping="Wrap"
-                     TextAlignment="Center" Margin="0,4,0,0" />
-        </StackPanel>
-      </Button>
-      <Button Grid.Column="3" Tag="❌" Click="OnRate" HorizontalAlignment="Stretch"
-              HorizontalContentAlignment="Center" Padding="4,10">
-        <StackPanel>
-          <TextBlock Text="❌" FontSize="22" HorizontalAlignment="Center" />
-          <TextBlock Text="Trash" FontSize="10" Opacity="0.65" TextWrapping="Wrap"
-                     TextAlignment="Center" Margin="0,4,0,0" />
-        </StackPanel>
-      </Button>
-    </Grid>
+    <Grid Margin="16,14,16,14" RowDefinitions="Auto,Auto,Auto,*">
 
-    <Grid Grid.Row="5" ColumnDefinitions="*,Auto,Auto" ColumnSpacing="6" Margin="0,10,0,0">
-      <TextBlock Grid.Column="0" x:Name="StatusText" Text="" FontSize="12" Opacity="0.6"
-                 TextWrapping="Wrap" VerticalAlignment="Center" />
-      <Button Grid.Column="1" x:Name="BackButton" Content="Back" Click="OnBack" FontSize="12" />
-      <Button Grid.Column="2" x:Name="SkipButton" Content="Skip" Click="OnSkip" FontSize="12" />
-    </Grid>
+      <Border Grid.Row="0" Classes="card" Padding="20,22" MinHeight="300">
+        <Panel>
+          <StackPanel x:Name="AlbumPanel" VerticalAlignment="Center" Spacing="0">
+            <TextBlock x:Name="PositionText" Classes="rubric" Text="" HorizontalAlignment="Center" />
 
-    <!-- Jump to any album by name, rated or not — the phone's way of changing a rating, since it
-         has no queue picker. Results only appear once something is typed. -->
-    <DockPanel Grid.Row="6" Margin="0,12,0,0">
-      <TextBox DockPanel.Dock="Top" x:Name="FindBox"
-               Watermark="Find an album to rate or re-rate…" FontSize="13" />
-      <ListBox x:Name="FindResults" SelectionChanged="OnPickFound" Margin="0,6,0,0"
-               Background="Transparent" BorderThickness="0" IsVisible="False">
-        <ListBox.ItemTemplate>
-          <DataTemplate x:DataType="local:AlbumEntry">
-            <Grid ColumnDefinitions="Auto,*,Auto" Margin="0,4">
-              <TextBlock Grid.Column="0" Text="{Binding Rating}" FontSize="13" Margin="0,0,8,0"
-                         VerticalAlignment="Center" />
-              <StackPanel Grid.Column="1" Spacing="1">
-                <TextBlock Text="{Binding Title}" FontWeight="SemiBold" TextWrapping="Wrap" />
-                <TextBlock Text="{Binding Artist}" Opacity="0.65" FontSize="12" TextWrapping="Wrap" />
-              </StackPanel>
-              <TextBlock Grid.Column="2" Text="{Binding Year}" Opacity="0.45" FontSize="12"
-                         VerticalAlignment="Center" />
-            </Grid>
-          </DataTemplate>
-        </ListBox.ItemTemplate>
-      </ListBox>
-    </DockPanel>
-  </Grid>
+            <!-- Cover art. The sleeve placeholder holds the space while the lookup runs (and for
+                 albums with no art), so the card doesn't jump between two heights. -->
+            <Border Width="168" Height="168" CornerRadius="12" ClipToBounds="True"
+                    Background="#12141A" BorderBrush="{StaticResource Hairline}" BorderThickness="1"
+                    BoxShadow="0 12 34 -8 #A0000000"
+                    HorizontalAlignment="Center" Margin="0,16,0,0">
+              <Panel>
+                <TextBlock x:Name="ArtPlaceholder" Text="♫" FontSize="44"
+                           Foreground="{StaticResource TextLow}" Opacity="0.5"
+                           HorizontalAlignment="Center" VerticalAlignment="Center" />
+                <Image x:Name="ArtImage" Stretch="UniformToFill" IsVisible="False" />
+              </Panel>
+            </Border>
+
+            <TextBlock x:Name="TitleText" Text="" FontSize="22" FontWeight="Bold" LetterSpacing="-0.4"
+                       Foreground="{StaticResource TextHi}"
+                       TextWrapping="Wrap" TextAlignment="Center" Margin="0,16,0,0" />
+            <TextBlock x:Name="ArtistText" Text="" FontSize="14.5"
+                       Foreground="{StaticResource TextMid}"
+                       TextWrapping="Wrap" TextAlignment="Center" Margin="0,5,0,0" />
+            <TextBlock x:Name="YearText" Classes="caption" Text=""
+                       HorizontalAlignment="Center" Margin="0,7,0,0" />
+            <!-- Only shown for an album that already has a rating — otherwise there's nothing to say. -->
+            <TextBlock x:Name="CurrentRatingText" Classes="gold" Text="" FontSize="12"
+                       TextAlignment="Center" TextWrapping="Wrap" Margin="0,9,0,0" IsVisible="False" />
+          </StackPanel>
+
+          <TextBlock x:Name="MessageText" Text="Loading…" FontSize="14"
+                     Foreground="{StaticResource TextMid}"
+                     TextWrapping="Wrap" TextAlignment="Center"
+                     HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="False" />
+        </Panel>
+      </Border>
+
+      <!-- The four verdicts, each in its own colour so the row reads ⭐ → ❌ at a glance. -->
+      <Grid Grid.Row="1" x:Name="RatingRow" ColumnDefinitions="*,*,*,*" ColumnSpacing="8"
+            Margin="0,14,0,0">
+        <Button Grid.Column="0" Classes="rate star" Tag="⭐" Click="OnRate">
+          <StackPanel>
+            <TextBlock Classes="glyph" Text="⭐" />
+            <TextBlock Classes="label" Text="Really enjoyable" />
+          </StackPanel>
+        </Button>
+        <Button Grid.Column="1" Classes="rate up" Tag="👍" Click="OnRate">
+          <StackPanel>
+            <TextBlock Classes="glyph" Text="👍" />
+            <TextBlock Classes="label" Text="Mostly enjoyable" />
+          </StackPanel>
+        </Button>
+        <Button Grid.Column="2" Classes="rate down" Tag="👎" Click="OnRate">
+          <StackPanel>
+            <TextBlock Classes="glyph" Text="👎" />
+            <TextBlock Classes="label" Text="Mostly sucks" />
+          </StackPanel>
+        </Button>
+        <Button Grid.Column="3" Classes="rate trash" Tag="❌" Click="OnRate">
+          <StackPanel>
+            <TextBlock Classes="glyph" Text="❌" />
+            <TextBlock Classes="label" Text="Trash" />
+          </StackPanel>
+        </Button>
+      </Grid>
+
+      <Grid Grid.Row="2" ColumnDefinitions="*,Auto,Auto" ColumnSpacing="6" Margin="0,12,0,0">
+        <TextBlock Grid.Column="0" x:Name="StatusText" Classes="caption" Text=""
+                   TextWrapping="Wrap" VerticalAlignment="Center" />
+        <Button Grid.Column="1" x:Name="BackButton" Classes="chip quiet" Content="Back" Click="OnBack" />
+        <Button Grid.Column="2" x:Name="SkipButton" Classes="chip quiet" Content="Skip" Click="OnSkip" />
+      </Grid>
+
+      <!-- Jump to any album by name, rated or not — the phone's way of changing a rating, since it
+           has no queue picker. Results only appear once something is typed. -->
+      <DockPanel Grid.Row="3" Margin="0,16,0,0">
+        <TextBox DockPanel.Dock="Top" x:Name="FindBox"
+                 Watermark="Find an album to rate or re-rate…" />
+        <ListBox x:Name="FindResults" Classes="flush" SelectionChanged="OnPickFound" Margin="0,8,0,0"
+                 IsVisible="False">
+          <ListBox.ItemTemplate>
+            <DataTemplate x:DataType="local:AlbumEntry">
+              <Grid ColumnDefinitions="Auto,*,Auto" Margin="0,9">
+                <TextBlock Grid.Column="0" Text="{Binding Rating}" FontSize="13" Margin="0,0,9,0"
+                           VerticalAlignment="Center" />
+                <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
+                  <TextBlock Classes="rowTitle" Text="{Binding Title}" TextWrapping="Wrap" />
+                  <TextBlock Classes="rowSub" Text="{Binding Artist}" TextWrapping="Wrap" />
+                </StackPanel>
+                <TextBlock Grid.Column="2" Classes="caption" Text="{Binding Year}"
+                           VerticalAlignment="Center" Margin="8,0,0,0" />
+              </Grid>
+            </DataTemplate>
+          </ListBox.ItemTemplate>
+        </ListBox>
+      </DockPanel>
+
+    </Grid>
+  </DockPanel>
 </UserControl>

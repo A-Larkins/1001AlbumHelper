@@ -3,39 +3,83 @@
              xmlns:local="clr-namespace:_1001AlbumHelper"
              x:Class="_1001AlbumHelper.MainView">
   <!--
-    Mobile root: a bottom tab bar over the five screens. The UniformGrid item panel
-    makes the tabs share the width evenly in a single row. Playlist tabs get their
-    id/title and a refresh from the code-behind so they reflect albums added elsewhere.
-  -->
-  <TabControl x:Name="Tabs" TabStripPlacement="Bottom">
-    <TabControl.ItemsPanel>
-      <ItemsPanelTemplate>
-        <UniformGrid Rows="1" />
-      </ItemsPanelTemplate>
-    </TabControl.ItemsPanel>
-    <TabControl.Styles>
-      <Style Selector="TabItem">
-        <Setter Property="FontSize" Value="12" />
-        <Setter Property="HorizontalContentAlignment" Value="Center" />
-        <Setter Property="Padding" Value="2,8" />
-        <Setter Property="MinHeight" Value="0" />
-      </Style>
-    </TabControl.Styles>
+    Mobile root: the five screens over a hand-built bottom nav bar.
 
-    <TabItem Header="List">
-      <local:AlbumListView />
-    </TabItem>
-    <TabItem Header="Rate">
-      <local:RateView />
-    </TabItem>
-    <TabItem Header="Shortlist">
-      <local:ReplacementsView x:Name="ShortlistView" />
-    </TabItem>
-    <TabItem Header="Playlist 1">
-      <local:PlaylistView x:Name="Playlist1View" />
-    </TabItem>
-    <TabItem Header="Playlist 2">
-      <local:PlaylistView x:Name="Playlist2View" />
-    </TabItem>
-  </TabControl>
+    The TabControl is kept purely as the content switcher — SelectedIndex still drives everything,
+    so the per-tab refreshes below are unchanged — but its own header strip is hidden (the
+    `headless` class) and the bar underneath is drawn here instead. Five stock TabItems shrank to
+    12pt text with no icons and no active state worth the name; this gives each destination an
+    icon, a label and a gold pill when it's the one you're on.
+
+    Styles come from MobileTheme, included here rather than in App.axaml because App is shared with
+    the Mac head — everything in that file cascades to these five screens and to nothing else.
+  -->
+  <UserControl.Styles>
+    <StyleInclude Source="avares://1001AlbumHelper.Core/Views/Mobile/MobileTheme.axaml" />
+  </UserControl.Styles>
+
+  <Border Classes="page">
+    <Grid RowDefinitions="*,Auto">
+
+      <TabControl Grid.Row="0" x:Name="Tabs" Classes="headless">
+        <TabItem>
+          <local:AlbumListView />
+        </TabItem>
+        <TabItem>
+          <local:RateView />
+        </TabItem>
+        <TabItem>
+          <local:ReplacementsView x:Name="ShortlistView" />
+        </TabItem>
+        <TabItem>
+          <local:PlaylistView x:Name="Playlist1View" />
+        </TabItem>
+        <TabItem>
+          <local:PlaylistView x:Name="Playlist2View" />
+        </TabItem>
+      </TabControl>
+
+      <!-- Tag is the tab index the button selects; the code-behind keeps `on` in step with it. -->
+      <Border Grid.Row="1" Classes="navBar">
+        <Grid ColumnDefinitions="*,*,*,*,*" ColumnSpacing="2">
+          <Button Grid.Column="0" x:Name="NavList" Classes="nav on" Tag="0" Click="OnNavigate">
+            <StackPanel Spacing="3">
+              <TextBlock Text="☰" FontSize="16" HorizontalAlignment="Center" />
+              <TextBlock Text="List" FontSize="9.5" FontWeight="Medium" Opacity="0.85"
+                         HorizontalAlignment="Center" />
+            </StackPanel>
+          </Button>
+          <Button Grid.Column="1" x:Name="NavRate" Classes="nav" Tag="1" Click="OnNavigate">
+            <StackPanel Spacing="3">
+              <TextBlock Text="★" FontSize="16" HorizontalAlignment="Center" />
+              <TextBlock Text="Rate" FontSize="9.5" FontWeight="Medium" Opacity="0.85"
+                         HorizontalAlignment="Center" />
+            </StackPanel>
+          </Button>
+          <Button Grid.Column="2" x:Name="NavShortlist" Classes="nav" Tag="2" Click="OnNavigate">
+            <StackPanel Spacing="3">
+              <TextBlock Text="♡" FontSize="16" HorizontalAlignment="Center" />
+              <TextBlock Text="Shortlist" FontSize="9.5" FontWeight="Medium" Opacity="0.85"
+                         HorizontalAlignment="Center" />
+            </StackPanel>
+          </Button>
+          <Button Grid.Column="3" x:Name="NavPlaylist1" Classes="nav" Tag="3" Click="OnNavigate">
+            <StackPanel Spacing="3">
+              <TextBlock Text="♫" FontSize="16" HorizontalAlignment="Center" />
+              <TextBlock Text="P1" FontSize="9.5" FontWeight="Medium" Opacity="0.85"
+                         HorizontalAlignment="Center" />
+            </StackPanel>
+          </Button>
+          <Button Grid.Column="4" x:Name="NavPlaylist2" Classes="nav" Tag="4" Click="OnNavigate">
+            <StackPanel Spacing="3">
+              <TextBlock Text="♫" FontSize="16" HorizontalAlignment="Center" />
+              <TextBlock Text="P2" FontSize="9.5" FontWeight="Medium" Opacity="0.85"
+                         HorizontalAlignment="Center" />
+            </StackPanel>
+          </Button>
+        </Grid>
+      </Border>
+
+    </Grid>
+  </Border>
 </UserControl>

@@ -2,68 +2,64 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:local="clr-namespace:_1001AlbumHelper"
              x:Class="_1001AlbumHelper.AlbumListView">
-  <UserControl.Styles>
-    <Style Selector="Button.seg.on">
-      <Setter Property="FontWeight" Value="Bold" />
-      <Setter Property="Opacity" Value="1" />
-    </Style>
-    <Style Selector="Button.seg">
-      <Setter Property="Opacity" Value="0.55" />
-    </Style>
-    <Style Selector="Button.sort">
-      <Setter Property="Opacity" Value="0.55" />
-      <Setter Property="FontSize" Value="11.5" />
-      <Setter Property="Padding" Value="0,6" />
-    </Style>
-    <Style Selector="Button.sort.on">
-      <Setter Property="Opacity" Value="1" />
-      <Setter Property="FontWeight" Value="Bold" />
-    </Style>
-  </UserControl.Styles>
+  <!--
+    Browse. All looks come from MobileTheme (included once at MainView); this file only says what
+    goes where. The header block is pinned and the list scrolls under it, so the list picker and
+    the search box stay reachable however far down the 1001 you are.
+  -->
+  <DockPanel>
+    <Border DockPanel.Dock="Top" Classes="header">
+      <StackPanel Spacing="10">
 
-  <DockPanel Margin="12,8">
-    <StackPanel DockPanel.Dock="Top" Spacing="6" Margin="0,0,0,8">
-      <TextBlock Text="Browse" FontSize="22" FontWeight="SemiBold" />
-      <Grid ColumnDefinitions="*,*,*" ColumnSpacing="6">
-        <Button Grid.Column="0" x:Name="Tab1001Button" Classes="seg on" Content="1001" Click="OnPick1001"
-                HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" FontSize="12" />
-        <Button Grid.Column="1" x:Name="TabMustHearButton" Classes="seg" Content="Must Hear" Click="OnPickMustHear"
-                HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" FontSize="12" />
-        <Button Grid.Column="2" x:Name="TabReplacementsButton" Classes="seg" Content="Replacements" Click="OnPickReplacements"
-                HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" FontSize="12" />
-      </Grid>
-      <TextBox x:Name="SearchBox" Watermark="Search title or artist…" />
+        <Grid ColumnDefinitions="*,Auto">
+          <TextBlock Grid.Column="0" Classes="title" Text="Browse" VerticalAlignment="Center" />
+          <TextBlock Grid.Column="1" x:Name="CountText" Classes="caption" VerticalAlignment="Bottom"
+                     Margin="8,0,0,4" />
+        </Grid>
 
-      <!-- Sort: tap a column to sort by it; tap the active one again to flip direction. -->
-      <Grid ColumnDefinitions="*,*,*,*" ColumnSpacing="4">
-        <Button Grid.Column="0" x:Name="SortTitleButton" Classes="sort" Tag="Title" Click="OnSortHeader"
-                HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" />
-        <Button Grid.Column="1" x:Name="SortArtistButton" Classes="sort" Tag="Artist" Click="OnSortHeader"
-                HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" />
-        <Button Grid.Column="2" x:Name="SortYearButton" Classes="sort" Tag="Year" Click="OnSortHeader"
-                HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" />
-        <Button Grid.Column="3" x:Name="SortRatingButton" Classes="sort" Tag="Rating" Click="OnSortHeader"
-                HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" />
-      </Grid>
+        <!-- Which of the three lists is on screen. -->
+        <Border Classes="segTrack">
+          <Grid ColumnDefinitions="*,*,*" ColumnSpacing="3">
+            <Button Grid.Column="0" x:Name="Tab1001Button" Classes="seg on" Content="1001"
+                    Click="OnPick1001" />
+            <Button Grid.Column="1" x:Name="TabMustHearButton" Classes="seg" Content="Must Hear"
+                    Click="OnPickMustHear" />
+            <Button Grid.Column="2" x:Name="TabReplacementsButton" Classes="seg" Content="Replacements"
+                    Click="OnPickReplacements" />
+          </Grid>
+        </Border>
 
-      <TextBlock x:Name="CountText" Opacity="0.55" FontSize="12" />
-      <TextBlock x:Name="SyncText" Opacity="0.7" FontSize="11" TextWrapping="Wrap" />
-    </StackPanel>
+        <TextBox x:Name="SearchBox" Watermark="Search title or artist…" />
 
+        <!-- Sort: tap a column to sort by it; tap the active one again to flip direction. -->
+        <Grid ColumnDefinitions="*,*,*,*" ColumnSpacing="2">
+          <Button Grid.Column="0" x:Name="SortTitleButton" Classes="sort" Tag="Title" Click="OnSortHeader" />
+          <Button Grid.Column="1" x:Name="SortArtistButton" Classes="sort" Tag="Artist" Click="OnSortHeader" />
+          <Button Grid.Column="2" x:Name="SortYearButton" Classes="sort" Tag="Year" Click="OnSortHeader" />
+          <Button Grid.Column="3" x:Name="SortRatingButton" Classes="sort" Tag="Rating" Click="OnSortHeader" />
+        </Grid>
+
+        <TextBlock x:Name="SyncText" Classes="caption" TextWrapping="Wrap" />
+
+      </StackPanel>
+    </Border>
+
+    <!-- Row padding comes from the ListBoxItem style, so rows line up with the header above. -->
     <ListBox x:Name="Rows">
       <ListBox.ItemTemplate>
         <DataTemplate x:DataType="local:ViewRow">
-          <Grid ColumnDefinitions="34,Auto,*,Auto" Margin="0,4">
-            <TextBlock Grid.Column="0" Text="{Binding Number}" Opacity="0.45"
-                       VerticalAlignment="Center" FontSize="12" />
+          <Grid ColumnDefinitions="30,Auto,*,Auto" Margin="0,11">
+            <TextBlock Grid.Column="0" Classes="rowIndex" Text="{Binding Number}"
+                       VerticalAlignment="Center" />
             <TextBlock Grid.Column="1" Text="{Binding Rating}" VerticalAlignment="Center"
-                       FontSize="14" Margin="0,0,6,0" />
-            <StackPanel Grid.Column="2" VerticalAlignment="Center" Spacing="1">
-              <TextBlock Text="{Binding Title}" FontWeight="SemiBold" TextWrapping="Wrap" />
-              <TextBlock Text="{Binding Artist}" Opacity="0.65" FontSize="12" TextWrapping="Wrap" />
+                       FontSize="13" Margin="0,0,7,0" />
+            <StackPanel Grid.Column="2" VerticalAlignment="Center" Spacing="2">
+              <TextBlock Classes="rowTitle" Text="{Binding Title}" TextWrapping="Wrap" />
+              <TextBlock Classes="rowSub" Text="{Binding Artist}" TextWrapping="Wrap" />
             </StackPanel>
-            <Button Grid.Column="3" Content="{Binding PlaylistLabel}" IsEnabled="{Binding CanQueue}"
-                    Click="OnAddToPlaylist" VerticalAlignment="Center" Margin="8,0,0,0" />
+            <Button Grid.Column="3" Classes="chip" Content="{Binding PlaylistLabel}"
+                    IsEnabled="{Binding CanQueue}" Click="OnAddToPlaylist"
+                    VerticalAlignment="Center" Margin="10,0,0,0" />
           </Grid>
         </DataTemplate>
       </ListBox.ItemTemplate>

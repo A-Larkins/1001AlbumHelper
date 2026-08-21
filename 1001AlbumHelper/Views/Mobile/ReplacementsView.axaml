@@ -2,114 +2,104 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:local="clr-namespace:_1001AlbumHelper"
              x:Class="_1001AlbumHelper.ReplacementsView">
-  <UserControl.Styles>
-    <Style Selector="Button.sort">
-      <Setter Property="Opacity" Value="0.55" />
-      <Setter Property="FontSize" Value="11.5" />
-      <Setter Property="Padding" Value="0,6" />
-    </Style>
-    <Style Selector="Button.sort.on">
-      <Setter Property="Opacity" Value="1" />
-      <Setter Property="FontWeight" Value="Bold" />
-    </Style>
+  <!--
+    Shortlist — the potential replacement albums, each awaiting a Keep or a Nah. Looks come from
+    MobileTheme; the only local style is the row's action strip, which has no equivalent elsewhere.
+  -->
+  <DockPanel>
+    <Border DockPanel.Dock="Top" Classes="header">
+      <StackPanel Spacing="10">
 
-    <!-- Row actions. Keep is the affirmative one, so it's the only one that carries colour. -->
-    <Style Selector="Button.row">
-      <Setter Property="FontSize" Value="11.5" />
-      <Setter Property="Padding" Value="10,5" />
-    </Style>
-    <Style Selector="Button.row.keep">
-      <Setter Property="FontWeight" Value="SemiBold" />
-      <Setter Property="Foreground" Value="#f5c985" />
-    </Style>
-    <Style Selector="Button.row.nah">
-      <Setter Property="Opacity" Value="0.7" />
-    </Style>
-  </UserControl.Styles>
-
-  <DockPanel Margin="12,8">
-    <StackPanel DockPanel.Dock="Top" Spacing="6" Margin="0,0,0,8">
-      <Grid ColumnDefinitions="*,Auto" ColumnSpacing="6">
-        <!-- 19, not 22: at phone width "＋ Add album" clips the last letter off a 22pt heading. -->
-        <TextBlock Grid.Column="0" Text="Potential replacements" FontSize="19" FontWeight="SemiBold"
-                   VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
-        <Button Grid.Column="1" x:Name="AddToggle" Content="＋ Add album" Click="OnToggleAdd"
-                FontSize="12" VerticalAlignment="Center" />
-      </Grid>
-      <TextBox x:Name="SearchBox" Watermark="Search title or artist…" />
-
-      <!-- Sort: tap a column to sort by it; tap the active one again to flip direction. -->
-      <Grid ColumnDefinitions="*,*,*,*" ColumnSpacing="4">
-        <Button Grid.Column="0" x:Name="SortTitleButton" Classes="sort" Tag="Title" Click="OnSortHeader"
-                HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" />
-        <Button Grid.Column="1" x:Name="SortArtistButton" Classes="sort" Tag="Artist" Click="OnSortHeader"
-                HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" />
-        <Button Grid.Column="2" x:Name="SortGenreButton" Classes="sort" Tag="Genre" Click="OnSortHeader"
-                HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" />
-        <Button Grid.Column="3" x:Name="SortYearButton" Classes="sort" Tag="Year" Click="OnSortHeader"
-                HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" />
-      </Grid>
-
-      <TextBlock x:Name="CountText" Opacity="0.55" FontSize="12" />
-      <TextBlock x:Name="SyncText" Opacity="0.7" FontSize="11" TextWrapping="Wrap" />
-      <!-- Undo sits with the message it undoes ("Dropped …"), not up in the header. -->
-      <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
-        <TextBlock Grid.Column="0" x:Name="StatusText" FontSize="11.5" TextWrapping="Wrap"
-                   IsVisible="False" VerticalAlignment="Center" />
-        <Button Grid.Column="1" x:Name="UndoButton" Content="Undo" Click="OnUndo" IsVisible="False"
-                FontSize="11.5" Padding="10,4" VerticalAlignment="Center" />
-      </Grid>
-
-      <StackPanel x:Name="AddPanel" IsVisible="False" Spacing="6" Margin="0,4,0,2">
-        <!-- IsTextCompletionEnabled="False": inline completion rewrites what you're typing
-             using whichever result came back first, which fights every keystroke. -->
-        <AutoCompleteBox x:Name="TitleBox" Watermark="Album title" FilterMode="None"
-                         MinimumPrefixLength="2" IsTextCompletionEnabled="False"
-                         MinimumPopulateDelay="0:0:0.35">
-          <AutoCompleteBox.ItemTemplate>
-            <DataTemplate DataType="local:AlbumSuggestion">
-              <StackPanel Spacing="1">
-                <TextBlock Text="{Binding Title}" FontSize="13" FontWeight="SemiBold" />
-                <TextBlock FontSize="11" Opacity="0.6">
-                  <Run Text="{Binding Artist}" /><Run Text=" · " /><Run Text="{Binding Year}" />
-                </TextBlock>
-              </StackPanel>
-            </DataTemplate>
-          </AutoCompleteBox.ItemTemplate>
-        </AutoCompleteBox>
-        <AutoCompleteBox x:Name="ArtistBox" Watermark="Artist" FilterMode="None"
-                         MinimumPrefixLength="2" IsTextCompletionEnabled="False"
-                         MinimumPopulateDelay="0:0:0.35" />
-        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
-          <TextBox Grid.Column="0" x:Name="YearBox" Watermark="Year" MaxLength="4" Width="90" />
-          <Button Grid.Column="1" Content="Add to shortlist" Click="OnAddCandidate"
-                  HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" />
+        <Grid ColumnDefinitions="*,Auto">
+          <StackPanel Grid.Column="0" Spacing="1" VerticalAlignment="Center">
+            <TextBlock Classes="title" Text="Shortlist" />
+            <TextBlock x:Name="CountText" Classes="caption" />
+          </StackPanel>
+          <Button Grid.Column="1" x:Name="AddToggle" Classes="chip gold" Content="＋ Add album"
+                  Click="OnToggleAdd" VerticalAlignment="Center" Margin="8,0,0,0" />
         </Grid>
-        <TextBlock x:Name="LookupHint" Text="" FontSize="11" Opacity="0.5" TextWrapping="Wrap" />
-        <TextBlock x:Name="AddStatusText" Text="" FontSize="12" TextWrapping="Wrap" />
+
+        <TextBox x:Name="SearchBox" Watermark="Search title or artist…" />
+
+        <!-- Sort: tap a column to sort by it; tap the active one again to flip direction. -->
+        <Grid ColumnDefinitions="*,*,*,*" ColumnSpacing="2">
+          <Button Grid.Column="0" x:Name="SortTitleButton" Classes="sort" Tag="Title" Click="OnSortHeader" />
+          <Button Grid.Column="1" x:Name="SortArtistButton" Classes="sort" Tag="Artist" Click="OnSortHeader" />
+          <Button Grid.Column="2" x:Name="SortGenreButton" Classes="sort" Tag="Genre" Click="OnSortHeader" />
+          <Button Grid.Column="3" x:Name="SortYearButton" Classes="sort" Tag="Year" Click="OnSortHeader" />
+        </Grid>
+
+        <TextBlock x:Name="SyncText" Classes="caption" TextWrapping="Wrap" />
+
+        <!-- Undo sits with the message it undoes ("Dropped …"), not up in the header. -->
+        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+          <TextBlock Grid.Column="0" x:Name="StatusText" Classes="caption" TextWrapping="Wrap"
+                     IsVisible="False" VerticalAlignment="Center" />
+          <Button Grid.Column="1" x:Name="UndoButton" Classes="chip quiet" Content="Undo"
+                  Click="OnUndo" IsVisible="False" VerticalAlignment="Center" />
+        </Grid>
+
+        <Border x:Name="AddPanel" Classes="card" IsVisible="False" Padding="14" Margin="0,2,0,0">
+          <StackPanel Spacing="8">
+            <TextBlock Classes="rubric" Text="NEW CANDIDATE" />
+            <!-- IsTextCompletionEnabled="False": inline completion rewrites what you're typing
+                 using whichever result came back first, which fights every keystroke. -->
+            <AutoCompleteBox x:Name="TitleBox" Watermark="Album title" FilterMode="None"
+                             MinimumPrefixLength="2" IsTextCompletionEnabled="False"
+                             MinimumPopulateDelay="0:0:0.35">
+              <AutoCompleteBox.ItemTemplate>
+                <DataTemplate DataType="local:AlbumSuggestion">
+                  <StackPanel Spacing="1">
+                    <TextBlock Text="{Binding Title}" FontSize="13" FontWeight="SemiBold" />
+                    <TextBlock FontSize="11" Opacity="0.6">
+                      <Run Text="{Binding Artist}" /><Run Text=" · " /><Run Text="{Binding Year}" />
+                    </TextBlock>
+                  </StackPanel>
+                </DataTemplate>
+              </AutoCompleteBox.ItemTemplate>
+            </AutoCompleteBox>
+            <AutoCompleteBox x:Name="ArtistBox" Watermark="Artist" FilterMode="None"
+                             MinimumPrefixLength="2" IsTextCompletionEnabled="False"
+                             MinimumPopulateDelay="0:0:0.35" />
+            <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
+              <TextBox Grid.Column="0" x:Name="YearBox" Watermark="Year" MaxLength="4" Width="86" />
+              <Button Grid.Column="1" Classes="primary" Content="Add to shortlist" Click="OnAddCandidate"
+                      HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" />
+            </Grid>
+            <TextBlock x:Name="LookupHint" Classes="caption" Text="" TextWrapping="Wrap" />
+            <TextBlock x:Name="AddStatusText" Classes="caption" Text="" TextWrapping="Wrap" />
+          </StackPanel>
+        </Border>
+
       </StackPanel>
-    </StackPanel>
+    </Border>
 
     <ListBox x:Name="Rows">
       <ListBox.ItemTemplate>
         <DataTemplate x:DataType="local:CandidateAlbum">
-          <!-- The actions sit under the album rather than beside it: three buttons plus the year
-               box don't fit next to a wrapping title at phone width. -->
-          <StackPanel Margin="0,6" Spacing="3">
-            <TextBlock Text="{Binding Title}" FontWeight="SemiBold" TextWrapping="Wrap" />
-            <TextBlock Text="{Binding Artist}" Opacity="0.65" FontSize="12" TextWrapping="Wrap" />
-            <TextBlock Text="{Binding Genre}" IsVisible="{Binding HasGenre}"
-                       Opacity="0.5" FontSize="11" TextWrapping="Wrap" />
+          <!-- Title and artist read as one block; year and genre sit together on a meta line under
+               them; the three verdicts get a row of their own. Three buttons plus the year box
+               don't fit beside a wrapping title at phone width, so they can't share a line with it. -->
+          <StackPanel Margin="0,13" Spacing="2">
+            <TextBlock Classes="rowTitle" Text="{Binding Title}" TextWrapping="Wrap" />
+            <TextBlock Classes="rowSub" Text="{Binding Artist}" TextWrapping="Wrap" />
+
+            <Grid ColumnDefinitions="Auto,Auto,*" ColumnSpacing="7" Margin="0,5,0,0">
+              <TextBox Grid.Column="0" Classes="inline" Text="{Binding Year, Mode=TwoWay}"
+                       Watermark="year" Width="44" VerticalAlignment="Center" />
+              <TextBlock Grid.Column="1" Classes="caption" Text="{Binding Genre}"
+                         IsVisible="{Binding HasGenre}" VerticalAlignment="Center"
+                         TextTrimming="CharacterEllipsis" />
+            </Grid>
+
             <!-- Why a Keep didn't go through ("Discogs didn't find a year", "already on the 1001"). -->
-            <TextBlock Text="{Binding Note}" IsVisible="{Binding HasNote}"
-                       Foreground="#d8a24a" FontSize="11" TextWrapping="Wrap" />
-            <Grid ColumnDefinitions="Auto,*,Auto,Auto,Auto" ColumnSpacing="6" Margin="0,3,0,0">
-              <TextBox Grid.Column="0" Text="{Binding Year, Mode=TwoWay}" Watermark="year" FontSize="11"
-                       Padding="4,2" Width="60" VerticalAlignment="Center"
-                       Background="Transparent" BorderThickness="0,0,0,1" />
-              <Button Grid.Column="2" Classes="row" Content="＋ P2" Click="OnAddToPlaylist2" />
-              <Button Grid.Column="3" Classes="row keep" Content="＋ Keep" Click="OnKeepRow" />
-              <Button Grid.Column="4" Classes="row nah" Content="Nah" Click="OnDropRow" />
+            <TextBlock Classes="caption warn" Text="{Binding Note}" IsVisible="{Binding HasNote}"
+                       TextWrapping="Wrap" Margin="0,4,0,0" />
+
+            <Grid ColumnDefinitions="*,Auto,Auto,Auto" ColumnSpacing="6" Margin="0,9,0,0">
+              <Button Grid.Column="1" Classes="chip quiet" Content="＋ P2" Click="OnAddToPlaylist2" />
+              <Button Grid.Column="2" Classes="chip gold" Content="Keep" Click="OnKeepRow" />
+              <Button Grid.Column="3" Classes="chip quiet" Content="Nah" Click="OnDropRow" />
             </Grid>
           </StackPanel>
         </DataTemplate>
