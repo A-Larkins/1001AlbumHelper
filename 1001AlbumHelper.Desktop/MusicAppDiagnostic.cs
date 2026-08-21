@@ -27,14 +27,24 @@ public static class MusicAppDiagnostic
         }
 
         // A mix on purpose: a famous album, two obscure ones off the 1001 (which only resolve if the
-        // search really does reach the whole catalog), and one that shouldn't exist at all.
+        // search really does reach the whole catalog), one Apple Music lists twice with tracks
+        // withdrawn on one of the two, and one that shouldn't exist at all.
         var albums = new[]
         {
             new PlaylistEntry("Kind of Blue", "Miles Davis", "1959"),
             new PlaylistEntry("Tago Mago", "Can", "1971"),
             new PlaylistEntry("The Modern Dance", "Pere Ubu", "1978"),
+            new PlaylistEntry("Tical 2000: Judgement Day", "Method Man", "1998"),
             new PlaylistEntry("Definitely Not A Real Album 12345", "Nobody At All", "1999"),
         };
+
+        // Tical 2000 is the reason PlaylistTracks.PreferPlayable exists: the search returns 56 rows
+        // for a 28-track album, five of them withdrawn copies whose twins play fine. Adding every
+        // row would put the album in twice over, five of those tracks dead. The number here is the
+        // check that we now add one playable copy of each song — a count anywhere near 56 means the
+        // per-song choice has stopped working.
+        const string DoubleListed = "Tical 2000: Judgement Day";
+        const int DoubleListedCeiling = 40;
 
         Console.WriteLine($"▶ Creating the scratch playlist “{ScratchPlaylist}”…");
         if (!await ScratchAsync(create: true)) { Console.WriteLine("✗ Couldn't create it."); return; }
@@ -55,14 +65,23 @@ public static class MusicAppDiagnostic
             foreach (var entry in read)
                 Console.WriteLine($"   • {entry.Display}");
 
-            // The three real albums should have gone in and come back; the made-up one shouldn't.
+            // The four real albums should have gone in and come back; the made-up one shouldn't.
             // Compared loosely, because the catalog's name for an album is often the reissue's —
             // "Tago Mago" comes back as "Tago Mago (2011 Remastered)", which is still a match.
-            bool ok = read.Count == 3
-                      && albums.Take(3).All(a => read.Any(r => DiscogsApiClient.TitlesLineUp(r.Title, a.Title)));
+            var real = albums.Take(albums.Length - 1).ToList();
+            bool ok = read.Count == real.Count
+                      && real.All(a => read.Any(r => DiscogsApiClient.TitlesLineUp(r.Title, a.Title)));
             Console.WriteLine(ok
-                ? "✓ Round trip matches: the three real albums went in and came back."
-                : $"✗ Expected the 3 real albums back, got {read.Count}.");
+                ? $"✓ Round trip matches: the {real.Count} real albums went in and came back."
+                : $"✗ Expected the {real.Count} real albums back, got {read.Count}.");
+
+            var doubled = read.FirstOrDefault(r => DiscogsApiClient.TitlesLineUp(r.Title, DoubleListed));
+            if (doubled is null)
+                Console.WriteLine($"✗ {DoubleListed} didn't come back at all.");
+            else
+                Console.WriteLine(doubled.TrackCount <= DoubleListedCeiling
+                    ? $"✓ {DoubleListed} came back as {doubled.TrackCount} tracks — one playable copy of each song."
+                    : $"✗ {DoubleListed} came back as {doubled.TrackCount} tracks — both listings went in.");
 
             Console.WriteLine("▶ Checking the pull-down sync against what Music actually returned…");
             await CheckPullDownAsync(writer);

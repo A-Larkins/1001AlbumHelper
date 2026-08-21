@@ -52,19 +52,32 @@ public sealed class MusicAppPlaylistWriter : IApplePlaylistWriter
             return new PlaylistOpResult(false, $"Music app lookup failed: {ex.Message}");
         }
 
-        var chosen = ChooseAlbum(hits, album.Artist, album.Title);
-        if (chosen.Count == 0)
-            return new PlaylistOpResult(false, $"Not found in Music: {album.Title}");
+        var selection = ChooseAlbum(hits, album.Artist, album.Title);
+        if (selection.Chosen.Count == 0)
+        {
+            // Told apart, because they call for different things: an album Music has never heard of
+            // is a lookup to fix, one Music has entirely withdrawn is nothing the app can do about.
+            return selection.Unavailable.Count > 0
+                ? new PlaylistOpResult(false, $"Apple Music no longer has a playable copy of {album.Title}.")
+                : new PlaylistOpResult(false, $"Not found in Music: {album.Title}");
+        }
 
         try
         {
-            var added = await DuplicateIntoPlaylistAsync(playlistName, album.Title, chosen);
+            var added = await DuplicateIntoPlaylistAsync(playlistName, album.Title, selection.Chosen.ToList());
             if (added == NoPlaylistResult)
                 return new PlaylistOpResult(false, $"No Music playlist named “{playlistName}” — create it in Music first.");
             if (added == 0)
                 return new PlaylistOpResult(false, $"Music didn't add any tracks for {album.Title}.");
 
-            return new PlaylistOpResult(true, $"Added {added} track{(added == 1 ? "" : "s")} to {playlistName}");
+            // A short album is worth a word: silently adding 26 of 28 tracks looks like the app
+            // half-failed, when in fact Apple Music has withdrawn those two everywhere.
+            string missing = selection.Unavailable.Count == 0
+                ? ""
+                : $" ({selection.Unavailable.Count} not available in Apple Music: "
+                  + string.Join(", ", selection.Unavailable.Select(t => t.Name)) + ")";
+
+            return new PlaylistOpResult(true, $"Added {added} track{(added == 1 ? "" : "s")} to {playlistName}{missing}");
         }
         catch (Exception ex)
         {
@@ -73,7 +86,8 @@ public sealed class MusicAppPlaylistWriter : IApplePlaylistWriter
     }
 
     /// <summary>
-    /// Picks which of the search hits actually is the wanted album and returns its tracks.
+    /// Picks which of the search hits actually is the wanted album, and which copy of each of its
+    /// songs to add.
     /// <para>
     /// The hits are grouped into albums and handed to the very same
     /// <see cref="AppleMusicCatalog.FindBestMatch"/> the iPhone uses, so both apps resolve an album
@@ -81,20 +95,38 @@ public sealed class MusicAppPlaylistWriter : IApplePlaylistWriter
     /// reissue sitting beside it in the catalog. The group's index rides along in the record's id
     /// field purely so the winner can be mapped back to its tracks.
     /// </para>
+    /// <para>
+    /// Each group is reduced to one copy per song first (see
+    /// <see cref="PlaylistTracks.PreferPlayable"/>), because Apple Music stocks some albums twice
+    /// under identical names — nothing in the metadata separates them — and the copies aren't
+    /// always equally playable. Reducing before the match matters as well as after: an album listed
+    /// twice would otherwise count double, and could lose the fewest-tracks tie-break to a deluxe
+    /// edition that only appears once.
+    /// </para>
     /// </summary>
-    private static List<LibraryTrack> ChooseAlbum(List<LibraryTrack> hits, string artist, string title)
+    private static TrackSelection ChooseAlbum(List<LibraryTrack> hits, string artist, string title)
     {
         var groups = hits
             .GroupBy(t => $"{NumberedList.Normalize(t.Album)}|{NumberedList.Normalize(t.AlbumArtist)}")
-            .Select(g => g.ToList())
+            .Select(g => PlaylistTracks.PreferPlayable(g))
+            .Where(s => s.Chosen.Count > 0 || s.Unavailable.Count > 0)
             .ToList();
 
         var candidates = groups
-            .Select((g, i) => new AppleMusicAlbum(i, g[0].Album, g[0].AlbumArtist, g.Count))
+            .Select((s, i) =>
+            {
+                var first = s.Chosen.Count > 0 ? s.Chosen[0] : s.Unavailable[0];
+                // Counted on the songs the album actually has, playable or not, so a couple of
+                // withdrawn tracks can't make a deluxe edition look like the leaner original.
+                return new AppleMusicAlbum(i, first.Album, first.AlbumArtist,
+                                           s.Chosen.Count + s.Unavailable.Count);
+            })
             .ToList();
 
         var best = AppleMusicCatalog.FindBestMatch(candidates, artist, title);
-        return best is null ? new List<LibraryTrack>() : groups[(int)best.CollectionId];
+        return best is null
+            ? new TrackSelection(Array.Empty<LibraryTrack>(), Array.Empty<LibraryTrack>())
+            : groups[(int)best.CollectionId];
     }
 
     // ---------- Reading back ----------
@@ -114,21 +146,32 @@ public sealed class MusicAppPlaylistWriter : IApplePlaylistWriter
 
     // ---------- Music app plumbing ----------
 
-    /// <summary>One track as the Music app reported it.</summary>
-    private sealed record LibraryTrack(string Album, string AlbumArtist, string Artist, string PersistentId);
-
     private static async Task<List<LibraryTrack>> SearchLibraryAsync(string term)
     {
         var output = await RunScriptAsync(SearchLibraryScript, term).ConfigureAwait(false);
         return Rows(output)
             .Select(f => new LibraryTrack(
                 Album: Field(f, 0),
+                // Compilations leave "album artist" blank; the track artist is the only name there is.
                 AlbumArtist: Field(f, 1).Length > 0 ? Field(f, 1) : Field(f, 2),
-                Artist: Field(f, 2),
-                PersistentId: Field(f, 3)))
+                PersistentId: Field(f, 3),
+                Disc: Number(Field(f, 4)),
+                Number: Number(Field(f, 5)),
+                Name: Field(f, 6),
+                Playable: IsPlayable(Field(f, 7))))
             .Where(t => t.Album.Length > 0 && t.PersistentId.Length > 0)
             .ToList();
     }
+
+    private static int Number(string field) => int.TryParse(field, out int n) ? n : 0;
+
+    /// <summary>
+    /// Whether Music will actually play this track. Anything other than a withdrawn track counts as
+    /// playable — the statuses run to "subscription", "purchased", "matched", "uploaded" and more,
+    /// and an unfamiliar one is far likelier to be a track that plays than one that doesn't.
+    /// </summary>
+    private static bool IsPlayable(string cloudStatus) =>
+        !cloudStatus.Trim().Equals("no longer available", StringComparison.OrdinalIgnoreCase);
 
     private const int NoPlaylistResult = -1;
 
@@ -215,8 +258,13 @@ public sealed class MusicAppPlaylistWriter : IApplePlaylistWriter
               -- Searching the main library playlist covers the whole Apple Music catalog when
               -- Sync Library is on, not merely what's already been added to the library.
               repeat with t in (search library playlist 1 for searchTerm only albums)
+                -- cloud status tells a playable track from one Apple Music has withdrawn; disc and
+                -- track number say which song it is, so a withdrawn copy can be swapped for a live
+                -- one off another edition of the same album.
                 set end of rows to ((album of t) & tab & (album artist of t) & tab & ¬
-                                    (artist of t) & tab & (persistent ID of t))
+                                    (artist of t) & tab & (persistent ID of t) & tab & ¬
+                                    ((disc number of t) as text) & tab & ((track number of t) as text) & tab & ¬
+                                    (name of t) & tab & ((cloud status of t) as text))
               end repeat
               set AppleScript's text item delimiters to linefeed
               return rows as text

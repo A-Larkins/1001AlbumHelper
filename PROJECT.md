@@ -1,7 +1,7 @@
 # 1001 Albums Helper — Project Handbook
 
 A living reference for the app: what it is, how it's built, how to ship it, and where it's going.
-**Update this as we go.** Last updated: 2026-08-21 (Playlist 2 → shortlist, years and all).
+**Update this as we go.** Last updated: 2026-08-21 (picking the copy of a song that plays).
 
 ---
 
@@ -48,7 +48,7 @@ framework).
 │                               MusicAppDiagnostic (its `musictest` check) +
 │                               ShortlistIntakeDiagnostic (the read-only `intaketest` rehearsal)
 ├── 1001AlbumHelper.iOS/        → iPhone head (bundle id: com.larkins.albumhelper)
-└── 1001AlbumHelper.Tests/      → xUnit tests (158 as of this writing)
+└── 1001AlbumHelper.Tests/      → xUnit tests (166 as of this writing)
 ```
 
 **Key idea:** all the real code lives in the shared library. The two "head" projects are thin —
@@ -102,6 +102,7 @@ a **single view with four bottom tabs** (phones don't do windows).
 | 2026-08-21 | **A save could wipe the shortlist — fixed.** The intake above surfaced it immediately: a Playlist 2 pull put twelve new candidates on the Potentials sheet, and the next Keep on the phone’s Shortlist tab deleted them again. Two causes, both fixed. (1) **`PushAsync` replaced the whole sheet.** Every screen holds the shortlist for as long as it’s open and is never told when the other device changes it, so the older copy overwrote the newer one. Nothing in the app ever *deletes* a candidate — rows are appended, and a decision is a status change on a row that stays — so a write that shortens the list is always a stale copy winning. The push now reads the sheet and folds the caller’s rows into it (`ReplacementCandidates.Merge`): the writer’s row wins where both know an album, so decisions and undos still travel, but a year or genre comes from whichever side has one, and rows the writer never heard of survive. (2) **The phone’s Shortlist tab never reloaded** once visited, so it sat on the list it loaded at launch; it now refreshes when the tab comes forward, like the playlist tabs already did. |
 | 2026-08-21 | **The intake compares against the shortlist, not against "what's new".** The first cut only offered up albums a pull found new to that device's working list, and that turned out to be the wrong question: pulling on the phone consumed the newness, so the Mac's next pull saw nothing new and twelve albums that had reached neither shortlist stayed stranded. Every pull now hands the **whole** playlist over and adds whatever the shortlist doesn't already hold, which has no per-device memory in it — same answer on either device, however many times it runs. A dropped album still sitting in the playlist is named on each pull rather than re-offered, so that line is phrased as a standing state ("in the playlist but dropped from the shortlist") rather than as news. |
 | 2026-08-21 | **Candidates from a playlist arrive with a year.** Apple Music's read-back carries no year, so albums taken off Playlist 2 landed blank — and a year is what the shortlist sorts by and what keeping an album demands. The Mac's shortlist window has always back-filled years from Discogs, but only once you opened it, and the phone had no such thing at all. The intake now looks them up as part of the pull, paced at the same 1.1s the window's prefetch uses (a 429 reads as "no year found" and sticks), counting its way down the status line since a dozen lookups take a dozen seconds. It covers **every undecided candidate the playlist points at**, not just today's arrivals, so albums that landed yearless on an earlier pull are picked up on the next one. Anything Discogs can't answer for is named as still needing a year rather than passing quietly. |
+| 2026-08-21 | **Picking the copy of a song that actually plays.** Apple Music stocks some albums twice under identical names, and the copies aren't equally alive: Method Man's *Tical 2000: Judgement Day* is there twice, and five tracks are "no longer available" on one of them while the other plays them fine. Nothing in the metadata separates the two — same album name, same artist, same track numbers, same release date; only the durations differ, by hundredths of a second — so there's no better edition to pick, and the choice has to be made a song at a time. The Mac's search now carries each track's **cloud status**, disc and track number, and `PlaylistTracks.PreferPlayable` takes one copy per slot, preferring one that will play. That also fixes the plainer bug underneath: both listings matched the search, so the album was going in twice over — 56 tracks for a 28-track record, five of them dead. A song no copy can play is now named in the push result rather than quietly missing. `musictest` pushes this album as a regression check and fails if it comes back anywhere near 56 tracks. **The iPhone is untouched:** the iTunes Search API reports one collection for this album and no playability at all, so there is nothing there to choose between. |
 
 ---
 
@@ -365,6 +366,13 @@ tab it creates and deletes, so it never risks the real lists.
   script in `MusicAppPlaylistWriter` therefore wraps itself in `with timeout of 280 seconds`, and
   the `osascript` process gets a 5-minute ceiling of its own. If a Mac push ever starts timing out,
   that pair of numbers is what to raise.
+- **Cloud status is the only thing separating two listings of one album.** Where Apple Music
+  stocks an album twice, the two can be identical on every field the AppleScript dictionary
+  exposes — name, artist, track numbers, release date. Don't try to pick the better *edition*;
+  there's nothing to pick on. Choose per song, on `cloud status`, which is what
+  `PlaylistTracks.PreferPlayable` does. Statuses other than "no longer available" (subscription,
+  purchased, matched, uploaded…) all count as playable — an unfamiliar one is far likelier to play
+  than not.
 - **A Mac push needs Sync Library on** in Music ▸ Settings. That's what makes
   `search library playlist 1` reach the whole Apple Music catalog instead of only local files —
   without it, anything not already downloaded simply won't be found, and every album fails with

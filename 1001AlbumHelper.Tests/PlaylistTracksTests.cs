@@ -107,4 +107,118 @@ public class PlaylistTracksTests
         Assert.True(entry.IsPartial);
         Assert.Contains("only 2 tracks", entry.Display);
     }
+
+    // ---------- Choosing which copy of a song to add ----------
+    //
+    // Apple Music stocks some albums twice under identical names, and the copies aren't equally
+    // alive. Method Man's Tical 2000: Judgement Day is the case that surfaced it: two listings,
+    // same name, same artist, same track numbers, same release date — and five tracks withdrawn on
+    // one of them that play perfectly on the other.
+
+    private static LibraryTrack Track(int number, string name, bool playable = true, string id = "") =>
+        new("Tical 2000: Judgement Day", "Method Man", id.Length > 0 ? id : $"{number}-{playable}",
+            Disc: 1, Number: number, Name: name, Playable: playable);
+
+    [Fact]
+    public void A_withdrawn_track_gives_way_to_the_copy_that_plays()
+    {
+        var selection = PlaylistTracks.PreferPlayable(new[]
+        {
+            Track(11, "Retro Godfather", playable: false, id: "dead"),
+            Track(11, "Retro Godfather", playable: true, id: "alive"),
+        });
+
+        Assert.Equal("alive", Assert.Single(selection.Chosen).PersistentId);
+        Assert.Empty(selection.Unavailable);
+    }
+
+    [Fact]
+    public void The_playable_copy_wins_whichever_order_the_search_returned_them_in()
+    {
+        var selection = PlaylistTracks.PreferPlayable(new[]
+        {
+            Track(11, "Retro Godfather", playable: true, id: "alive"),
+            Track(11, "Retro Godfather", playable: false, id: "dead"),
+        });
+
+        Assert.Equal("alive", Assert.Single(selection.Chosen).PersistentId);
+    }
+
+    [Fact]
+    public void Two_listings_of_one_album_add_up_to_one_playable_album()
+    {
+        // The real shape, in miniature: four songs, one edition missing two of them.
+        var withdrawn = new[] { Track(2, "Sweet Love (Skit)", false), Track(3, "Retro Godfather", false) };
+        var alive = new[] { Track(2, "Sweet Love (Skit)"), Track(3, "Retro Godfather") };
+        var shared = new[] { Track(1, "Judgement Day (Intro)"), Track(4, "Torture") };
+
+        var selection = PlaylistTracks.PreferPlayable(shared.Concat(withdrawn).Concat(alive));
+
+        Assert.Equal(4, selection.Chosen.Count);              // not eight, and not two short
+        Assert.All(selection.Chosen, t => Assert.True(t.Playable));
+        Assert.Empty(selection.Unavailable);
+    }
+
+    [Fact]
+    public void An_album_listed_twice_is_not_added_twice_over()
+    {
+        var once = new[] { Track(1, "Judgement Day (Intro)"), Track(2, "Torture") };
+
+        var selection = PlaylistTracks.PreferPlayable(once.Concat(once));
+
+        Assert.Equal(2, selection.Chosen.Count);
+    }
+
+    [Fact]
+    public void A_song_no_copy_can_play_is_named_rather_than_quietly_dropped()
+    {
+        var selection = PlaylistTracks.PreferPlayable(new[]
+        {
+            Track(1, "Judgement Day (Intro)"),
+            Track(2, "Sweet Love (Skit)", playable: false),
+            Track(2, "Sweet Love (Skit)", playable: false),
+        });
+
+        Assert.Single(selection.Chosen);
+        Assert.Equal("Sweet Love (Skit)", Assert.Single(selection.Unavailable).Name);
+    }
+
+    [Fact]
+    public void Songs_keep_the_order_the_album_puts_them_in()
+    {
+        var selection = PlaylistTracks.PreferPlayable(new[]
+        {
+            Track(1, "Judgement Day (Intro)"),
+            Track(2, "Torture"),
+            Track(3, "Perfect World"),
+        });
+
+        Assert.Equal(new[] { 1, 2, 3 }, selection.Chosen.Select(t => t.Number));
+    }
+
+    [Fact]
+    public void The_same_number_on_a_different_disc_is_a_different_song()
+    {
+        var selection = PlaylistTracks.PreferPlayable(new[]
+        {
+            new LibraryTrack("Sandinista!", "The Clash", "d1t1", Disc: 1, Number: 1, Name: "The Magnificent Seven"),
+            new LibraryTrack("Sandinista!", "The Clash", "d2t1", Disc: 2, Number: 1, Name: "Lightning Strikes"),
+        });
+
+        Assert.Equal(2, selection.Chosen.Count);
+    }
+
+    [Fact]
+    public void Unnumbered_tracks_fall_back_to_their_names()
+    {
+        var selection = PlaylistTracks.PreferPlayable(new[]
+        {
+            new LibraryTrack("Album", "Artist", "a", Name: "Hidden Track", Playable: false),
+            new LibraryTrack("Album", "Artist", "b", Name: "Hidden Track"),
+            new LibraryTrack("Album", "Artist", "c", Name: "Another"),
+        });
+
+        Assert.Equal(2, selection.Chosen.Count);
+        Assert.Equal("b", selection.Chosen[0].PersistentId);
+    }
 }
