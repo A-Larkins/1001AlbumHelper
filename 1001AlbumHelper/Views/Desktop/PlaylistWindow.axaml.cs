@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 
@@ -30,6 +31,20 @@ public partial class PlaylistWindow : Window
         [2] = "PLAYLIST2",
     };
 
+    /// <summary>
+    /// True while Playlist 2 — the recommendations queue — is the one on screen. A styled property
+    /// rather than a field because the row template binds to it to decide whether to offer
+    /// "＋ Shortlist": Playlist 1 holds the 1001 itself, which is what the shortlist replaces.
+    /// </summary>
+    public static readonly StyledProperty<bool> IsRecommendationsProperty =
+        AvaloniaProperty.Register<PlaylistWindow, bool>(nameof(IsRecommendations));
+
+    public bool IsRecommendations
+    {
+        get => GetValue(IsRecommendationsProperty);
+        private set => SetValue(IsRecommendationsProperty, value);
+    }
+
     private int _current = 1;
     private PlaylistStore? _store;
     private bool _busy;
@@ -52,6 +67,7 @@ public partial class PlaylistWindow : Window
         if (_busy) return; // don't swap the list out from under a push that's still running
 
         _current = id;
+        IsRecommendations = id == 2;
         Playlist1Button.Classes.Set("on", id == 1);
         Playlist2Button.Classes.Set("on", id == 2);
         FailuresList.IsVisible = false;
@@ -109,6 +125,55 @@ public partial class PlaylistWindow : Window
         if (_store is null || sender is not Button { DataContext: PlaylistEntry entry }) return;
         _store.ConfirmRemoved(entry);
         Refresh();
+    }
+
+    /// <summary>
+    /// Puts one album from Playlist 2 straight on to the potentials shortlist — the same route a
+    /// pull-down takes (see <see cref="ShortlistIntake"/>), for the one album rather than the whole
+    /// queue, so noting down what you're listening to doesn't mean a trip back to Browse.
+    /// <para>
+    /// The button keeps no per-row state: the list virtualizes, so a label set on it would follow
+    /// its container on to another album. The status line says what happened instead, and a second
+    /// press is harmless — the intake compares against the shortlist itself, so an album already on
+    /// it (or already ruled out) is left exactly as it is.
+    /// </para>
+    /// </summary>
+    private async void OnAddToShortlist(object? sender, RoutedEventArgs e)
+    {
+        if (_busy || sender is not Button { DataContext: PlaylistEntry entry }) return;
+
+        SetBusy(true, $"Adding {entry.Title} to the shortlist…");
+        try
+        {
+            var intake = await ShortlistIntake.AbsorbAsync(
+                new[] { entry }, cacheLocally: true, progress: Note);
+
+            Note(intake.Problem is not null ? $"⚠ {intake.Problem}"
+                 : intake.Added.Count > 0 ? $"✓ {entry.Title} is on the shortlist. {intake.Summary}".TrimEnd()
+                 : $"{entry.Title} was already on the shortlist. {intake.Summary}".TrimEnd());
+        }
+        catch (Exception ex) { Note($"Couldn't add {entry.Title} to the shortlist — {ex.Message}"); }
+        finally { SetBusy(false); }
+    }
+
+    /// <summary>
+    /// The decided version of the button above, and the same thing the shortlist window's "Keep"
+    /// does: on to the replacements list proper — slotted into its year block and renumbered — and
+    /// marked kept on the shortlist. See
+    /// <see cref="Operations.KeepFromPlaylistAsync(PlaylistEntry, Action{string})"/>.
+    /// </summary>
+    private async void OnKeep(object? sender, RoutedEventArgs e)
+    {
+        if (_busy || sender is not Button { DataContext: PlaylistEntry entry }) return;
+
+        SetBusy(true, $"Keeping {entry.Title}…");
+        try
+        {
+            var result = await Operations.KeepFromPlaylistAsync(entry, progress: Note);
+            Note(result.Message);
+        }
+        catch (Exception ex) { Note($"Couldn't keep {entry.Title} — {ex.Message}"); }
+        finally { SetBusy(false); }
     }
 
     // ---------- Apple Music ----------

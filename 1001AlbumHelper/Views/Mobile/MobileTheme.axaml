@@ -39,6 +39,9 @@
     <SolidColorBrush x:Key="Gold" Color="#E9B872" />
     <SolidColorBrush x:Key="GoldBright" Color="#F7DCAE" />
     <SolidColorBrush x:Key="GoldDim" Color="#8A6B3A" />
+    <!-- Opaque, unlike the two washes below it: for a chip that floats over the list, where a
+         translucent fill lets the rows underneath read straight through the label. -->
+    <SolidColorBrush x:Key="GoldSolid" Color="#3A2D18" />
     <SolidColorBrush x:Key="GoldWash" Color="#E9B872" Opacity="0.14" />
     <SolidColorBrush x:Key="GoldWashHi" Color="#E9B872" Opacity="0.22" />
     <SolidColorBrush x:Key="GoldEdge" Color="#E9B872" Opacity="0.38" />
@@ -356,6 +359,18 @@
     <Setter Property="Background" Value="{StaticResource GoldWashHi}" />
   </Style>
 
+  <!-- Lifted off the list rather than sitting in a row: opaque so the rows it covers don't show
+       through it, ringed and shadowed so it reads as floating above them. -->
+  <Style Selector="Button.chip.floating /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="{StaticResource GoldSolid}" />
+    <Setter Property="BorderBrush" Value="{StaticResource Gold}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="BoxShadow" Value="0 4 16 0 #AA000000" />
+  </Style>
+  <Style Selector="Button.chip.floating:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="{StaticResource SurfacePressed}" />
+  </Style>
+
   <Style Selector="Button.chip.quiet">
     <Setter Property="Foreground" Value="{StaticResource TextLow}" />
   </Style>
@@ -496,10 +511,43 @@
     <Setter Property="Background" Value="{StaticResource Surface}" />
   </Style>
 
-  <!-- A list already inside a padded container (the Rate tab's find results) — it supplies its own
-       margin, so the rows mustn't add the screen-edge inset again. -->
-  <Style Selector="ListBox.flush ListBoxItem">
-    <Setter Property="Padding" Value="0" />
+  <!-- ── Index rail ────────────────────────────────────────────────────────────────────────── -->
+  <!-- The strip of initials down the right edge of the Rate tab's picker, the same idea as the
+       index in Contacts: a thin gutter you drag rather than a control you aim at. Deliberately
+       narrow and low-contrast — it's a shortcut past 1089 rows, not part of the reading. -->
+
+  <Style Selector="Border.rail">
+    <Setter Property="Width" Value="26" />
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="Padding" Value="0,6" />
+  </Style>
+
+  <Style Selector="Border.rail TextBlock.railLetter">
+    <Setter Property="FontSize" Value="9.5" />
+    <Setter Property="FontWeight" Value="Bold" />
+    <Setter Property="LetterSpacing" Value="-0.2" />
+    <Setter Property="Foreground" Value="{StaticResource Gold}" />
+    <Setter Property="Opacity" Value="0.75" />
+  </Style>
+
+  <!-- The letter under your thumb while the rail is being dragged. Sits over the list rather than
+       in the gutter, because in the gutter your own finger would be on top of it. -->
+  <Style Selector="Border.railBubble">
+    <Setter Property="Width" Value="62" />
+    <Setter Property="Height" Value="62" />
+    <Setter Property="CornerRadius" Value="31" />
+    <Setter Property="Background" Value="{StaticResource SurfaceHi}" />
+    <Setter Property="BorderBrush" Value="{StaticResource GoldEdge}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="BoxShadow" Value="0 10 30 -6 #B0000000" />
+  </Style>
+
+  <Style Selector="Border.railBubble TextBlock">
+    <Setter Property="FontSize" Value="24" />
+    <Setter Property="FontWeight" Value="Bold" />
+    <Setter Property="Foreground" Value="{StaticResource GoldBright}" />
+    <Setter Property="HorizontalAlignment" Value="Center" />
+    <Setter Property="VerticalAlignment" Value="Center" />
   </Style>
 
   <!-- ── Scrollbars ────────────────────────────────────────────────────────────────────────── -->

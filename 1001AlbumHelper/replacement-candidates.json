@@ -3,28 +3,28 @@
     "title": "Away from the Sun",
     "artist": "3 Doors Down",
     "genre": "Rock",
-    "status": "pending",
+    "status": "added",
     "year": "2002"
   },
   {
     "title": "The Better Life",
     "artist": "3 Doors Down",
     "genre": "Rock",
-    "status": "pending",
+    "status": "added",
     "year": "2000"
   },
   {
     "title": "The Beautiful Letdown",
     "artist": "Switchfoot",
     "genre": "Pop",
-    "status": "pending",
+    "status": "declined",
     "year": "2003"
   },
   {
     "title": "The Avalanche",
     "artist": "Owen",
     "genre": "Alternative",
-    "status": "pending",
+    "status": "added",
     "year": "2020"
   },
   {
@@ -73,21 +73,21 @@
     "title": "Far Beyond Driven",
     "artist": "Pantera",
     "genre": "Metal",
-    "status": "pending",
+    "status": "added",
     "year": "1994"
   },
   {
     "title": "The Great Southern Trendkill",
     "artist": "Pantera",
     "genre": "Metal",
-    "status": "pending",
+    "status": "added",
     "year": "1996"
   },
   {
     "title": "Reinventing the Steel",
     "artist": "Pantera",
     "genre": "Metal",
-    "status": "pending",
+    "status": "added",
     "year": "2000"
   },
   {
@@ -759,7 +759,7 @@
     "title": "Them Crooked Vultures",
     "artist": "Them Crooked Vultures",
     "genre": "Alternative",
-    "status": "pending",
+    "status": "added",
     "year": "2009"
   },
   {
@@ -773,7 +773,7 @@
     "title": "Songs for the Deaf",
     "artist": "Queens of the Stone Age",
     "genre": "Rock",
-    "status": "pending",
+    "status": "added",
     "year": "2002"
   },
   {
@@ -1069,5 +1069,103 @@
     "genre": "Rock",
     "status": "pending",
     "year": "1975"
+  },
+  {
+    "title": "Lies",
+    "artist": "LIES",
+    "genre": "",
+    "status": "declined",
+    "year": "2023"
+  },
+  {
+    "title": "Piano - EP",
+    "artist": "Yvette Young",
+    "genre": "",
+    "status": "pending",
+    "year": "2019"
+  },
+  {
+    "title": "Set Course for Andromeda",
+    "artist": "Sithu Aye",
+    "genre": "",
+    "status": "pending",
+    "year": "2016"
+  },
+  {
+    "title": "Cassini",
+    "artist": "Sithu Aye",
+    "genre": "",
+    "status": "pending",
+    "year": "2011"
+  },
+  {
+    "title": "Homebound",
+    "artist": "Sithu Aye",
+    "genre": "",
+    "status": "pending",
+    "year": "2018"
+  },
+  {
+    "title": "Promise Me You\u0027ll Thrive",
+    "artist": "I Built the Sky",
+    "genre": "",
+    "status": "pending",
+    "year": "2026"
+  },
+  {
+    "title": "The Late Great",
+    "artist": "Townes Van Zandt",
+    "genre": "",
+    "status": "pending",
+    "year": "1972"
+  },
+  {
+    "title": "High, Low and in Between",
+    "artist": "Townes Van Zandt",
+    "genre": "",
+    "status": "pending",
+    "year": "1972"
+  },
+  {
+    "title": "Tales Of Ordinary Madness",
+    "artist": "Warren Haynes",
+    "genre": "",
+    "status": "pending",
+    "year": "1993"
+  },
+  {
+    "title": "Man In Motion",
+    "artist": "Warren Haynes",
+    "genre": "",
+    "status": "pending",
+    "year": "2011"
+  },
+  {
+    "title": "Raising Sand",
+    "artist": "Robert Plant \u0026 Alison Krauss",
+    "genre": "",
+    "status": "pending",
+    "year": "2007"
+  },
+  {
+    "title": "California Autumn",
+    "artist": "Tony Rice",
+    "genre": "",
+    "status": "pending",
+    "year": "1976"
+  },
+  {
+    "title": "The Model Church",
+    "artist": "J.D. Crowe",
+    "genre": "",
+    "status": "pending",
+    "year": "1971"
+  },
+  {
+    "title": "El Rayo-X",
+    "artist": "David Lindley",
+    "genre": "",
+    "status": "pending",
+    "year": "1981"
   }
 ]

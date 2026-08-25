@@ -44,6 +44,23 @@ internal static class Program
             return;
         }
 
+        // Read-only rehearsal of the Apple Music favourites backfill: says how many albums off the
+        // lists Apple Music is missing a heart on (and which), and writes nothing anywhere.
+        if (args.Contains("favtest"))
+        {
+            FavoritesBackfillDiagnostic.RunAsync().GetAwaiter().GetResult();
+            return;
+        }
+
+        // Headless favourites backfill: hearts every album on the finished list that Apple Music
+        // hasn't already got one on, and mirrors them into the favourites playlist. Mac only.
+        if (args.Contains("backfill-favorites"))
+        {
+            if (OperatingSystem.IsMacOS()) AppleMusic.Writer ??= new MusicAppPlaylistWriter();
+            Operations.BackfillAppleMusicFavoritesAsync().GetAwaiter().GetResult();
+            return;
+        }
+
         // Headless genre backfill: fills column F on the master list for every rated album
         // missing one, via Discogs lookups. Resumable — safe to re-run.
         if (args.Contains("backfill-genres"))

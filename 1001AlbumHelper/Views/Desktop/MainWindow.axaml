@@ -283,6 +283,27 @@
             </StackPanel>
           </Grid>
         </Button>
+
+        <!-- Two presses, deliberately: the first only looks, the second writes to the real library.
+             The card's own text is the confirmation step — see OnRun's "favorites-*" cases. -->
+        <Button x:Name="FavoritesButton" Classes="card" Tag="favorites-check" Click="OnRun">
+          <Grid ColumnDefinitions="Auto,*,Auto">
+            <Border Grid.Column="0" Classes="badge">
+              <TextBlock Text="♥" />
+            </Border>
+            <StackPanel Grid.Column="1" Margin="16,0,0,0" VerticalAlignment="Center">
+              <TextBlock x:Name="FavoritesTitleText" Classes="title" Text="Backfill favourites" />
+              <TextBlock x:Name="FavoritesDescText" Classes="desc"
+                         Text="Put a heart on every album of the finished list that Apple Music hasn't already got one on, and mirror the same albums into “Almost forgot to listen to these today”. Press once to see what it would do — nothing is written until you press again." />
+            </StackPanel>
+            <Border Grid.Column="2" x:Name="FavoritesBadge" IsVisible="False" VerticalAlignment="Center"
+                    Background="#3a2b12" BorderBrush="#b3852f" BorderThickness="1" CornerRadius="6"
+                    Padding="7,3" Margin="10,0,0,0">
+              <TextBlock x:Name="FavoritesBadgeText" Text="" FontSize="10" FontWeight="Bold"
+                         Foreground="#f5c985" />
+            </Border>
+          </Grid>
+        </Button>
       </StackPanel>
 
       <StackPanel Spacing="10" x:Name="InsightsSection" IsVisible="False">

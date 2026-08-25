@@ -70,13 +70,26 @@
         <ListBox.ItemTemplate>
           <DataTemplate x:DataType="local:PlaylistEntry">
             <!-- Title over artist, matching the browse list, rather than one run-together line. -->
-            <Grid ColumnDefinitions="*,Auto" Margin="0,11">
+            <!-- Two verdicts and a remove. Playlist 2 only: it's the recommendations queue, so the
+                 album playing right now is exactly the kind the shortlist and the replacements list
+                 are for — and reaching them from here beats going back to Browse to search for what
+                 you're already listening to. "＋" writes it down undecided; "Keep" is the decision,
+                 and puts it on the replacements list proper as well. -->
+            <Grid ColumnDefinitions="*,Auto,Auto,Auto" Margin="0,11">
               <StackPanel Grid.Column="0" Spacing="2" VerticalAlignment="Center">
                 <TextBlock Classes="rowTitle" Text="{Binding Title}" TextWrapping="Wrap" />
                 <TextBlock Classes="rowSub" Text="{Binding Artist}" TextWrapping="Wrap" />
               </StackPanel>
-              <Button Grid.Column="1" Classes="chip quiet" Content="✕" Click="OnRemove"
-                      VerticalAlignment="Center" Margin="10,0,0,0" />
+              <Button Grid.Column="1" Classes="chip quiet" Content="＋ Shortlist"
+                      IsVisible="{Binding $parent[local:PlaylistView].IsRecommendations}"
+                      Click="OnAddToShortlist" VerticalAlignment="Center" Margin="8,0,0,0"
+                      ToolTip.Tip="Write it down as a candidate — decide later." />
+              <Button Grid.Column="2" Classes="chip gold" Content="Keep"
+                      IsVisible="{Binding $parent[local:PlaylistView].IsRecommendations}"
+                      Click="OnKeep" VerticalAlignment="Center" Margin="6,0,0,0"
+                      ToolTip.Tip="Put it on the replacements list now, and mark it kept on the shortlist." />
+              <Button Grid.Column="3" Classes="chip quiet" Content="✕" Click="OnRemove"
+                      VerticalAlignment="Center" Margin="6,0,0,0" />
             </Grid>
           </DataTemplate>
         </ListBox.ItemTemplate>

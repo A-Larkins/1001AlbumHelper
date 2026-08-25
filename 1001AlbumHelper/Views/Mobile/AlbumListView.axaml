@@ -31,13 +31,16 @@
 
         <TextBox x:Name="SearchBox" Watermark="Search title or artist…" />
 
-        <!-- Sort: tap a column to sort by it; tap the active one again to flip direction. -->
+        <!-- Sort: tap a column to sort by it; tap the active one again to flip direction. "#" is
+             the list's own order, and is what gets you back out of a sort you no longer want. -->
         <Border Classes="sortBar">
-          <Grid ColumnDefinitions="*,*,*,*" ColumnSpacing="2">
-            <Button Grid.Column="0" x:Name="SortTitleButton" Classes="sort" Tag="Title" Click="OnSortHeader" />
-            <Button Grid.Column="1" x:Name="SortArtistButton" Classes="sort" Tag="Artist" Click="OnSortHeader" />
-            <Button Grid.Column="2" x:Name="SortYearButton" Classes="sort" Tag="Year" Click="OnSortHeader" />
-            <Button Grid.Column="3" x:Name="SortRatingButton" Classes="sort" Tag="Rating" Click="OnSortHeader" />
+          <Grid ColumnDefinitions="Auto,*,*,*,*" ColumnSpacing="2">
+            <Button Grid.Column="0" x:Name="SortNumberButton" Classes="sort" Tag="Number" Click="OnSortHeader"
+                    MinWidth="44" />
+            <Button Grid.Column="1" x:Name="SortTitleButton" Classes="sort" Tag="Title" Click="OnSortHeader" />
+            <Button Grid.Column="2" x:Name="SortArtistButton" Classes="sort" Tag="Artist" Click="OnSortHeader" />
+            <Button Grid.Column="3" x:Name="SortYearButton" Classes="sort" Tag="Year" Click="OnSortHeader" />
+            <Button Grid.Column="4" x:Name="SortRatingButton" Classes="sort" Tag="Rating" Click="OnSortHeader" />
           </Grid>
         </Border>
 
@@ -48,27 +51,37 @@
       </StackPanel>
     </Border>
 
-    <!-- Row padding comes from the ListBoxItem style, so rows line up with the header above. -->
-    <ListBox x:Name="Rows">
-      <ListBox.ItemTemplate>
-        <DataTemplate x:DataType="local:ViewRow">
-          <!-- The rating column is a fixed width, not Auto: an unrated album has nothing in it, and
-               an Auto column would collapse and shunt that row's title left of its neighbours'. -->
-          <Grid ColumnDefinitions="30,22,*,Auto" Margin="0,11">
-            <TextBlock Grid.Column="0" Classes="rowIndex" Text="{Binding Number}"
-                       VerticalAlignment="Center" />
-            <TextBlock Grid.Column="1" Text="{Binding Rating}" VerticalAlignment="Center"
-                       FontSize="13" />
-            <StackPanel Grid.Column="2" VerticalAlignment="Center" Spacing="2">
-              <TextBlock Classes="rowTitle" Text="{Binding Title}" TextWrapping="Wrap" />
-              <TextBlock Classes="rowSub" Text="{Binding Artist}" TextWrapping="Wrap" />
-            </StackPanel>
-            <Button Grid.Column="3" Classes="chip" Content="{Binding PlaylistLabel}"
-                    IsEnabled="{Binding CanQueue}" Click="OnAddToPlaylist"
-                    VerticalAlignment="Center" Margin="10,0,0,0" />
-          </Grid>
-        </DataTemplate>
-      </ListBox.ItemTemplate>
-    </ListBox>
+    <!-- The list, with the "take me back" chip floating over its bottom edge. -->
+    <Panel>
+      <!-- Row padding comes from the ListBoxItem style, so rows line up with the header above. -->
+      <ListBox x:Name="Rows">
+        <ListBox.ItemTemplate>
+          <DataTemplate x:DataType="local:ViewRow">
+            <!-- The rating and year columns are fixed widths, not Auto: an unrated album has nothing
+                 in the one and plenty of the 1001 have no year in the other, and an Auto column
+                 would collapse and shunt that row's title left of its neighbours'. -->
+            <Grid ColumnDefinitions="30,22,*,38,Auto" Margin="0,11">
+              <TextBlock Grid.Column="0" Classes="rowIndex" Text="{Binding Number}"
+                         VerticalAlignment="Center" />
+              <TextBlock Grid.Column="1" Text="{Binding Rating}" VerticalAlignment="Center"
+                         FontSize="13" />
+              <StackPanel Grid.Column="2" VerticalAlignment="Center" Spacing="2">
+                <TextBlock Classes="rowTitle" Text="{Binding Title}" TextWrapping="Wrap" />
+                <TextBlock Classes="rowSub" Text="{Binding Artist}" TextWrapping="Wrap" />
+              </StackPanel>
+              <TextBlock Grid.Column="3" Classes="rowIndex" Text="{Binding Year}"
+                         VerticalAlignment="Center" TextAlignment="Right" Margin="4,0,0,0" />
+              <Button Grid.Column="4" Classes="chip" Content="{Binding PlaylistLabel}"
+                      IsEnabled="{Binding CanQueue}" Click="OnAddToPlaylist"
+                      VerticalAlignment="Center" Margin="10,0,0,0" />
+            </Grid>
+          </DataTemplate>
+        </ListBox.ItemTemplate>
+      </ListBox>
+
+      <!-- Shown only once the row you were parked on has scrolled out of sight — see JumpBack. -->
+      <Button x:Name="JumpBackButton" Classes="chip gold floating" IsVisible="False" Click="OnJumpBack"
+              HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,0,0,18" />
+    </Panel>
   </DockPanel>
 </UserControl>
