@@ -270,12 +270,16 @@ public static class ShortlistIntake
 
     /// <summary>
     /// The shortlist as it stands: the Google Sheet when it's configured and has anything on it,
+    /// <para>
+    /// Public because keeping an album straight off a playlist needs the very same list, read by
+    /// the very same rules — see <see cref="Operations.KeepFromPlaylistAsync(PlaylistEntry, ISheetsClient, string, string, string, bool, Action{string})"/>.
+    /// </para>
     /// otherwise the device's own copy. That asymmetry is the same one the shortlist windows use —
     /// an empty sheet means "not seeded yet", never "the shortlist is empty", so it must not be
     /// allowed to wipe what we hold. A sheet that fails to load throws instead, so the caller can
     /// abandon the intake rather than push a stale list over a live one.
     /// </summary>
-    private static async Task<List<CandidateAlbum>> LoadAsync(CandidateRepository repo, bool cacheLocally)
+    public static async Task<List<CandidateAlbum>> LoadAsync(CandidateRepository repo, bool cacheLocally)
     {
         if (repo.SyncEnabled)
         {

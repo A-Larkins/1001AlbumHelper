@@ -1,7 +1,7 @@
 # 1001 Albums Helper — Project Handbook
 
 A living reference for the app: what it is, how it's built, how to ship it, and where it's going.
-**Update this as we go.** Last updated: 2026-08-21 (picking the copy of a song that plays).
+**Update this as we go.** Last updated: 2026-08-25 (favourites backfill; browse and Playlist 2 tidy-ups).
 
 ---
 
@@ -46,9 +46,10 @@ framework).
 ├── 1001AlbumHelper.Desktop/    → Mac/Win/Linux head (produces the "1001AlbumHelper" executable)
 │                               also: MusicAppPlaylistWriter (Apple Music on the Mac) +
 │                               MusicAppDiagnostic (its `musictest` check) +
-│                               ShortlistIntakeDiagnostic (the read-only `intaketest` rehearsal)
+│                               ShortlistIntakeDiagnostic (the read-only `intaketest` rehearsal) +
+│                               FavoritesBackfillDiagnostic (the read-only `favtest` rehearsal)
 ├── 1001AlbumHelper.iOS/        → iPhone head (bundle id: com.larkins.albumhelper)
-└── 1001AlbumHelper.Tests/      → xUnit tests (166 as of this writing)
+└── 1001AlbumHelper.Tests/      → xUnit tests (234 as of this writing)
 ```
 
 **Key idea:** all the real code lives in the shared library. The two "head" projects are thin —
@@ -105,6 +106,7 @@ a **single view with four bottom tabs** (phones don't do windows).
 | 2026-08-21 | **Picking the copy of a song that actually plays.** Apple Music stocks some albums twice under identical names, and the copies aren't equally alive: Method Man's *Tical 2000: Judgement Day* is there twice, and five tracks are "no longer available" on one of them while the other plays them fine. Nothing in the metadata separates the two — same album name, same artist, same track numbers, same release date; only the durations differ, by hundredths of a second — so there's no better edition to pick, and the choice has to be made a song at a time. The Mac's search now carries each track's **cloud status**, disc and track number, and `PlaylistTracks.PreferPlayable` takes one copy per slot, preferring one that will play. That also fixes the plainer bug underneath: both listings matched the search, so the album was going in twice over — 56 tracks for a 28-track record, five of them dead. A song no copy can play is now named in the push result rather than quietly missing. `musictest` pushes this album as a regression check and fails if it comes back anywhere near 56 tracks. **The iPhone is untouched:** the iTunes Search API reports one collection for this album and no playability at all, so there is nothing there to choose between. |
 | 2026-08-21 | **The phone app gets a design system.** The mobile UI was stock Avalonia Fluent — grey buttons, a solid-blue selection bar down a 1000-row list, and each screen redefining its own “segmented control” out of opacity tweaks. All of it now comes from one file, `Views/Mobile/MobileTheme.axaml`: palette (near-black canvas, the gold the Keep button already used as the single accent), an Inter type scale, and a look for every control. It is included by **`MainView`, not `App.axaml`** — App is shared with the Mac head, so that scoping is what lets the phone be restyled without touching one desktop window. The **nav** was rebuilt rather than restyled: the TabControl's own strip is hidden (`headless`) and a real bottom bar drawn in its place, icon over label with a gold pill on the active tab, while the TabControl still switches content so `SelectedIndex` and every per-tab refresh are unchanged. Three grid bugs fell out of doing it: row padding collapsed to zero because Fluent **template-binds `ListBoxItem.Padding`**, which beats a style setter on the row's ContentPresenter — the ＋ buttons were being clipped off the right edge, and the inset is set through the `ListBoxItemPadding` resource now; browse rows used an `Auto` rating column, so an unrated album's title sat left of its neighbours'; and the four rating tiles were visibly uneven because “Mostly enjoyable” wraps to two lines where “Trash” doesn't. A sync line that reads “” on a good sync was reserving its line height and leaving a gap above every list, so those collapse when empty. `mobilepreview` gained `ALBUMHELPER_PREVIEW_TAB` — without it every screen but List needs a tap to reach, which is awkward when the point of the run is to look at one of the others. |
 | 2026-08-21 | **An album is dated from its first release, not from a reissue.** A 1970 record remastered in 2010 should read 1970. The Discogs lookups already searched `type=master`, which is the original in the ordinary case — but Discogs files a reissue under an *extended name* (“Abbey Road (2019 Mix)”), so that is a master of its own, and when the playlist names the pressing it holds, the first rung of the search ladder finds exactly it. `PreferOriginalRelease` now sits over the verified candidates: where one candidate's title is a whole-word prefix of another's, the shorter is the album and the longer an edition of it, and the edition is set aside. **Deliberately not “take the earliest year”** — `AlbumRankingTests` already documents why that is wrong: Blue Train has masters at 1957 (a recording-date entry), 1958 (the release everyone owns) and 2010 (a reissue), and 1958 is the answer. Most-owned still decides between same-named masters; the new rule only fires when one title extends another, so that test is untouched. Five tests added. |
+| 2026-08-25 | **Finding an album to rate stopped happening at the bottom of the screen.** The Rate tab's find box sat in the last row of the layout, which on a phone is precisely where iOS puts the keyboard: tapping it hid the box, the matches it was producing *and* the four rating tiles, so you typed a name blind with nothing to pick from. The field moved **into the pinned header**, under the queue picker, where it is always on screen and the keyboard opens below it; the results take the album card's place rather than being buried under glass. A first cut put the field behind a "Jump to…" chip instead and that was wrong — a search you have to go and find reads as a search that was removed. Beside the field an **A–Z button** opens those same results *without* raising the keyboard, which is what makes the new **index rail** worth having: an empty field lists all 1089, and the rail down the right edge works like the index in Contacts — press and drag and the list skims, with the stop under your thumb shown in a bubble over the list (in the gutter your own finger would cover it). The rail indexes whatever order the list is in — initials for Title A–Z and Artist A–Z, hundreds for list order — takes each label once at its first row (symbol-led titles sort both before "A" and after "Z", and two "#" stops read as a broken rail), and offers only stops with rows behind them, so a drag can't land on nothing. A `Viewbox` shrinks the strip to whatever height is left when the keyboard *is* up. Filing follows `NumberedList.Normalize`, which already drops a leading "the", so The Beatles sits under B. |
 
 ---
 
@@ -134,14 +136,32 @@ manual bookkeeping.
   a missing (and once added, invisible-due-to-z-order) empty-state message there, and a redundant
   sync-status line on the Shortlist tab.
 - ✅ **Ratings are editable.** A Revisit queue (filterable to one symbol), a ✎ on every 1001 row in
-  the browse window, and a find box on the phone's Rate tab all lead to the same thing: re-rating an
-  album that already has a rating. Dropping a ⭐ takes the album off Must Hear again.
+  the browse window, and the phone Rate tab's "Jump to…" picker all lead to the same thing: re-rating
+  an album that already has a rating. Dropping a ⭐ takes the album off Must Hear again.
+- ✅ **The phone can reach any album from the Rate tab.** The search field is pinned in the header,
+  above the keyboard rather than under it, and an A–Z button opens the whole 1001 with a draggable
+  index rail for when skimming beats typing.
 - ✅ **Mobile Rate has all three queues** (Next up · Backfill ✓ · Revisit) — shuffle is still Mac-only.
 - ✅ **Lists show the rating you just gave**, on both apps, and the phone's 1001 tab now refreshes
   itself from the sheet instead of living on the snapshot it was built with.
 - ✅ **The phone app has a design system** (`Views/Mobile/MobileTheme.axaml`) and a hand-built
   bottom nav, scoped to `MainView` so the Mac windows are untouched.
 - ✅ **Years are the album's first release**, not a reissue's — see `PreferOriginalRelease`.
+- ✅ **Apple Music favourites are backfilled from the list.** Every album on the finished list — the
+  ⭐ picks plus the replacements — gets a heart in Apple Music if it hasn't got one, and is mirrored
+  into the "Almost forgot to listen to these today" playlist. **Mac only** (see §5b), read-only
+  rehearsal first via `favtest`, and a two-press confirmation on the Mac app's card.
+- ✅ **Browse keeps your place and shows the year.** The mobile browse rows carry the album's year;
+  the sort bar has a "#" column, which is the way back out of a sort; and scrolling away from where
+  you actually are in the 1001 raises a "↩ Back to #756 Tical" chip that puts you back.
+- ✅ **Playlist 2 rows reach both replacement lists.** Each row of the recommendations queue carries
+  two verdicts on both apps: **＋ Shortlist** (write it down, decide later) and **Keep** (decided —
+  on to the replacements list proper, and marked kept on the shortlist). They are different lists
+  and both are worth having; `Operations.KeepFromPlaylistAsync` is the shared route, and it writes
+  the replacements list *first* so a refusal there can't leave the shortlist claiming a decision
+  that never happened.
+- ✅ **The export says where the list comes from.** An opening page on the PDF: what the book is,
+  what its panel ruled out, and the one rule Andrew has let go — a great EP counts.
 - **The whole roadmap (Phases 1–4) is now done.**
 
 **User stories (what Andrew wants):**
@@ -284,6 +304,57 @@ is the listening queue and the app is the clean list, so it's the app that has t
 two disagree. Reading a playlist back also carries each album's current track count, and a
 low one (≤3) is flagged in the list as possibly half-deleted.
 
+### 5b. Favourites — and the one thing only the Mac can do
+
+The finished list and Apple Music's own favourites are the same list twice over, and they drift.
+**Backfill favourites** reconciles them: every album on Must Hear + Replacements that Apple Music
+hasn't got a heart on gets one, and the same albums are mirrored into the playlist
+`Almost forgot to listen to these today` — a deliberate duplicate of the favourites, because a
+playlist is somewhere you can sit down and play.
+
+- **Mac only.** `album favorited` is a read/write property on a Music.app track over AppleScript.
+  The iPhone's MediaPlayer framework has **no favourite property at all** — the same Swift-only
+  MusicKit wall the missing remove API runs into (§5). `IApplePlaylistWriter.CanFavorite` is the
+  seam; the phone reports it rather than half-doing the job.
+- **The two halves are checked separately.** An album can be favourited but missing from the
+  playlist — that is exactly what a hand-kept duplicate drifts into — so each gap is decided on its
+  own. Both are read fresh from Apple Music every run, which makes the whole thing idempotent and
+  safe to interrupt: it only ever turns a favourite *on*.
+- **Reading is cheap, writing is not.** The favourites are read with three
+  `whose album favorited is true` bulk gets — one AppleEvent each, ~2s against a 33k-track library,
+  where walking the library and asking per track would be tens of thousands of round trips. But
+  *setting* one costs a `search library playlist 1`, the same slow call an add costs, so the run is
+  a second or two per album it has to touch. `MusicAppPlaylistWriter` memoises the last search one
+  term deep so favourite-then-add for the same album searches once, not twice.
+- **Rehearse first:** `dotnet run --project 1001AlbumHelper.Desktop -- favtest` names what would be
+  touched and writes nothing. Run it: `-- backfill-favorites`, or the Mac app's "Backfill favourites"
+  card, which previews on the first press and only writes on the second.
+- **Names have to be matched at both ends, and loosely.** The list and Apple Music disagree about
+  album names *and* artist credits, and the backfill has to survive both — once when it goes looking
+  for an album, and again when it checks whether it already has it.
+  - *Titles:* the list writes "Audioslave (self titled)", "Tarzan (soundtrack)", "Metallica (Black
+    Album)"; Music has never heard of any of them, and stocks its own furniture besides — "Led
+    Zeppelin (Remastered)", "The Clash (2013 Remastered)". So the search retries on the bare name,
+    and the fallback compares **bare against bare, by equality** — a prefix would let a search for
+    "Led Zeppelin" return "Led Zeppelin II" for the self-titled debut.
+  - *Artists:* "Ozzy Osborne", "Simon And Garfunkel", "Dinosaur" for Dinosaur Jr., "Chicago Transit
+    Authority" where Music says "Chicago". `DiscogsApiClient.ArtistsOverlap` bridges these, which is
+    the leniency `AppleMusicCatalog.FindBestMatch` already applied at the far end.
+  - **The check matters as much as the search.** While `Operations.Holds` used the strict rule, an
+    album the backfill had just favourited read as *still missing* next run, so every run redid the
+    same work and pushed the same albums into the playlist again — and Apple Music has no remove.
+    Three runs on 2026-08-25 left **471 duplicate track rows across 32 albums** that way. If the
+    plan's "to touch" count doesn't fall to roughly the count of genuinely-missing albums after a
+    run, that bug is back.
+- **Runs on 2026-08-25** — 536 albums on the lists, starting from 531 favourited / 255 in the
+  playlist. Run 1 (exact names only): 81 favourited, 321 added, 76 albums not found. Run 2 (bare
+  search term): 30 more found. Run 3 (bare-on-both-sides match): 19 more. Settled at **507 of 536
+  favourited**, with 33 still out of reach — 27 that Music genuinely can't find and 6 the check
+  can't recognise, all of them sheet typos: "Buckhead" for Buckethead, "Mastadon", "Merhuggah",
+  "Perserverance", "Favourite Worth Nightmare", `Rocks"`, "Untitled" for Led Zeppelin IV. Fixing
+  those is a data job on the sheet, not a matching problem — going further would mean fuzzy matching,
+  and a wrong add can't be taken back.
+
 ---
 
 ## 6. Updating the potentials list (Google Sheets sync)
@@ -389,6 +460,21 @@ tab it creates and deletes, so it never risks the real lists.
   on install usually succeeds on a plain retry. "Launch failed... Locked" on `process launch` means
   exactly that — unlock the phone (Face ID/passcode) and either retry the launch command or just tap
   the app icon; it is not a build problem.
+- **⚠ Tests can reach the live spreadsheet. Never build a `CandidateRepository` or a
+  `DiscogsApiClient` in a test.** `appsettings.json` and `service-account.json` are **embedded
+  resources of the shared assembly** (see its .csproj), and `EmbeddedConfig` falls back to them when
+  no file is found. The test project references that assembly, so `CandidateRepository.Create()`
+  inside a test comes back **sync-enabled against the real Potentials tab** no matter what
+  `Operations.ProjectDir` resolves to — and `PushAsync` then writes to it. This is not theoretical:
+  on 2026-08-25 a run of six new tests for `KeepFromPlaylistAsync` flipped five real candidates to
+  "kept" on the live sheet (repaired by pushing this Mac's `replacement-candidates.json` back over
+  it, which `ReplacementCandidates.Merge` makes exact — local status wins per album, sheet-only rows
+  survive). The same fallback means a Discogs token is live in tests too, so a "no year" path will
+  quietly go and *find* one over the network.
+  **Test the pieces that take an `ISheetsClient`** — `AddReplacementAlbumAsync`, `NumberedList`,
+  `RatingSession` — against `FakeSheets`, and leave the orchestration that builds a repository of
+  its own to be checked by hand in the app. A giveaway: a test suite that suddenly takes ten seconds
+  instead of a fifth of one is out on the network.
 - **Screenshotting `mobilepreview` on the Mac reliably.** Don't query the window's position via
   `osascript`/System Events and `screencapture -R` that region — if the window isn't on the currently
   active Space (common for a window from a freshly-launched background process), that captures
@@ -400,8 +486,12 @@ tab it creates and deletes, so it never risks the real lists.
   bundle reports `1001 Albums Helper`** (with spaces) — filtering for the wrong one looks exactly
   like "the app didn't start". `screencapture -l` also needs Screen Recording permission for
   whichever terminal is running it, or it fails with "could not create image from window". To see a
-  specific tab without fighting UI-click automation, temporarily set the TabControl's
-  `SelectedIndex` in `MainView.axaml`, rebuild, relaunch, capture, repeat — then revert it.
+  specific tab, set **`ALBUMHELPER_PREVIEW_TAB`** (0-4: List, Rate, Shortlist, Playlist 1,
+  Playlist 2) — there is no need to edit `MainView.axaml`, which is what this note used to say.
+  Note also that **synthetic input doesn't reach the window** without Accessibility permission for
+  the terminal: `CGEventPost` scroll/keystrokes are silently swallowed, and osascript System Events
+  keystrokes go nowhere. To see a state that only appears after scrolling, drive it from code —
+  a temporary `Rows.ScrollIntoView(...)` on a delay, logging the state to stdout, then revert.
 
 ---
 

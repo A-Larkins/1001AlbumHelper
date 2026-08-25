@@ -67,6 +67,65 @@ public partial class MainWindow : Window
         }
     }
 
+    // ---------- Apple Music favourites ----------
+
+    /// <summary>
+    /// The read-only half of the favourites card: works out what a backfill would do and prints it,
+    /// writing nothing. Deliberately terse next to the <c>favtest</c> command line, which names
+    /// every album — this is a card on a home screen, and the counts are what decides whether to
+    /// press it again.
+    /// </summary>
+    private static async Task<Operations.FavoritesBackfillPlan> PreviewFavoritesAsync()
+    {
+        Console.WriteLine("\n=== What a favourites backfill would do ===\n");
+
+        var plan = await Operations.PlanFavoritesBackfillAsync();
+        if (plan.Error is not null) { Console.WriteLine($"✗ {plan.Error}"); return plan; }
+
+        Console.WriteLine($"Apple Music holds {plan.FavoritedInLibrary} favourited albums and "
+                          + $"{plan.InPlaylist} in “{AppleMusic.FavoritesPlaylistName}”.");
+        Console.WriteLine(plan.Summary);
+        Console.WriteLine();
+        foreach (var item in plan.Work) Console.WriteLine($"   {item.Intent,-20} {item.Album.Display}");
+        Console.WriteLine($"\n{plan.Work.Count} album{(plan.Work.Count == 1 ? "" : "s")} to touch. "
+                          + "Nothing has been written.");
+        return plan;
+    }
+
+    /// <summary>
+    /// Turns the favourites card into the "yes, do it" button once a preview has said what "it" is,
+    /// and back again afterwards. The card is the confirmation: the backfill writes hundreds of
+    /// changes into the real Apple Music library, and unlike everything else on this screen those
+    /// can't be taken back from here — Apple's API has no remove (PROJECT.md §5).
+    /// </summary>
+    private void ArmFavourites(Operations.FavoritesBackfillPlan? plan)
+    {
+        bool armed = plan is { Error: null, Work.Count: > 0 };
+
+        FavoritesButton.Tag = armed ? "favorites-backfill" : "favorites-check";
+        FavoritesBadge.IsVisible = armed;
+
+        if (armed)
+        {
+            FavoritesBadgeText.Text = "READY";
+            FavoritesTitleText.Text = $"Backfill {plan!.Work.Count} albums now";
+            FavoritesDescText.Text =
+                $"{plan.ToFavorite} to favourite, {plan.ToAddToPlaylist} to add to "
+                + $"“{AppleMusic.FavoritesPlaylistName}” — the log above lists them. Press to write it "
+                + "to Apple Music. Expect a second or two per album, and note that the app can't undo "
+                + "a playlist add afterwards.";
+            return;
+        }
+
+        FavoritesTitleText.Text = "Backfill favourites";
+        FavoritesDescText.Text = plan is { Error: null }
+            ? "Apple Music already agrees with the lists — every album on them is favourited and in "
+              + "“Almost forgot to listen to these today”. Press to check again."
+            : "Put a heart on every album of the finished list that Apple Music hasn't already got "
+              + "one on, and mirror the same albums into “Almost forgot to listen to these today”. "
+              + "Press once to see what it would do — nothing is written until you press again.";
+    }
+
     // ---------- Running an operation ----------
     private async void OnRun(object? sender, RoutedEventArgs e)
     {
@@ -83,6 +142,7 @@ public partial class MainWindow : Window
         bool ok = false;
         string? err = null;
         string? exportedPdf = null;
+        Operations.FavoritesBackfillPlan? plan = null;
 
         await Task.Run(async () =>
         {
@@ -95,6 +155,8 @@ public partial class MainWindow : Window
                     case "sync-all": await Operations.SyncAllAsync(); break;
                     case "export-pdf": exportedPdf = await Operations.ExportPdfAsync(); break;
                     case "sync-check": await Operations.ListSheetTabsAsync(); break;
+                    case "favorites-check": plan = await PreviewFavoritesAsync(); break;
+                    case "favorites-backfill": await Operations.BackfillAppleMusicFavoritesAsync(); break;
                 }
                 ok = true;
             }
@@ -125,6 +187,10 @@ public partial class MainWindow : Window
 
             // A sync changes exactly what the badge reports, so re-check once it's done.
             if (action == "sync-all") _ = RefreshSyncStatusAsync();
+
+            // The favourites card is its own confirmation step — see ArmFavourites.
+            if (action == "favorites-check") ArmFavourites(plan);
+            else if (action == "favorites-backfill") ArmFavourites(null);
 
             // Reveal the finished PDF rather than making them hunt for it.
             if (exportedPdf is not null) RevealInFinder(exportedPdf);

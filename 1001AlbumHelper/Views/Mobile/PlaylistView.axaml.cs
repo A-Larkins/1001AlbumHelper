@@ -1,5 +1,7 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 
@@ -14,9 +16,26 @@ namespace _1001AlbumHelper;
 /// </summary>
 public partial class PlaylistView : UserControl
 {
+    /// <summary>
+    /// True on Playlist 2, the recommendations queue. A styled property rather than a field because
+    /// the row template binds to it to decide whether to offer "＋ Shortlist" — Playlist 1 holds
+    /// the 1001 itself, which has nothing to be shortlisted as a replacement for it.
+    /// </summary>
+    public static readonly StyledProperty<bool> IsRecommendationsProperty =
+        AvaloniaProperty.Register<PlaylistView, bool>(nameof(IsRecommendations));
+
+    public bool IsRecommendations
+    {
+        get => GetValue(IsRecommendationsProperty);
+        private set => SetValue(IsRecommendationsProperty, value);
+    }
+
     private int _playlistId;
     private string _appleMusicName = "";
     private PlaylistStore? _store;
+
+    /// <summary>Guards against a second tap while a shortlist or keep round trip is still running.</summary>
+    private bool _shortlisting;
 
     public PlaylistView() => InitializeComponent();
 
@@ -29,6 +48,7 @@ public partial class PlaylistView : UserControl
     {
         _playlistId = id;
         _appleMusicName = appleMusicName;
+        IsRecommendations = id == 2;
         TitleText.Text = title;
         SubtitleText.Text = subtitle;
         Refresh();
@@ -57,6 +77,68 @@ public partial class PlaylistView : UserControl
         if (_store is null || sender is not Button button || button.DataContext is not PlaylistEntry entry) return;
         _store.RequestRemoval(entry);
         Refresh();
+    }
+
+    /// <summary>
+    /// Puts one album from Playlist 2 straight on to the potentials shortlist — the same route a
+    /// pull-down takes (see <see cref="ShortlistIntake"/>), just for the one album you're listening
+    /// to rather than the whole queue, so writing it down doesn't mean leaving this tab.
+    /// <para>
+    /// The button is deliberately stateless: rows here virtualize, so a label set on the button
+    /// would follow its container on to some other album. Saying what happened in the status line
+    /// costs nothing, and a second tap is harmless anyway — the intake compares against the
+    /// shortlist itself, so an album already on it is left exactly as it is.
+    /// </para>
+    /// </summary>
+    private async void OnAddToShortlist(object? sender, RoutedEventArgs e)
+    {
+        if (_shortlisting || sender is not Button { DataContext: PlaylistEntry entry }) return;
+
+        _shortlisting = true;
+        Note($"Adding {entry.Title} to the shortlist…");
+        try
+        {
+            // cacheLocally: false — the phone has no writable copy of the shortlist, so the
+            // Potentials sheet is the only place a candidate can be saved. Same as the pull.
+            var intake = await ShortlistIntake.AbsorbAsync(
+                new[] { entry }, cacheLocally: false, progress: Note);
+
+            Note(intake.Problem is not null ? $"⚠ {intake.Problem}"
+                 : intake.Added.Count > 0 ? $"✓ {entry.Title} is on the shortlist. {intake.Summary}".TrimEnd()
+                 : $"{entry.Title} was already on the shortlist. {intake.Summary}".TrimEnd());
+        }
+        catch (Exception ex) { Note($"Couldn't add {entry.Title} to the shortlist: {ex.Message}"); }
+        finally { _shortlisting = false; }
+    }
+
+    /// <summary>
+    /// The decided version of the button above: puts the album on the replacements list proper and
+    /// marks it kept on the shortlist, which is what the shortlist tab's own "Keep" does — see
+    /// <see cref="Operations.KeepFromPlaylistAsync(PlaylistEntry, ISheetsClient, string, string, string, bool, Action{string})"/>.
+    /// Both writes go through the phone's REST client, since there's no OAuth here.
+    /// </summary>
+    private async void OnKeep(object? sender, RoutedEventArgs e)
+    {
+        if (_shortlisting || sender is not Button { DataContext: PlaylistEntry entry }) return;
+
+        var sheets = MobileSheets.Create();
+        if (sheets.Client is null)
+        {
+            Note($"Can't reach the replacements list — Sheets sync {sheets.Status}.");
+            return;
+        }
+
+        _shortlisting = true;
+        Note($"Keeping {entry.Title}…");
+        try
+        {
+            var result = await Operations.KeepFromPlaylistAsync(
+                entry, sheets.Client, sheets.ReplacementsTab, sheets.AlbumsTab, sheets.StarredTab,
+                cacheLocally: false, progress: Note);
+            Note(result.Message);
+        }
+        catch (Exception ex) { Note($"Couldn't keep {entry.Title}: {ex.Message}"); }
+        finally { _shortlisting = false; }
     }
 
     /// <summary>The user has manually deleted this album from Apple Music — drop it off the checklist.</summary>

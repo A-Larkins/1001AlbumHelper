@@ -42,17 +42,17 @@ public sealed class MusicAppPlaylistWriter : IApplePlaylistWriter
 
     public async Task<PlaylistOpResult> AddAlbumAsync(string playlistName, PlaylistEntry album)
     {
-        List<LibraryTrack> hits;
+        TrackSelection selection;
+        string term;
         try
         {
-            hits = await SearchLibraryAsync(album.Title).ConfigureAwait(false);
+            (selection, term) = await LocateAsync(album).ConfigureAwait(false);
         }
         catch (Exception ex)
         {
             return new PlaylistOpResult(false, $"Music app lookup failed: {ex.Message}");
         }
 
-        var selection = ChooseAlbum(hits, album.Artist, album.Title);
         if (selection.Chosen.Count == 0)
         {
             // Told apart, because they call for different things: an album Music has never heard of
@@ -64,7 +64,8 @@ public sealed class MusicAppPlaylistWriter : IApplePlaylistWriter
 
         try
         {
-            var added = await DuplicateIntoPlaylistAsync(playlistName, album.Title, selection.Chosen.ToList());
+            // The term that found it, not the name as written — the add script re-runs the search.
+            var added = await DuplicateIntoPlaylistAsync(playlistName, term, selection.Chosen.ToList());
             if (added == NoPlaylistResult)
                 return new PlaylistOpResult(false, $"No Music playlist named “{playlistName}” — create it in Music first.");
             if (added == 0)
@@ -104,7 +105,17 @@ public sealed class MusicAppPlaylistWriter : IApplePlaylistWriter
     /// edition that only appears once.
     /// </para>
     /// </summary>
-    private static TrackSelection ChooseAlbum(List<LibraryTrack> hits, string artist, string title)
+    /// <param name="bareTitle">
+    /// Set only on the fallback pass (see <see cref="LocateAsync"/>): the album's name with the
+    /// list's own furniture removed. When it's set, a candidate qualifies by having the <em>same</em>
+    /// bare name — its own parenthetical stripped too, since Music stocks "Led Zeppelin
+    /// (Remastered)" and "The Clash (2013 Remastered)". Equality, not the usual prefix rule: over a
+    /// search for "Led Zeppelin" a prefix would accept "Led Zeppelin II" and the tie-break could
+    /// then hand back the wrong record. Everything after the filter — artist, fewest tracks, the
+    /// original over the deluxe — is decided exactly as it always is.
+    /// </param>
+    private static TrackSelection ChooseAlbum(List<LibraryTrack> hits, string artist, string title,
+                                              string? bareTitle = null)
     {
         var groups = hits
             .GroupBy(t => $"{NumberedList.Normalize(t.Album)}|{NumberedList.Normalize(t.AlbumArtist)}")
@@ -123,10 +134,142 @@ public sealed class MusicAppPlaylistWriter : IApplePlaylistWriter
             })
             .ToList();
 
+        if (bareTitle is not null)
+        {
+            candidates = candidates
+                .Where(c => NumberedList.Matches(DiscogsApiClient.BareTitle(c.CollectionName), bareTitle))
+                .ToList();
+            title = bareTitle;
+        }
+
         var best = AppleMusicCatalog.FindBestMatch(candidates, artist, title);
         return best is null
             ? new TrackSelection(Array.Empty<LibraryTrack>(), Array.Empty<LibraryTrack>())
             : groups[(int)best.CollectionId];
+    }
+
+    /// <summary>
+    /// Finds the album in Music, and reports which search term found it — the caller needs that,
+    /// because both scripts that act on an album re-run the search rather than being handed track
+    /// references (AppleScript can't pass those between processes).
+    /// <para>
+    /// Only the <em>search</em> falls back to the bare name; which album is the right one is still
+    /// decided against the name as the list writes it, by the same
+    /// <see cref="ChooseAlbum"/> as before. So this can widen what Music offers, never what counts
+    /// as a match.
+    /// </para>
+    /// </summary>
+    private async Task<(TrackSelection Selection, string Term)> LocateAsync(PlaylistEntry album)
+    {
+        var selection = new TrackSelection(Array.Empty<LibraryTrack>(), Array.Empty<LibraryTrack>());
+        string term = album.Title;
+
+        foreach (var attempt in SearchTerms(album.Title))
+        {
+            term = attempt;
+            var hits = await SearchLibraryAsync(attempt).ConfigureAwait(false);
+
+            // The first attempt is the name as written, matched as it always has been. A later one
+            // is the bare name, and is matched bare on both sides — see ChooseAlbum's bareTitle.
+            selection = attempt == album.Title
+                ? ChooseAlbum(hits, album.Artist, album.Title)
+                : ChooseAlbum(hits, album.Artist, album.Title, bareTitle: attempt);
+
+            if (selection.Chosen.Count > 0 || selection.Unavailable.Count > 0) break;
+        }
+
+        return (selection, term);
+    }
+
+    /// <summary>
+    /// What to ask Music for, in order: the album as the list writes it, then — where the list has
+    /// put its own furniture on the end — the bare name.
+    /// <para>
+    /// The list distinguishes rows with suffixes Music has never heard of: "Audioslave (self
+    /// titled)", "Tarzan (soundtrack)", "Metallica (Black Album)". Searching for the literal string
+    /// returns nothing at all, which is why 44 of the 76 albums the first favourites backfill
+    /// couldn't find were of exactly this shape (2026-08-25). Dropping the trailing parenthetical
+    /// leaves the name Music actually files them under.
+    /// </para>
+    /// <para>
+    /// Widening the search alone recovered only 30 of them, because Music's own copy usually wears
+    /// a parenthetical of its own — "Led Zeppelin (Remastered)", "The Clash (2013 Remastered)",
+    /// "Joan Baez (Bonus Track Version)" — and "(self titled)" makes our name the longer of the two,
+    /// so the prefix rule fails. Hence the bare-on-both-sides match in <see cref="ChooseAlbum"/>.
+    /// </para>
+    /// </summary>
+    private static IEnumerable<string> SearchTerms(string title)
+    {
+        yield return title;
+
+        // BareTitle hands back the original when there'd be nothing left of it — a title that is
+        // wholly a parenthetical, like Lynyrd Skynyrd's "(Pronounced 'Lĕh-'nérd 'Skin-'nérd)".
+        string bare = DiscogsApiClient.BareTitle(title);
+        if (!string.Equals(bare, title, StringComparison.OrdinalIgnoreCase)) yield return bare;
+    }
+
+    // ---------- Favourites ----------
+
+    /// <summary>The Music app's <c>album favorited</c> is read/write over AppleScript, so yes.</summary>
+    public bool CanFavorite => true;
+
+    /// <summary>
+    /// Every favourited album in the library. Read with three <c>whose album favorited is true</c>
+    /// passes rather than by walking the library and asking each track: a bulk get is one AppleEvent
+    /// returning a whole column, where the walk would be tens of thousands of round trips against a
+    /// library this size. The three columns line up row for row, and are folded into albums by the
+    /// same <see cref="PlaylistTracks.CollapseToAlbums"/> a playlist read uses.
+    /// </summary>
+    public async Task<IReadOnlyList<PlaylistEntry>> ReadFavoritedAlbumsAsync()
+    {
+        var output = await RunScriptAsync(ReadFavoritedScript).ConfigureAwait(false);
+
+        var tracks = Rows(output).Select(f => new PlaylistTrack(
+            Album: Field(f, 0),
+            // Compilations leave "album artist" blank; the track artist is the only name there is.
+            Artist: Field(f, 1).Length > 0 ? Field(f, 1) : Field(f, 2)));
+
+        return PlaylistTracks.CollapseToAlbums(tracks);
+    }
+
+    /// <summary>
+    /// Marks an album as a favourite, choosing which album that is exactly the way
+    /// <see cref="AddAlbumAsync"/> does — so the record that gets the heart is the record that
+    /// would have gone into the playlist, deluxe-edition tie-breaks and all.
+    /// </summary>
+    public async Task<PlaylistOpResult> FavoriteAlbumAsync(PlaylistEntry album)
+    {
+        TrackSelection selection;
+        string term;
+        try
+        {
+            (selection, term) = await LocateAsync(album).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            return new PlaylistOpResult(false, $"Music app lookup failed: {ex.Message}");
+        }
+
+        // Unlike adding, a withdrawn track is no obstacle: it still carries the album's favourite
+        // flag, so an album Apple Music no longer streams can still be marked.
+        var marked = selection.Chosen.Concat(selection.Unavailable).ToList();
+        if (marked.Count == 0)
+            return new PlaylistOpResult(false, $"Not found in Music: {album.Title}");
+
+        try
+        {
+            var args = new List<string> { term };
+            args.AddRange(marked.Select(t => t.PersistentId));
+            var output = (await RunScriptAsync(FavoriteAlbumScript, args.ToArray()).ConfigureAwait(false)).Trim();
+
+            return int.TryParse(output, out int touched) && touched > 0
+                ? new PlaylistOpResult(true, $"Favourited {album.Title}")
+                : new PlaylistOpResult(false, $"Music didn't mark {album.Title} as a favourite.");
+        }
+        catch (Exception ex)
+        {
+            return new PlaylistOpResult(false, $"Couldn't favourite: {ex.Message}");
+        }
     }
 
     // ---------- Reading back ----------
@@ -146,7 +289,34 @@ public sealed class MusicAppPlaylistWriter : IApplePlaylistWriter
 
     // ---------- Music app plumbing ----------
 
-    private static async Task<List<LibraryTrack>> SearchLibraryAsync(string term)
+    /// <summary>
+    /// The last few searches and what they returned. The favourites backfill asks for the same album
+    /// twice in a row — once to favourite it, once to put it in the playlist — and a library search
+    /// is by some way the slowest thing here, so the second ask is answered from this instead.
+    /// <para>
+    /// Kept a handful deep rather than one, because <see cref="SearchTerms"/> can try two names for
+    /// a single album: one-deep would remember only the second, and the next call would pay for the
+    /// first all over again. Small on purpose — it exists to collapse that handful, not to be a
+    /// cache of the library — and cleared wholesale rather than aged, since which entry is oldest
+    /// stops mattering at this size.
+    /// </para>
+    /// </summary>
+    private readonly Dictionary<string, List<LibraryTrack>> _recentSearches = new();
+
+    /// <summary>How many searches to remember: two terms each for the favourite and the add.</summary>
+    private const int RecentSearchLimit = 4;
+
+    private async Task<List<LibraryTrack>> SearchLibraryAsync(string term)
+    {
+        if (_recentSearches.TryGetValue(term, out var cached)) return cached;
+
+        var hits = await RunSearchAsync(term).ConfigureAwait(false);
+        if (_recentSearches.Count >= RecentSearchLimit) _recentSearches.Clear();
+        _recentSearches[term] = hits;
+        return hits;
+    }
+
+    private static async Task<List<LibraryTrack>> RunSearchAsync(string term)
     {
         var output = await RunScriptAsync(SearchLibraryScript, term).ConfigureAwait(false);
         return Rows(output)
@@ -290,6 +460,52 @@ public sealed class MusicAppPlaylistWriter : IApplePlaylistWriter
                 end if
               end repeat
               return added as text
+            end tell
+          end timeout
+        end run
+        """;
+
+    private const string ReadFavoritedScript = """
+        on run argv
+          with timeout of 280 seconds
+            tell application "Music"
+              set src to library playlist 1
+              -- Three bulk gets, not a walk: each is a single AppleEvent returning one whole
+              -- column of the filtered set, and they come back row-aligned with each other.
+              set albumNames to (album of every track of src whose album favorited is true)
+              set albumArtists to (album artist of every track of src whose album favorited is true)
+              set trackArtists to (artist of every track of src whose album favorited is true)
+              set n to count of albumNames
+              if (count of albumArtists) < n then set n to count of albumArtists
+              if (count of trackArtists) < n then set n to count of trackArtists
+              set rows to {}
+              repeat with i from 1 to n
+                set end of rows to ((item i of albumNames) & tab & ¬
+                                    (item i of albumArtists) & tab & (item i of trackArtists))
+              end repeat
+              set AppleScript's text item delimiters to linefeed
+              return rows as text
+            end tell
+          end timeout
+        end run
+        """;
+
+    private const string FavoriteAlbumScript = """
+        on run argv
+          set searchTerm to item 1 of argv
+          set wanted to items 2 thru -1 of argv
+          with timeout of 280 seconds
+            tell application "Music"
+              set touched to 0
+              -- Setting it on any one track of the album favourites the whole album; every track is
+              -- set anyway so that a copy Music files separately can't be left behind.
+              repeat with t in (search library playlist 1 for searchTerm only albums)
+                if (persistent ID of t) is in wanted then
+                  set album favorited of t to true
+                  set touched to touched + 1
+                end if
+              end repeat
+              return touched as text
             end tell
           end timeout
         end run

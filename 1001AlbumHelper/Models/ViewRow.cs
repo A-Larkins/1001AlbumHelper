@@ -98,6 +98,8 @@ public sealed class ViewRow : INotifyPropertyChanged
 /// <summary>Which column a ViewRow list is ordered by when the user sorts it.</summary>
 public enum ViewRowSortColumn
 {
+    /// <summary>The list's own order — what the sheet holds, and where the list opens.</summary>
+    Number,
     Title,
     Artist,
     Year,
@@ -114,7 +116,18 @@ public static class ViewRowSort
     /// </summary>
     public static List<ViewRow> Sort(IEnumerable<ViewRow> rows, ViewRowSortColumn column, bool descending)
     {
-        if (column == ViewRowSortColumn.Year)
+        if (column == ViewRowSortColumn.Number)
+        {
+            // Numeric, not textual: "10" sorts after "9", not between "1" and "2". A row without a
+            // usable number trails, the same way a blank cell does in every other column.
+            var keyed = rows.Select(r => (row: r, has: int.TryParse(r.Number.Trim(), out int n), number: n));
+            var byPresence = keyed.OrderBy(x => !x.has);
+            var ordered = descending
+                ? byPresence.ThenByDescending(x => x.number)
+                : byPresence.ThenBy(x => x.number);
+            return ordered.Select(x => x.row).ToList();
+        }
+        else if (column == ViewRowSortColumn.Year)
         {
             var keyed = rows.Select(r => (row: r, has: int.TryParse(r.Year.Trim(), out int y), year: y));
             var byPresence = keyed.OrderBy(x => !x.has);

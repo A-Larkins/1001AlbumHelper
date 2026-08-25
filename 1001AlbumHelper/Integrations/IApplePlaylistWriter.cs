@@ -19,6 +19,28 @@ public interface IApplePlaylistWriter
 
     /// <summary>The albums currently in the Apple Music playlist named <paramref name="playlistName"/>.</summary>
     Task<IReadOnlyList<PlaylistEntry>> ReadAlbumsAsync(string playlistName);
+
+    /// <summary>
+    /// Whether this platform can read and set Apple Music's album favourites at all. False on the
+    /// iPhone: MediaPlayer exposes no favourite (formerly "loved") property, and the framework that
+    /// does — MusicKit — is Swift-only, the same wall the missing remove API runs into. The Mac
+    /// drives the Music app over AppleScript, where <c>album favorited</c> is read/write.
+    /// </summary>
+    bool CanFavorite => false;
+
+    /// <summary>
+    /// Every album in the library currently marked as a favourite. Throws where
+    /// <see cref="CanFavorite"/> is false.
+    /// </summary>
+    Task<IReadOnlyList<PlaylistEntry>> ReadFavoritedAlbumsAsync() =>
+        throw new NotSupportedException("Apple Music favourites can't be read on this platform.");
+
+    /// <summary>
+    /// Marks one album as a favourite in Apple Music. Idempotent — favouriting an album that
+    /// already is one changes nothing. Throws where <see cref="CanFavorite"/> is false.
+    /// </summary>
+    Task<PlaylistOpResult> FavoriteAlbumAsync(PlaylistEntry album) =>
+        throw new NotSupportedException("Apple Music favourites can't be set on this platform.");
 }
 
 /// <summary>
@@ -30,4 +52,14 @@ public static class AppleMusic
     public static IApplePlaylistWriter? Writer { get; set; }
 
     public static bool IsAvailable => Writer is not null;
+
+    /// <summary>Whether favourites can be read and set here — see <see cref="IApplePlaylistWriter.CanFavorite"/>.</summary>
+    public static bool CanFavorite => Writer is { CanFavorite: true };
+
+    /// <summary>
+    /// The Apple Music playlist that shadows the favourites — a deliberate duplicate of them, kept
+    /// because a playlist is somewhere you can actually sit down and play, and because the name is
+    /// funny. The backfill fills both together.
+    /// </summary>
+    public const string FavoritesPlaylistName = "Almost forgot to listen to these today";
 }

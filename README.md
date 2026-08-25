@@ -45,12 +45,23 @@ record remastered in 2010 is a 1970 record.
 
 **Build listening playlists.** Two working lists — Playlist 1 from the 1001, Playlist 2 for
 recommendations — that push straight into real Apple Music playlists of the same name, and pull back
-down to match what's actually there.
+down to match what's actually there. Playlist 2 rows carry two verdicts, so the album playing right
+now can be dealt with without leaving the tab: **＋ Shortlist** writes it down undecided, **Keep**
+is the decision — it goes on the replacements list proper, slotted into its year block and
+renumbered, and is marked kept on the shortlist. Keep looks the year up on Discogs when Apple Music
+didn't supply one, and refuses if the album turns out to be on the 1001 already.
+
+**Backfill Apple Music favourites** *(Mac only)*. The finished list and Apple Music's own favourites
+are the same list twice over, and they drift. One action reconciles them: a heart on every album of
+the list that hasn't got one, mirrored into the playlist called *Almost forgot to listen to these
+today*. It previews before it writes, and only ever turns a favourite on.
 
 **Sync across devices.** Ratings and the shortlist live in a Google Sheet, so the Mac and the phone
 see the same thing without either being the master.
 
-**Export.** The combined "must hear" + replacements list to PDF, plus Excel/CSV.
+**Export.** The combined "must hear" + replacements list to PDF, plus Excel/CSV. The PDF opens on a
+page about where the list comes from — what the book is, what its panel ruled out (compilations,
+soundtracks, classical, EPs) and the one rule this list has let go: a great EP counts.
 
 ---
 
@@ -67,6 +78,8 @@ do windows).
 | Browse 1001 / Must Hear / Replacements | ✅ | ✅ |
 | Shortlist: add, keep, drop, edit years | ✅ | ✅ |
 | Playlists: queue, push, pull | ✅ | ✅ |
+| Playlist 2 row → shortlist, or Keep → replacements | ✅ | ✅ |
+| Backfill Apple Music favourites | ✅ | — *(no favourite API on iOS)* |
 | Google Sheets sync | ✅ | ✅ |
 | Apple Music | Music.app via AppleScript | MediaPlayer framework |
 | Per-track playability picking | ✅ | n/a (see below) |
@@ -224,6 +237,8 @@ dotnet run --project 1001AlbumHelper.Desktop -- synctest         # Sheets potent
 dotnet run --project 1001AlbumHelper.Desktop -- resttest         # the mobile-safe REST Sheets client (scratch tab)
 dotnet run --project 1001AlbumHelper.Desktop -- musictest        # the Mac's Apple Music path (scratch playlist)
 dotnet run --project 1001AlbumHelper.Desktop -- intaketest       # rehearse a PLAYLIST2 pull, writing nothing
+dotnet run --project 1001AlbumHelper.Desktop -- favtest          # rehearse the favourites backfill, writing nothing
+dotnet run --project 1001AlbumHelper.Desktop -- backfill-favorites  # heart the list in Apple Music (Mac only)
 dotnet run --project 1001AlbumHelper.Desktop -- backfill-genres  # fill missing genres via Discogs (resumable)
 ```
 
