@@ -107,6 +107,7 @@ a **single view with four bottom tabs** (phones don't do windows).
 | 2026-08-21 | **The phone app gets a design system.** The mobile UI was stock Avalonia Fluent — grey buttons, a solid-blue selection bar down a 1000-row list, and each screen redefining its own “segmented control” out of opacity tweaks. All of it now comes from one file, `Views/Mobile/MobileTheme.axaml`: palette (near-black canvas, the gold the Keep button already used as the single accent), an Inter type scale, and a look for every control. It is included by **`MainView`, not `App.axaml`** — App is shared with the Mac head, so that scoping is what lets the phone be restyled without touching one desktop window. The **nav** was rebuilt rather than restyled: the TabControl's own strip is hidden (`headless`) and a real bottom bar drawn in its place, icon over label with a gold pill on the active tab, while the TabControl still switches content so `SelectedIndex` and every per-tab refresh are unchanged. Three grid bugs fell out of doing it: row padding collapsed to zero because Fluent **template-binds `ListBoxItem.Padding`**, which beats a style setter on the row's ContentPresenter — the ＋ buttons were being clipped off the right edge, and the inset is set through the `ListBoxItemPadding` resource now; browse rows used an `Auto` rating column, so an unrated album's title sat left of its neighbours'; and the four rating tiles were visibly uneven because “Mostly enjoyable” wraps to two lines where “Trash” doesn't. A sync line that reads “” on a good sync was reserving its line height and leaving a gap above every list, so those collapse when empty. `mobilepreview` gained `ALBUMHELPER_PREVIEW_TAB` — without it every screen but List needs a tap to reach, which is awkward when the point of the run is to look at one of the others. |
 | 2026-08-21 | **An album is dated from its first release, not from a reissue.** A 1970 record remastered in 2010 should read 1970. The Discogs lookups already searched `type=master`, which is the original in the ordinary case — but Discogs files a reissue under an *extended name* (“Abbey Road (2019 Mix)”), so that is a master of its own, and when the playlist names the pressing it holds, the first rung of the search ladder finds exactly it. `PreferOriginalRelease` now sits over the verified candidates: where one candidate's title is a whole-word prefix of another's, the shorter is the album and the longer an edition of it, and the edition is set aside. **Deliberately not “take the earliest year”** — `AlbumRankingTests` already documents why that is wrong: Blue Train has masters at 1957 (a recording-date entry), 1958 (the release everyone owns) and 2010 (a reissue), and 1958 is the answer. Most-owned still decides between same-named masters; the new rule only fires when one title extends another, so that test is untouched. Five tests added. |
 | 2026-08-25 | **Finding an album to rate stopped happening at the bottom of the screen.** The Rate tab's find box sat in the last row of the layout, which on a phone is precisely where iOS puts the keyboard: tapping it hid the box, the matches it was producing *and* the four rating tiles, so you typed a name blind with nothing to pick from. The field moved **into the pinned header**, under the queue picker, where it is always on screen and the keyboard opens below it; the results take the album card's place rather than being buried under glass. A first cut put the field behind a "Jump to…" chip instead and that was wrong — a search you have to go and find reads as a search that was removed. Beside the field an **A–Z button** opens those same results *without* raising the keyboard, which is what makes the new **index rail** worth having: an empty field lists all 1089, and the rail down the right edge works like the index in Contacts — press and drag and the list skims, with the stop under your thumb shown in a bubble over the list (in the gutter your own finger would cover it). The rail indexes whatever order the list is in — initials for Title A–Z and Artist A–Z, hundreds for list order — takes each label once at its first row (symbol-led titles sort both before "A" and after "Z", and two "#" stops read as a broken rail), and offers only stops with rows behind them, so a drag can't land on nothing. A `Viewbox` shrinks the strip to whatever height is left when the keyboard *is* up. Filing follows `NumberedList.Normalize`, which already drops a leading "the", so The Beatles sits under B. |
+| 2026-10-30 | **Albums missing from the Music library get a way in.** A Mac push reported "Not found in Music: Dummy" for an album plainly in Apple Music. The cause wasn't the matching: `search library playlist 1` only reaches the *library*, never the catalog — the Sync Library claim from 2026-08-19 was wrong — and AppleScript can't add a catalog album at all. Now a library miss falls back to the iPhone's `AppleMusicCatalog` lookup; if Apple Music has the album, the failure row gets an **Open in Music** button (a `music://` link to its page) so one ＋ there and another push finishes the job. The message also says which it is — not in the library, or not in Apple Music at all. Alongside: the Playlists window's album titles now trim instead of running under the artist column (a horizontal StackPanel never constrains its children), its headings line up with the rows again, and **Browse lists opens the 1001 at the next album to rate** — the one after the furthest rated row — rather than at #1. |
 
 ---
 
@@ -252,10 +253,14 @@ and stays null on Windows/Linux, where the playlist UI simply shows its Apple Mu
   via `on run argv` — never string-interpolated — so an album title full of quotes can't break, or
   rewrite, the script.
 - Adding is *search-then-duplicate*: ask Music to `search library playlist 1 … only albums`, pick the
-  right album, then `duplicate` its tracks into the target playlist. **With Sync Library on, that
-  search covers the whole Apple Music catalog**, not just what's already been added — obscure 1001
-  entries (Pere Ubu's *The Modern Dance*, Can's *Tago Mago*) resolve fine. It needs no iTunes Search
-  API call at all, so the rate limit in §7 doesn't apply to a Mac push.
+  right album, then `duplicate` its tracks into the target playlist. **That search only reaches the
+  library** — albums already added with ＋ — not the wider Apple Music catalog, Sync Library or not
+  (checked 2026-10-30: Portishead's *Dummy* is in the catalog, has no tracks in the library, and the
+  search returns nothing). AppleScript has no verb for adding a catalog album, so the Mac can't close
+  that gap itself. When the library search misses, the writer asks the iTunes Search API whether
+  Apple Music has the album; if so, the failure carries a `music://` link to its page, and the
+  Playlists window offers **Open in Music** — one click on ＋ there, then push again. Albums already
+  in the library cost no iTunes call, so the rate limit in §7 only touches the misses.
 - Which album to add is decided by the **same `AppleMusicCatalog.FindBestMatch` the phone uses**
   (library hits are grouped into albums and handed to it), so both apps prefer the original release
   over a padded "(Deluxe Edition)" sitting beside it in exactly the same way.
@@ -449,10 +454,11 @@ tab it creates and deletes, so it never risks the real lists.
   `PlaylistTracks.PreferPlayable` does. Statuses other than "no longer available" (subscription,
   purchased, matched, uploaded…) all count as playable — an unfamiliar one is far likelier to play
   than not.
-- **A Mac push needs Sync Library on** in Music ▸ Settings. That's what makes
-  `search library playlist 1` reach the whole Apple Music catalog instead of only local files —
-  without it, anything not already downloaded simply won't be found, and every album fails with
-  "Not found in Music".
+- **A Mac push only finds albums already in the library.** `search library playlist 1` never
+  reaches the Apple Music catalog — an album you haven't added with ＋ isn't found however exact the
+  name, so no amount of fuzzier matching helps. Sync Library still matters (without it, albums
+  added on another device aren't there either), but it doesn't widen the search. Misses get an
+  **Open in Music** button instead (see §5).
 - **Automation permission.** The first Mac push makes macOS ask to let the app control Music
   (System Settings ▸ Privacy & Security ▸ Automation). Denying it makes every push fail; there's no
   way to re-prompt, it has to be re-enabled there by hand.

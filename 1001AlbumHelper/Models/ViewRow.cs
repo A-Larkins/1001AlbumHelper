@@ -93,6 +93,24 @@ public sealed class ViewRow : INotifyPropertyChanged
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;
+
+    /// <summary>
+    /// Where the 1001 picks up: the first blank row after the furthest one that carries any mark —
+    /// a rating or a "✓ listened". Rows skipped further back don't count, since the list is worked
+    /// through in order and those are leftovers, not the place reached. 0 when nothing is marked;
+    /// the last row when everything is.
+    /// </summary>
+    public static int ResumeIndex(IReadOnlyList<ViewRow> rows)
+    {
+        int lastMarked = -1;
+        for (int i = rows.Count - 1; i >= 0; i--)
+        {
+            if (!string.IsNullOrWhiteSpace(rows[i].Rating)) { lastMarked = i; break; }
+        }
+
+        // Everything after the furthest mark is blank by definition, so the next row is the one.
+        return Math.Min(lastMarked + 1, Math.Max(0, rows.Count - 1));
+    }
 }
 
 /// <summary>Which column a ViewRow list is ordered by when the user sorts it.</summary>

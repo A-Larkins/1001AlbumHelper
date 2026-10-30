@@ -169,4 +169,27 @@ public class AppleMusicCatalogTests
         Assert.Equal("https://example.com/cover.jpg",
             AppleMusicCatalog.ArtworkAtSize("https://example.com/cover.jpg", 600));
     }
+
+    /// <summary>
+    /// The Mac's way past an album that isn't in the library: a link Music itself claims, so the
+    /// album page opens in the app rather than a browser.
+    /// </summary>
+    [Fact]
+    public void An_albums_page_opens_in_the_Music_app_not_a_browser()
+    {
+        var album = AppleMusicCatalog.ParseSearchResults("""
+            {"results":[{"collectionId":1440653096,"collectionName":"Dummy","artistName":"Portishead",
+              "trackCount":11,"collectionViewUrl":"https://music.apple.com/us/album/dummy/1440653096?uo=4"}]}
+            """).Single();
+
+        Assert.Equal("music://music.apple.com/us/album/dummy/1440653096", AppleMusicCatalog.MusicAppUrl(album));
+    }
+
+    [Fact]
+    public void An_album_with_no_page_link_still_opens_by_its_id()
+    {
+        var album = new AppleMusicAlbum(1440653096, "Dummy", "Portishead", 11);
+
+        Assert.Equal("music://music.apple.com/us/album/1440653096", AppleMusicCatalog.MusicAppUrl(album));
+    }
 }

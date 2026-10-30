@@ -14,9 +14,10 @@ namespace _1001AlbumHelper;
 /// <para>
 /// Where iOS resolves an album to a store id via <see cref="AppleMusicCatalog"/> and adds it by id,
 /// the Mac asks Music to <c>search</c> for it and duplicates the resulting tracks into the playlist.
-/// With Sync Library on, that search covers the whole Apple Music catalog and not just what's
-/// already been added — so obscure entries off the 1001 list resolve the same as they do on the
-/// phone, and with no iTunes Search API call (so no rate limit — see PROJECT.md §7).
+/// That search only reaches the library — albums already added — never the wider catalog, and
+/// AppleScript can't add a catalog album. A miss therefore falls back to the iPhone's catalog lookup
+/// to hand the user a link to the album in Music (see <see cref="NotInLibraryAsync"/>), so only the
+/// misses cost an iTunes Search API call (rate limit: PROJECT.md §7).
 /// </para>
 ///
 /// <para>
@@ -59,7 +60,7 @@ public sealed class MusicAppPlaylistWriter : IApplePlaylistWriter
             // is a lookup to fix, one Music has entirely withdrawn is nothing the app can do about.
             return selection.Unavailable.Count > 0
                 ? new PlaylistOpResult(false, $"Apple Music no longer has a playable copy of {album.Title}.")
-                : new PlaylistOpResult(false, $"Not found in Music: {album.Title}");
+                : await NotInLibraryAsync(album).ConfigureAwait(false);
         }
 
         try
@@ -208,6 +209,31 @@ public sealed class MusicAppPlaylistWriter : IApplePlaylistWriter
         if (!string.Equals(bare, title, StringComparison.OrdinalIgnoreCase)) yield return bare;
     }
 
+    /// <summary>
+    /// The failure for an album the library search can't see. That search only reaches the library
+    /// — what's been added with ＋ — never the wider Apple Music catalog, and AppleScript has no way
+    /// to add a catalog album. So ask the catalog itself (the iPhone's lookup) whether Apple Music
+    /// has the album at all: if it does, hand back a link to its page in Music, where one click adds
+    /// it and the next push goes through. A failed catalog lookup only costs the link.
+    /// </summary>
+    private static async Task<PlaylistOpResult> NotInLibraryAsync(PlaylistEntry album)
+    {
+        AppleMusicAlbum? found;
+        try
+        {
+            found = await AppleMusicCatalog.FindAlbumAsync(album.Artist, album.Title).ConfigureAwait(false);
+        }
+        catch (Exception)
+        {
+            return new PlaylistOpResult(false, $"Not in your Music library: {album.Title}");
+        }
+
+        return found is null
+            ? new PlaylistOpResult(false, $"Not in your Music library, and Apple Music doesn't seem to have it: {album.Title}")
+            : new PlaylistOpResult(false, "Not in your Music library yet — open it in Music, add it with ＋, then push again.",
+                                   AppleMusicCatalog.MusicAppUrl(found));
+    }
+
     // ---------- Favourites ----------
 
     /// <summary>The Music app's <c>album favorited</c> is read/write over AppleScript, so yes.</summary>
@@ -254,7 +280,7 @@ public sealed class MusicAppPlaylistWriter : IApplePlaylistWriter
         // flag, so an album Apple Music no longer streams can still be marked.
         var marked = selection.Chosen.Concat(selection.Unavailable).ToList();
         if (marked.Count == 0)
-            return new PlaylistOpResult(false, $"Not found in Music: {album.Title}");
+            return await NotInLibraryAsync(album).ConfigureAwait(false);
 
         try
         {
@@ -425,8 +451,7 @@ public sealed class MusicAppPlaylistWriter : IApplePlaylistWriter
           with timeout of 280 seconds
             tell application "Music"
               set rows to {}
-              -- Searching the main library playlist covers the whole Apple Music catalog when
-              -- Sync Library is on, not merely what's already been added to the library.
+              -- This reaches the library only — albums already added — not the Apple Music catalog.
               repeat with t in (search library playlist 1 for searchTerm only albums)
                 -- cloud status tells a playable track from one Apple Music has withdrawn; disc and
                 -- track number say which song it is, so a withdrawn copy can be swapped for a live

@@ -1,7 +1,11 @@
 namespace _1001AlbumHelper;
 
 /// <summary>The outcome of a single Apple Music playlist operation.</summary>
-public sealed record PlaylistOpResult(bool Ok, string Message);
+/// <param name="OpenUrl">
+/// Set on a failure the user can fix by hand in the Music app — an album Apple Music has but the
+/// library doesn't — as a link to its page there (see <see cref="AppleMusicCatalog.MusicAppUrl"/>).
+/// </param>
+public sealed record PlaylistOpResult(bool Ok, string Message, string? OpenUrl = null);
 
 /// <summary>
 /// Talks to the user's Apple Music library: adds an album to an existing playlist (found by name),

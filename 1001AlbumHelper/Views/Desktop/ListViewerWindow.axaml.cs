@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Avalonia.Controls;
+using Avalonia.Threading;
 using Avalonia.Interactivity;
 
 namespace _1001AlbumHelper;
@@ -16,6 +17,13 @@ public partial class ListViewerWindow : Window
     private readonly PlaylistStore _playlist1 = PlaylistStore.Open(1);
     private readonly PlaylistStore _playlist2 = PlaylistStore.Open(2);
     private Which _current = Which.Master;
+
+    /// <summary>
+    /// Set when the 1001 tab is (re)opened, so the list lands on the next album to rate instead of
+    /// on #1. Spent by the next unfiltered showing, so re-rating a row or typing a search never
+    /// yanks the list away from where the user is looking.
+    /// </summary>
+    private bool _jumpToResume = true;
 
     public ListViewerWindow()
     {
@@ -68,6 +76,7 @@ public partial class ListViewerWindow : Window
 
     private async void Show(Which which)
     {
+        if (which == Which.Master && _current != Which.Master) _jumpToResume = true;
         _current = which;
         MasterButton.Classes.Set("on", which == Which.Master);
         MustHearButton.Classes.Set("on", which == Which.MustHear);
@@ -110,6 +119,12 @@ public partial class ListViewerWindow : Window
 
         RowsList.ItemsSource = shown;
 
+        if (_jumpToResume && _current == Which.Master && query.Length == 0 && shown.Count > 0)
+        {
+            _jumpToResume = false;
+            ScrollToResume(shown);
+        }
+
         string name = _current switch
         {
             Which.Master => "the 1001",
@@ -129,6 +144,23 @@ public partial class ListViewerWindow : Window
             : "";
     }
 
+    /// <summary>
+    /// Brings the next album to rate to the top of the list, with a couple of rated rows above it
+    /// for context. ScrollIntoView only scrolls as far as it must — coming from the top that leaves
+    /// the row on the bottom edge — so it overshoots to the end first and comes back up. Posted,
+    /// because the rows don't exist to scroll to until the new ItemsSource has been laid out.
+    /// </summary>
+    private void ScrollToResume(List<ViewRow> rows)
+    {
+        int target = Math.Max(0, ViewRow.ResumeIndex(rows) - 2);
+        Dispatcher.UIThread.Post(() =>
+        {
+            if (!ReferenceEquals(RowsList.ItemsSource, rows)) return; // filtered or switched since
+            RowsList.ScrollIntoView(rows.Count - 1);
+            RowsList.ScrollIntoView(target);
+        }, DispatcherPriority.Background);
+    }
+
     private void ShowMessage(string message)
     {
         MessageText.Text = message;
@@ -145,7 +177,11 @@ public partial class ListViewerWindow : Window
         SearchBox.IsEnabled = on;
     }
 
-    private async void OnReload(object? sender, RoutedEventArgs e) => await LoadAsync(force: true);
+    private async void OnReload(object? sender, RoutedEventArgs e)
+    {
+        _jumpToResume = true;
+        await LoadAsync(force: true);
+    }
     private void OnClose(object? sender, RoutedEventArgs e) => Close();
 
     /// <summary>
