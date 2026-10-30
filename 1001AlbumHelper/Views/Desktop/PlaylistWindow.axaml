@@ -81,11 +81,10 @@
     </Grid>
 
     <!-- Column headings -->
-    <Grid Grid.Row="2" ColumnDefinitions="*,240,58,90" Margin="12,0,16,6">
+    <Grid Grid.Row="2" ColumnDefinitions="*,240,58,112,74,90" Margin="12,0,16,6">
       <TextBlock Grid.Column="0" Text="ALBUM" FontSize="10.5" FontWeight="Bold" Foreground="#6f6053" />
       <TextBlock Grid.Column="1" Text="ARTIST" FontSize="10.5" FontWeight="Bold" Foreground="#6f6053" />
       <TextBlock Grid.Column="2" Text="YEAR" FontSize="10.5" FontWeight="Bold" Foreground="#6f6053" />
-      <TextBlock Grid.Column="3" Text="" FontSize="10.5" FontWeight="Bold" Foreground="#6f6053" />
     </Grid>
 
     <Border Grid.Row="3" CornerRadius="12" Background="#120f0e" BorderBrush="#282019" BorderThickness="1">
@@ -94,13 +93,17 @@
           <ListBox.ItemTemplate>
             <DataTemplate x:DataType="local:PlaylistEntry">
               <Grid ColumnDefinitions="*,240,58,112,74,90" Margin="8,6">
-                <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="7">
-                  <TextBlock Text="{Binding Title}" FontSize="13" Foreground="#f0e5da"
-                             TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                <!-- A DockPanel, not a horizontal StackPanel: a StackPanel gives the title unlimited
+                     width, so it never trims and runs on under the artist column. -->
+                <DockPanel Grid.Column="0" Margin="0,0,14,0">
                   <!-- A short track count usually means it was half-deleted by hand in Music. -->
-                  <TextBlock Text="{Binding PartialWarning}" FontSize="11" Foreground="#d08a4a"
+                  <TextBlock DockPanel.Dock="Right" Text="{Binding PartialWarning}" FontSize="11"
+                             Foreground="#d08a4a" Margin="7,0,0,0"
                              VerticalAlignment="Center" IsVisible="{Binding IsPartial}" />
-                </StackPanel>
+                  <TextBlock Text="{Binding Title}" FontSize="13" Foreground="#f0e5da"
+                             TextTrimming="CharacterEllipsis" VerticalAlignment="Center"
+                             ToolTip.Tip="{Binding Title}" />
+                </DockPanel>
                 <TextBlock Grid.Column="1" Text="{Binding Artist}" FontSize="12.5"
                            Foreground="#b9a894" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
                 <TextBlock Grid.Column="2" Text="{Binding Year}" FontSize="12"
@@ -161,8 +164,16 @@
     <Grid Grid.Row="5" ColumnDefinitions="*,Auto" Margin="0,12,0,0">
       <ItemsControl Grid.Column="0" x:Name="FailuresList" IsVisible="False">
         <ItemsControl.ItemTemplate>
-          <DataTemplate>
-            <TextBlock Text="{Binding}" FontSize="11" Foreground="#c96a5a" TextWrapping="Wrap" Margin="0,1" />
+          <DataTemplate x:DataType="local:PushFailure">
+            <Grid ColumnDefinitions="*,Auto" Margin="0,1">
+              <TextBlock Grid.Column="0" Text="{Binding Text}" FontSize="11" Foreground="#c96a5a"
+                         TextWrapping="Wrap" VerticalAlignment="Center" />
+              <!-- Not in the library: AppleScript can't add a catalog album, but one click in Music can. -->
+              <Button Grid.Column="1" Classes="ghost" Content="Open in Music" Click="OnOpenInMusic"
+                      IsVisible="{Binding CanOpen}" Margin="10,0,12,0" Padding="8,3" FontSize="11"
+                      VerticalAlignment="Center"
+                      ToolTip.Tip="Show this album in the Music app, so you can add it to your library with ＋." />
+            </Grid>
           </DataTemplate>
         </ItemsControl.ItemTemplate>
       </ItemsControl>

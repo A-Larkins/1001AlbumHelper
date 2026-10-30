@@ -9,6 +9,16 @@ using Avalonia.Interactivity;
 namespace _1001AlbumHelper;
 
 /// <summary>
+/// One album a push couldn't add, as listed under the playlist. Top-level so the failure row
+/// template can bind to it.
+/// </summary>
+/// <param name="OpenUrl">Its page in the Music app, when adding it there by hand would fix it.</param>
+public sealed record PushFailure(string Text, string? OpenUrl)
+{
+    public bool CanOpen => OpenUrl is not null;
+}
+
+/// <summary>
 /// The Mac's view of the two working playlists — the desktop counterpart of the phone's Playlist
 /// tabs, and the same model: this list is the clean one the user fully controls, while the Music
 /// app playlist it maps to by name is an add-only listening queue.
@@ -243,14 +253,14 @@ public partial class PlaylistWindow : Window
 
         SetBusy(true, "");
         int added = 0;
-        var failures = new List<string>();
+        var failures = new List<PushFailure>();
 
         foreach (var album in albums)
         {
             Note($"Adding {album.Title}… ({added + failures.Count + 1}/{albums.Count})");
             var result = await AppleMusic.Writer!.AddAlbumAsync(AppleMusicName, album);
             if (result.Ok) { _store.MarkInAppleMusic(album); added++; }
-            else failures.Add($"{album.Title} — {album.Artist}: {result.Message}");
+            else failures.Add(new PushFailure($"{album.Title} — {album.Artist}: {result.Message}", result.OpenUrl));
         }
 
         Note($"Pushed {added} to “{AppleMusicName}”"
@@ -260,6 +270,17 @@ public partial class PlaylistWindow : Window
 
         SetBusy(false);
         Refresh();
+    }
+
+    /// <summary>
+    /// Opens a failed album's page in the Music app, where ＋ adds it to the library — the one step
+    /// AppleScript can't take. The row stays put: the next push is what confirms it worked.
+    /// </summary>
+    private async void OnOpenInMusic(object? sender, RoutedEventArgs e)
+    {
+        if (sender is not Button { DataContext: PushFailure { OpenUrl: { } url } }) return;
+        if (!await Launcher.LaunchUriAsync(new Uri(url)))
+            Note("Couldn't open the Music app.");
     }
 
     // ---------- Chrome ----------

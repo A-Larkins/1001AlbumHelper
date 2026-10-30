@@ -8,12 +8,14 @@ namespace _1001AlbumHelper;
 /// Ask for a bigger copy with <see cref="AppleMusicCatalog.ArtworkAtSize"/> rather than using this
 /// URL directly — 100px looks like mush on a rating card.
 /// </param>
+/// <param name="ViewUrl">The album's music.apple.com page, as iTunes reports it. Blank if absent.</param>
 public sealed record AppleMusicAlbum(
     long CollectionId,
     string CollectionName,
     string ArtistName,
     int TrackCount,
-    string ArtworkUrl = "");
+    string ArtworkUrl = "",
+    string ViewUrl = "");
 
 /// <summary>
 /// Looks albums up in the Apple Music catalog via the public iTunes Search API
@@ -96,7 +98,8 @@ public static class AppleMusicCatalog
                     r.TryGetProperty("collectionName", out var n) ? n.GetString() ?? "" : "",
                     r.TryGetProperty("artistName", out var a) ? a.GetString() ?? "" : "",
                     trackCount,
-                    r.TryGetProperty("artworkUrl100", out var art) ? art.GetString() ?? "" : ""));
+                    r.TryGetProperty("artworkUrl100", out var art) ? art.GetString() ?? "" : "",
+                    r.TryGetProperty("collectionViewUrl", out var view) ? view.GetString() ?? "" : ""));
             }
         }
         return albums;
@@ -133,6 +136,24 @@ public static class AppleMusicCatalog
 
     private static AppleMusicAlbum? SmallestByTrackCount(IEnumerable<AppleMusicAlbum> candidates) =>
         candidates.OrderBy(c => c.TrackCount).FirstOrDefault();
+
+    /// <summary>
+    /// A link that opens the album's page in the Music app itself — the music.apple.com page with
+    /// its scheme swapped for <c>music:</c>, which Music claims, so it doesn't detour through a
+    /// browser. iTunes's tracking query string is dropped. Built from the id alone when iTunes gave
+    /// no page; the US storefront in that fallback is the one iTunes answered for anyway, and Music
+    /// redirects it to the listener's own.
+    /// </summary>
+    public static string MusicAppUrl(AppleMusicAlbum album)
+    {
+        string page = album.ViewUrl;
+        int query = page.IndexOf('?');
+        if (query >= 0) page = page[..query];
+
+        return page.StartsWith("https://music.apple.com/", StringComparison.OrdinalIgnoreCase)
+            ? "music://" + page["https://".Length..]
+            : $"music://music.apple.com/us/album/{album.CollectionId}";
+    }
 
     /// <summary>
     /// The same cover art at <paramref name="pixels"/> square. iTunes encodes the size in the file
