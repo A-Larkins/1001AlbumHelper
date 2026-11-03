@@ -1,21 +1,10 @@
-<Window xmlns="https://github.com/avaloniaui"
+<UserControl xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        x:Class="_1001AlbumHelper.CandidatesWindow"
-        xmlns:local="clr-namespace:_1001AlbumHelper"
-        Width="1060" Height="700" MinWidth="860" MinHeight="500"
-        Title="Potential replacements"
-        WindowStartupLocation="CenterOwner"
-        RequestedThemeVariant="Dark">
+        x:Class="_1001AlbumHelper.ShortlistPage"
+        xmlns:local="clr-namespace:_1001AlbumHelper">
 
-  <Window.Background>
-    <LinearGradientBrush StartPoint="0%,0%" EndPoint="30%,100%">
-      <GradientStop Color="#151020" Offset="0" />
-      <GradientStop Color="#0e0b09" Offset="0.45" />
-      <GradientStop Color="#0b0807" Offset="1" />
-    </LinearGradientBrush>
-  </Window.Background>
 
-  <Window.Styles>
+  <UserControl.Styles>
     <Style Selector="Button.ghost">
       <Setter Property="Background" Value="#221b16" />
       <Setter Property="BorderBrush" Value="#3a2e25" />
@@ -167,7 +156,7 @@
         </Animation>
       </Style.Animations>
     </Style>
-  </Window.Styles>
+  </UserControl.Styles>
 
   <Grid Margin="20,18,20,16" RowDefinitions="Auto,Auto,Auto,*,Auto,Auto">
 
@@ -289,8 +278,7 @@
       </StackPanel>
       <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8">
         <Button x:Name="ReloadButton" Classes="ghost" Content="Reload" Click="OnReload" />
-        <Button Classes="ghost" Content="Close" Click="OnClose" />
       </StackPanel>
     </Grid>
   </Grid>
-</Window>
+</UserControl>

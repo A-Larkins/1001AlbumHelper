@@ -205,7 +205,7 @@ public partial class ReplacementsView : UserControl
 
     /// <summary>
     /// Puts the album on the replacements list — slotted into its year block, renumbering the sheet —
-    /// and takes it off the shortlist. Mirrors the desktop's Keep (see CandidatesWindow.KeepAsync).
+    /// and takes it off the shortlist. Mirrors the desktop's Keep (see ShortlistPage.KeepAsync).
     /// </summary>
     private async Task KeepAsync(CandidateAlbum album)
     {

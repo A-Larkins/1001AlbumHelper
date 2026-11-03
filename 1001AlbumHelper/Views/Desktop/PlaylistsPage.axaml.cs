@@ -24,15 +24,16 @@ public sealed record PushFailure(string Text, string? OpenUrl)
 /// app playlist it maps to by name is an add-only listening queue.
 ///
 /// <para>
-/// "Pull down" replaces the working list with whatever the Music app playlist currently holds;
-/// "Push all" sends the working list the other way, naming any album that couldn't be added and
-/// why. The two are deliberately not symmetrical — pulling is a full sync because Apple Music is
+/// "Get from Music" replaces the working list with whatever the Music app playlist currently
+/// holds; "Send new to Music" sends the albums not yet there the other way, naming any album that
+/// couldn't be added and why. Albums already in the playlist aren't sent again, which used to
+/// leave a second copy of each one in it. The two are deliberately not symmetrical — pulling is a full sync because Apple Music is
 /// where the listening happens, while pushing can only add (see PROJECT.md §5). Both need
 /// <see cref="AppleMusic.Writer"/>, which only macOS supplies (see MusicAppPlaylistWriter) — on
 /// Windows/Linux the two buttons stay disabled and the rest of the window still works.
 /// </para>
 /// </summary>
-public partial class PlaylistWindow : Window
+public partial class PlaylistsPage : UserControl, IPage
 {
     /// <summary>The Music app playlist each working list maps to, by name.</summary>
     private static readonly Dictionary<int, string> AppleMusicNames = new()
@@ -47,7 +48,7 @@ public partial class PlaylistWindow : Window
     /// "＋ Shortlist": Playlist 1 holds the 1001 itself, which is what the shortlist replaces.
     /// </summary>
     public static readonly StyledProperty<bool> IsRecommendationsProperty =
-        AvaloniaProperty.Register<PlaylistWindow, bool>(nameof(IsRecommendations));
+        AvaloniaProperty.Register<PlaylistsPage, bool>(nameof(IsRecommendations));
 
     public bool IsRecommendations
     {
@@ -59,10 +60,19 @@ public partial class PlaylistWindow : Window
     private PlaylistStore? _store;
     private bool _busy;
 
-    public PlaylistWindow()
+    public PlaylistsPage()
     {
         InitializeComponent();
-        Opened += (_, _) => Show(1);
+    }
+
+    private bool _loaded;
+
+    /// <summary>Opens on Playlist 1 the first time; after that re-reads whichever is showing,
+    /// so albums queued from Browse or the shortlist meanwhile are there.</summary>
+    public void OnShown()
+    {
+        if (!_loaded) { _loaded = true; Show(1); return; }
+        if (!_busy) Refresh();
     }
 
     private string AppleMusicName => AppleMusicNames[_current];
@@ -107,7 +117,7 @@ public partial class PlaylistWindow : Window
     {
         bool available = AppleMusic.IsAvailable;
         ImportButton.IsEnabled = !_busy && available;
-        PushButton.IsEnabled = !_busy && available && (_store?.Active.Count ?? 0) > 0;
+        PushButton.IsEnabled = !_busy && available && (_store?.Active.Any(a => !a.InAppleMusic) ?? false);
         Playlist1Button.IsEnabled = !_busy;
         Playlist2Button.IsEnabled = !_busy;
 
@@ -240,16 +250,16 @@ public partial class PlaylistWindow : Window
     }
 
     /// <summary>
-    /// Adds every album on the working list to the Music app playlist, one at a time, listing the
-    /// ones that failed and why rather than reporting a bare count.
+    /// Adds the albums on the working list that aren't in the Music app playlist yet, one at a time,
+    /// listing the ones that failed and why rather than reporting a bare count.
     /// </summary>
     private async void OnPushToAppleMusic(object? sender, RoutedEventArgs e)
     {
         if (_store is null || _busy) return;
         if (!AppleMusic.IsAvailable) { Note("The Music app isn't available on this platform."); return; }
 
-        var albums = _store.Active.ToList();
-        if (albums.Count == 0) return;
+        var albums = _store.Active.Where(a => !a.InAppleMusic).ToList();
+        if (albums.Count == 0) { Note("Everything here is already in Music."); return; }
 
         SetBusy(true, "");
         int added = 0;
@@ -263,7 +273,7 @@ public partial class PlaylistWindow : Window
             else failures.Add(new PushFailure($"{album.Title} — {album.Artist}: {result.Message}", result.OpenUrl));
         }
 
-        Note($"Pushed {added} to “{AppleMusicName}”"
+        Note($"Sent {added} to “{AppleMusicName}”"
              + (failures.Count > 0 ? $", {failures.Count} couldn't be added (below)." : "."));
         FailuresList.ItemsSource = failures;
         FailuresList.IsVisible = failures.Count > 0;
@@ -279,7 +289,7 @@ public partial class PlaylistWindow : Window
     private async void OnOpenInMusic(object? sender, RoutedEventArgs e)
     {
         if (sender is not Button { DataContext: PushFailure { OpenUrl: { } url } }) return;
-        if (!await Launcher.LaunchUriAsync(new Uri(url)))
+        if (TopLevel.GetTopLevel(this) is not { } top || !await top.Launcher.LaunchUriAsync(new Uri(url)))
             Note("Couldn't open the Music app.");
     }
 
@@ -290,8 +300,6 @@ public partial class PlaylistWindow : Window
         if (_busy) return;
         Refresh();
     }
-
-    private void OnClose(object? sender, RoutedEventArgs e) => Close();
 
     /// <summary>Spells out what the pull actually changed, rather than just saying it finished.</summary>
     private static string Summarise(PlaylistSyncResult sync, int inAppleMusic)

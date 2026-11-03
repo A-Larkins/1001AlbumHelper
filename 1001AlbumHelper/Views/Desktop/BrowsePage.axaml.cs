@@ -9,7 +9,7 @@ using Avalonia.Interactivity;
 namespace _1001AlbumHelper;
 
 /// <summary>Read-only browser over the three lists, with a search box.</summary>
-public partial class ListViewerWindow : Window
+public partial class BrowsePage : UserControl, IPage
 {
     private enum Which { Master, MustHear, Replacements }
 
@@ -25,11 +25,31 @@ public partial class ListViewerWindow : Window
     /// </summary>
     private bool _jumpToResume = true;
 
-    public ListViewerWindow()
+    public BrowsePage()
     {
         InitializeComponent();
         SearchBox.TextChanged += (_, _) => ApplyFilter();
-        Opened += async (_, _) => await LoadAsync();
+    }
+
+    private bool _loaded;
+
+    public async void OnShown()
+    {
+        if (_loaded) return;
+        _loaded = true;
+        await LoadAsync();
+    }
+
+    /// <summary>
+    /// Folds ratings made elsewhere — on the Rate page — into the rows here, so a switch to Browse
+    /// shows them without re-reading the sheet. Keyed by sheet row, as the rater reports them.
+    /// </summary>
+    public void ApplyRatings(IReadOnlyDictionary<int, string> ratings)
+    {
+        if (ratings.Count == 0 || !_cache.TryGetValue(Which.Master, out var master)) return;
+        foreach (var row in master)
+            if (ratings.TryGetValue(row.SheetRow, out var rating)) row.Rating = rating;
+        _cache.Remove(Which.MustHear); // a ⭐ given or taken rewrites it
     }
 
     // ---------- Loading ----------
@@ -182,7 +202,6 @@ public partial class ListViewerWindow : Window
         _jumpToResume = true;
         await LoadAsync(force: true);
     }
-    private void OnClose(object? sender, RoutedEventArgs e) => Close();
 
     /// <summary>
     /// Opens the rater on this one album, whatever it's rated now — the way an existing rating gets
@@ -193,8 +212,8 @@ public partial class ListViewerWindow : Window
     {
         if (sender is not Button { DataContext: ViewRow row } || !row.CanRate) return;
 
-        var rater = new RatingWindow(RatingMode.Revisit, row.SheetRow);
-        await rater.ShowDialog(this);
+        var rater = new RatePage(RatingMode.Revisit, row.SheetRow);
+        await new PageWindow("Change a rating", rater).ShowDialog((Window)TopLevel.GetTopLevel(this)!);
 
         if (rater.RatingsApplied.Count == 0) return;
 

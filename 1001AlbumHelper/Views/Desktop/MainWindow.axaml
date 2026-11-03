@@ -1,7 +1,7 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         x:Class="_1001AlbumHelper.MainWindow"
-        Width="860" Height="700" MinWidth="700" MinHeight="600"
+        Width="1260" Height="800" MinWidth="1080" MinHeight="640"
         Title="1001 Albums Helper"
         RequestedThemeVariant="Dark">
 
@@ -14,6 +14,35 @@
   </Window.Background>
 
   <Window.Styles>
+    <!-- ===== Sidebar ===== -->
+    <Style Selector="Button.nav">
+      <Setter Property="HorizontalAlignment" Value="Stretch" />
+      <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="CornerRadius" Value="9" />
+      <Setter Property="Padding" Value="12,9" />
+      <Setter Property="Foreground" Value="#b9a894" />
+      <Setter Property="FontSize" Value="13.5" />
+      <Setter Property="Cursor" Value="Hand" />
+    </Style>
+    <Style Selector="Button.nav:pointerover /template/ ContentPresenter">
+      <Setter Property="Background" Value="#211a15" />
+    </Style>
+    <Style Selector="Button.nav.on">
+      <Setter Property="Background" Value="#3a2b12" />
+      <Setter Property="Foreground" Value="#f5c985" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+    <Style Selector="Button.nav.on:pointerover /template/ ContentPresenter">
+      <Setter Property="Background" Value="#43321a" />
+    </Style>
+    <Style Selector="Button.nav TextBlock.hint">
+      <Setter Property="FontSize" Value="11" />
+      <Setter Property="Foreground" Value="#6f6053" />
+      <Setter Property="FontWeight" Value="Normal" />
+    </Style>
+
     <!-- ===== Action cards ===== -->
     <Style Selector="Button.card">
       <Setter Property="HorizontalAlignment" Value="Stretch" />
@@ -128,162 +157,109 @@
     </Style>
   </Window.Styles>
 
-  <Grid Margin="24,20,24,18" RowDefinitions="Auto,Auto,*,Auto,Auto">
+  <Grid ColumnDefinitions="210,*">
 
-    <!-- ===== Header ===== -->
-    <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto" Margin="0,0,0,16">
-      <Border Grid.Column="0" Width="46" Height="46" CornerRadius="23" VerticalAlignment="Center"
-              Background="#111014" BorderBrush="#2a2733" BorderThickness="1">
-        <Border Width="16" Height="16" CornerRadius="8" HorizontalAlignment="Center" VerticalAlignment="Center">
-          <Border.Background>
-            <RadialGradientBrush>
-              <GradientStop Color="#f2c078" Offset="0" />
-              <GradientStop Color="#a86f24" Offset="1" />
-            </RadialGradientBrush>
-          </Border.Background>
-          <Border Width="4" Height="4" CornerRadius="2" Background="#111014"
-                  HorizontalAlignment="Center" VerticalAlignment="Center" />
-        </Border>
-      </Border>
+    <!-- ===== Sidebar: the same sections as the phone's tab bar, plus More ===== -->
+    <Border Grid.Column="0" Background="#0c0a09" BorderBrush="#221b16" BorderThickness="0,0,1,0">
+      <DockPanel Margin="12,18,12,14">
+        <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="10" Margin="6,0,0,22">
+          <Border Width="34" Height="34" CornerRadius="17" VerticalAlignment="Center"
+                  Background="#111014" BorderBrush="#2a2733" BorderThickness="1">
+            <Border Width="12" Height="12" CornerRadius="6" HorizontalAlignment="Center" VerticalAlignment="Center">
+              <Border.Background>
+                <RadialGradientBrush>
+                  <GradientStop Color="#f2c078" Offset="0" />
+                  <GradientStop Color="#a86f24" Offset="1" />
+                </RadialGradientBrush>
+              </Border.Background>
+              <Border Width="3" Height="3" CornerRadius="2" Background="#111014"
+                      HorizontalAlignment="Center" VerticalAlignment="Center" />
+            </Border>
+          </Border>
+          <StackPanel VerticalAlignment="Center">
+            <TextBlock Text="1001 Albums" FontSize="15" FontWeight="Bold" Foreground="#f3e9df" />
+            <TextBlock Text="Helper" FontSize="11.5" Foreground="#8b7969" />
+          </StackPanel>
+        </StackPanel>
 
-      <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="14,0,0,0" Spacing="2">
-        <TextBlock Text="1001 Albums Helper" FontSize="21" FontWeight="Bold" Foreground="#f3e9df" />
-        <TextBlock Text="Rate albums and keep your Google Sheet in step"
-                   FontSize="12.5" Foreground="#a99884" />
-      </StackPanel>
-
-      <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-        <Border VerticalAlignment="Center" CornerRadius="999"
-                Background="#1c1613" BorderBrush="#3a2e25" BorderThickness="1" Padding="12,7">
+        <!-- Running status, pinned to the bottom of the sidebar. -->
+        <Border DockPanel.Dock="Bottom" CornerRadius="999" HorizontalAlignment="Left" Margin="4,0,0,0"
+                Background="#1c1613" BorderBrush="#3a2e25" BorderThickness="1" Padding="11,6">
           <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
             <Ellipse x:Name="StatusDot" Width="8" Height="8" Fill="#7c6d60" />
-            <TextBlock x:Name="StatusText" Text="Idle" FontSize="12" Foreground="#a99884" />
+            <TextBlock x:Name="StatusText" Text="Idle" FontSize="11.5" Foreground="#a99884" />
           </StackPanel>
         </Border>
-        <Button x:Name="CheckButton" Classes="ghost" Content="Check connection"
-                Tag="sync-check" Click="OnRun"
-                ToolTip.Tip="Sign in and list the sheet’s tabs — a safe, read-only check." />
-        <Button x:Name="RenewTrialButton" Classes="ghost" Content="Renew iPhone trial"
-                Click="OnRenewTrial"
-                ToolTip.Tip="Runs deploy-to-device.sh — renews the 7-day free signing profile and redeploys to the iPhone." />
-      </StackPanel>
-    </Grid>
 
-    <Border Grid.Row="1" Height="1" Margin="0,0,0,18">
-      <Border.Background>
-        <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,0%">
-          <GradientStop Color="#00000000" Offset="0" />
-          <GradientStop Color="#3a2e25" Offset="0.12" />
-          <GradientStop Color="#3a2e25" Offset="0.88" />
-          <GradientStop Color="#00000000" Offset="1" />
-        </LinearGradientBrush>
-      </Border.Background>
-    </Border>
-
-    <!-- ===== Actions =====
-         Grouped into sections rather than one flat stack, and scrollable so the window never
-         has to grow (or overlap the log below it) as more panels get added. -->
-    <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto" Padding="0,0,10,0">
-    <StackPanel Spacing="20">
-
-      <StackPanel Spacing="10">
-        <TextBlock Classes="sectionLabel" Text="RATE &amp; LISTEN" />
-        <StackPanel Spacing="13">
-          <Button x:Name="RateNextButton" Classes="card hero" Click="OnRateNext">
-            <Grid ColumnDefinitions="Auto,*">
-              <Border Grid.Column="0" Classes="badge">
-                <TextBlock Text="🎧" />
-              </Border>
-              <StackPanel Grid.Column="1" Margin="16,0,0,0" VerticalAlignment="Center">
-                <TextBlock Classes="title" Text="Rate the next album" />
-                <TextBlock Classes="desc" Text="Walks albums with no mark yet, in list order. A ⭐ is added to your Must Hear list automatically." />
-              </StackPanel>
-            </Grid>
+        <StackPanel Spacing="3">
+          <Button x:Name="NavRate" Classes="nav on" Click="OnNav" Tag="Rate"
+                  ToolTip.Tip="Rate the next album, backfill ✓ marks, or change a rating.  ⌘1">
+            <Grid ColumnDefinitions="28,*,Auto"><TextBlock Text="🎧" /><TextBlock Grid.Column="1" Text="Rate" /><TextBlock Grid.Column="2" Classes="hint" Text="⌘1" VerticalAlignment="Center" /></Grid>
           </Button>
-
-          <Button x:Name="BackfillButton" Classes="card" Click="OnBackfill">
-            <Grid ColumnDefinitions="Auto,*">
-              <Border Grid.Column="0" Classes="badge">
-                <TextBlock Text="📼" />
-              </Border>
-              <StackPanel Grid.Column="1" Margin="16,0,0,0" VerticalAlignment="Center">
-                <TextBlock Classes="title" Text="Backfill rated ✓" />
-                <TextBlock Classes="desc" Text="Score the ones marked listened but never rated." />
-              </StackPanel>
-            </Grid>
+          <Button x:Name="NavBrowse" Classes="nav" Click="OnNav" Tag="Browse"
+                  ToolTip.Tip="Search the 1001, Must Hear and Replacements lists.  ⌘2">
+            <Grid ColumnDefinitions="28,*,Auto"><TextBlock Text="🔍" /><TextBlock Grid.Column="1" Text="Browse" /><TextBlock Grid.Column="2" Classes="hint" Text="⌘2" VerticalAlignment="Center" /></Grid>
           </Button>
-
-          <Button x:Name="RevisitButton" Classes="card" Click="OnRevisit">
-            <Grid ColumnDefinitions="Auto,*">
-              <Border Grid.Column="0" Classes="badge">
-                <TextBlock Text="🔁" />
-              </Border>
-              <StackPanel Grid.Column="1" Margin="16,0,0,0" VerticalAlignment="Center">
-                <TextBlock Classes="title" Text="Change a rating" />
-                <TextBlock Classes="desc" Text="Walks albums you've already rated, filtered to one symbol if you like. Dropping a ⭐ takes the album back off Must Hear." />
+          <Button x:Name="NavShortlist" Classes="nav" Click="OnNav" Tag="Shortlist"
+                  ToolTip.Tip="Potential replacements — keep them or drop them.  ⌘3">
+            <Grid ColumnDefinitions="28,*,Auto"><TextBlock Text="🗂" /><TextBlock Grid.Column="1" Text="Shortlist" /><TextBlock Grid.Column="2" Classes="hint" Text="⌘3" VerticalAlignment="Center" /></Grid>
+          </Button>
+          <Button x:Name="NavPlaylists" Classes="nav" Click="OnNav" Tag="Playlists"
+                  ToolTip.Tip="Playlist 1 and 2 — send them to the Music app.  ⌘4">
+            <Grid ColumnDefinitions="28,*,Auto"><TextBlock Text="🎵" /><TextBlock Grid.Column="1" Text="Playlists" /><TextBlock Grid.Column="2" Classes="hint" Text="⌘4" VerticalAlignment="Center" /></Grid>
+          </Button>
+          <Button x:Name="NavMore" Classes="nav" Click="OnNav" Tag="More"
+                  ToolTip.Tip="Add an album, favourites, analytics, export, sync, and the activity log.  ⌘5">
+            <Grid ColumnDefinitions="28,*,Auto">
+              <TextBlock Text="⋯" />
+              <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="7">
+                <TextBlock Text="More" VerticalAlignment="Center" />
+                <!-- Lit when the lists have drifted from the 1001 and a sync would fix it. -->
+                <Ellipse x:Name="MoreDot" Width="7" Height="7" Fill="#e6a54b" IsVisible="False" VerticalAlignment="Center" />
               </StackPanel>
+              <TextBlock Grid.Column="2" Classes="hint" Text="⌘5" VerticalAlignment="Center" />
             </Grid>
           </Button>
         </StackPanel>
-      </StackPanel>
+      </DockPanel>
+    </Border>
 
+    <!-- ===== Pages: built on first visit, then kept (see MainWindow.Navigate) ===== -->
+    <Panel Grid.Column="1" x:Name="PageHost">
+
+  <Grid x:Name="MorePage" IsVisible="False" Margin="24,20,24,18" RowDefinitions="Auto,*,Auto,Auto">
+
+    <!-- ===== Header ===== -->
+    <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="0,0,0,16">
+      <StackPanel Grid.Column="0" VerticalAlignment="Center" Spacing="2">
+        <TextBlock Text="More" FontSize="21" FontWeight="Bold" Foreground="#f3e9df" />
+        <TextBlock Text="Everything that isn't rating, browsing, the shortlist or the playlists."
+                   FontSize="12.5" Foreground="#a99884" />
+      </StackPanel>
+      <Button Grid.Column="1" x:Name="CheckButton" Classes="ghost" Content="Check connection"
+              Tag="sync-check" Click="OnRun" VerticalAlignment="Center"
+              ToolTip.Tip="Sign in and list the sheet’s tabs — a safe, read-only check." />
+    </Grid>
+
+    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Padding="0,0,10,0">
+    <StackPanel Spacing="20">
       <StackPanel Spacing="10">
-        <TextBlock Classes="sectionLabel" Text="GROW YOUR LISTS" />
-        <StackPanel Spacing="13">
-          <Grid ColumnDefinitions="*,*">
-            <Button Grid.Column="0" x:Name="AddAlbumButton" Classes="card" Click="OnAddAlbum" Margin="0,0,6,0">
+        <TextBlock Classes="sectionLabel" Text="LISTS" />
+            <Button x:Name="AddAlbumButton" Classes="card" Click="OnAddAlbum">
               <Grid ColumnDefinitions="Auto,*">
                 <Border Grid.Column="0" Classes="badge">
                   <TextBlock Text="➕" />
                 </Border>
                 <StackPanel Grid.Column="1" Margin="13,0,0,0" VerticalAlignment="Center">
                   <TextBlock Classes="title" Text="Add an album" />
-                  <TextBlock Classes="desc" Text="Slots into your replacements list by year." />
+                  <TextBlock Classes="desc" Text="Put an album straight onto the replacements list — it slots in by year. (To decide later instead, use Shortlist.)" />
                 </StackPanel>
               </Grid>
             </Button>
-
-            <Button Grid.Column="1" x:Name="BrowseButton" Classes="card" Click="OnBrowse" Margin="6,0,0,0">
-              <Grid ColumnDefinitions="Auto,*">
-                <Border Grid.Column="0" Classes="badge">
-                  <TextBlock Text="🔍" />
-                </Border>
-                <StackPanel Grid.Column="1" Margin="13,0,0,0" VerticalAlignment="Center">
-                  <TextBlock Classes="title" Text="Browse &amp; search" />
-                  <TextBlock Classes="desc" Text="Look through any of the three lists." />
-                </StackPanel>
-              </Grid>
-            </Button>
-          </Grid>
-
-          <Button x:Name="CandidatesButton" Classes="card" Click="OnCandidates">
-            <Grid ColumnDefinitions="Auto,*">
-              <Border Grid.Column="0" Classes="badge">
-                <TextBlock Text="🗂" />
-              </Border>
-              <StackPanel Grid.Column="1" Margin="16,0,0,0" VerticalAlignment="Center">
-                <TextBlock Classes="title" Text="Potential replacements" />
-                <TextBlock Classes="desc" Text="Work through your shortlist one album at a time — keep it and it slots into the replacements list by year, or drop it for good." />
-              </StackPanel>
-            </Grid>
-          </Button>
-        </StackPanel>
       </StackPanel>
 
       <StackPanel Spacing="10">
         <TextBlock Classes="sectionLabel" Text="APPLE MUSIC" />
-        <Button x:Name="PlaylistsButton" Classes="card" Click="OnPlaylists">
-          <Grid ColumnDefinitions="Auto,*">
-            <Border Grid.Column="0" Classes="badge">
-              <TextBlock Text="🎵" />
-            </Border>
-            <StackPanel Grid.Column="1" Margin="16,0,0,0" VerticalAlignment="Center">
-              <TextBlock Classes="title" Text="Playlists" />
-              <TextBlock Classes="desc" Text="Your two working lists — Playlist 1 from the 1001, Playlist 2 for recommendations. Push them into the Music app, pull back what's already there, and drop what you're done with." />
-            </StackPanel>
-          </Grid>
-        </Button>
-
         <!-- Two presses, deliberately: the first only looks, the second writes to the real library.
              The card's own text is the confirmation step — see OnRun's "favorites-*" cases. -->
         <Button x:Name="FavoritesButton" Classes="card" Tag="favorites-check" Click="OnRun">
@@ -366,7 +342,7 @@
     </ScrollViewer>
 
     <!-- ===== Log ===== -->
-    <Grid Grid.Row="3" ColumnDefinitions="*,Auto" Margin="0,18,0,7">
+    <Grid Grid.Row="2" ColumnDefinitions="*,Auto" Margin="0,18,0,7">
       <TextBlock Grid.Column="0" Classes="sectionLabel" Text="ACTIVITY LOG" VerticalAlignment="Center" />
       <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="9" VerticalAlignment="Center">
         <TextBlock x:Name="ElapsedText" Text="" FontSize="11.5" Foreground="#6f6053" VerticalAlignment="Center" />
@@ -374,14 +350,17 @@
       </StackPanel>
     </Grid>
 
-    <Border Grid.Row="4" Height="118" CornerRadius="12" Background="#120f0e"
+    <Border Grid.Row="3" Height="110" CornerRadius="12" Background="#120f0e"
             BorderBrush="#282019" BorderThickness="1">
       <TextBox x:Name="LogBox" IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap"
                BorderThickness="0" Background="Transparent" Foreground="#bcae9f"
                FontFamily="Menlo,Consolas,monospace" FontSize="11.5" Padding="13,11"
                VerticalContentAlignment="Top"
                ScrollViewer.VerticalScrollBarVisibility="Auto"
-               Text="Ready. Pick an action above — output streams here live." />
+               Text="Ready. Output from anything the app does streams here live." />
     </Border>
+  </Grid>
+
+    </Panel>
   </Grid>
 </Window>

@@ -3,8 +3,9 @@ using _1001AlbumHelper;
 namespace _1001AlbumHelper.Tests;
 
 /// <summary>
-/// Where the browse list opens on the 1001: the album after the furthest one rated, so the user
-/// lands in the 750s rather than at #1 — and isn't dragged back by an album skipped long ago.
+/// Where the browse list opens on the 1001: the first unrated album, the one the Rate page's Next up
+/// shows — so the user lands in the 750s rather than at #1, or at #958 because one album far ahead
+/// happened to get rated early.
 /// </summary>
 public class ResumeIndexTests
 {
@@ -12,15 +13,15 @@ public class ResumeIndexTests
         ratings.Select((r, i) => new ViewRow($"{i + 1}", r, "T", "A", "1970")).ToArray();
 
     [Fact]
-    public void Lands_on_the_row_after_the_furthest_mark()
+    public void Lands_on_the_first_unmarked_row()
     {
         Assert.Equal(3, ViewRow.ResumeIndex(Rows("👍", "⭐", "❌", "", "")));
     }
 
     [Fact]
-    public void A_gap_further_back_is_not_where_the_user_is()
+    public void One_album_rated_far_ahead_does_not_move_it()
     {
-        Assert.Equal(4, ViewRow.ResumeIndex(Rows("👍", "", "👎", "✓", "", "")));
+        Assert.Equal(2, ViewRow.ResumeIndex(Rows("👍", "✓", "", "", "", "👍", "")));
     }
 
     [Fact]

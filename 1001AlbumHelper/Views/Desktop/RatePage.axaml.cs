@@ -11,10 +11,11 @@ namespace _1001AlbumHelper;
 
 /// <summary>
 /// Walks through albums a queue at a time, writing each choice straight back to the master Google
-/// Sheet. Opens on whichever queue the caller asked for — and optionally straight onto one album,
-/// which is how the list viewer sends a row here to have its rating changed.
+/// Sheet — the main window's home page. Opens on whichever queue the caller asked for, and
+/// optionally straight onto one album, which is how Browse sends a row here (in a
+/// <see cref="PageWindow"/>) to have its rating changed.
 /// </summary>
-public partial class RatingWindow : Window
+public partial class RatePage : UserControl, IPage
 {
     private readonly RatingMode _initialMode;
     private readonly int? _focusSheetRow;
@@ -33,19 +34,30 @@ public partial class RatingWindow : Window
     /// <summary>Cancels the in-flight cover-art lookup when the card moves on to another album.</summary>
     private CancellationTokenSource? _artCts;
 
-    public RatingWindow() : this(RatingMode.NextUp) { }
+    public RatePage() : this(RatingMode.NextUp) { }
 
     /// <param name="focusSheetRow">
     /// A master-list row to open on, whatever its rating. Null starts at the head of the queue.
     /// </param>
-    public RatingWindow(RatingMode initialMode, int? focusSheetRow = null)
+    public RatePage(RatingMode initialMode, int? focusSheetRow = null)
     {
         InitializeComponent();
         _initialMode = initialMode;
         _focusSheetRow = focusSheetRow;
         SetMode(initialMode, rebuild: false);
-        Opened += async (_, _) => await LoadAsync();
+        Focusable = true;
         KeyDown += OnKeyDown;
+    }
+
+    private bool _loaded;
+
+    public async void OnShown()
+    {
+        // Keyboard rating (1-4, S, B) needs focus somewhere inside the page.
+        Focus();
+        if (_loaded) return;
+        _loaded = true;
+        await LoadAsync();
     }
 
     private async Task LoadAsync()
@@ -66,7 +78,7 @@ public partial class RatingWindow : Window
 
         if (session is null)
         {
-            ShowMessage("Couldn't open the album list — see the activity log in the main window for details.");
+            ShowMessage("Couldn't open the album list — see the activity log under More for details.");
             return;
         }
 
@@ -173,11 +185,13 @@ public partial class RatingWindow : Window
         Render();
     }
 
-    private void OnClose(object? sender, RoutedEventArgs e) => Close();
-
     private async void OnKeyDown(object? sender, KeyEventArgs e)
     {
         if (_busy || _session?.Current is null) return;
+
+        // Bare keys only. ⌘2 is "go to Browse" (see MainWindow) — reading it as a "2" would
+        // write a 👍 to the sheet on the way past, so any modifier means the key isn't ours.
+        if (e.KeyModifiers != KeyModifiers.None) return;
 
         string? rating = e.Key switch
         {

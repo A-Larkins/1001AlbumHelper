@@ -20,7 +20,7 @@ namespace _1001AlbumHelper;
 /// the same refusals when the album is already on one of the lists.
 /// </para>
 /// </summary>
-public partial class CandidatesWindow : Window
+public partial class ShortlistPage : UserControl, IPage
 {
     /// <summary>Every album in the file, decided or not — this is what gets written back.</summary>
     private List<CandidateAlbum> _all = new();
@@ -42,7 +42,7 @@ public partial class CandidatesWindow : Window
     private readonly CandidateRepository _repo = CandidateRepository.Create();
     private readonly PlaylistStore _playlist2 = PlaylistStore.Open(2);
 
-    /// <summary>Stops the background year lookup when the window closes.</summary>
+    /// <summary>Stops the background year lookup — kept for the page's lifetime, which is the app's.</summary>
     private readonly CancellationTokenSource _closing = new();
 
     private bool _busy;
@@ -55,22 +55,27 @@ public partial class CandidatesWindow : Window
     /// </summary>
     private static readonly TimeSpan LookupSpacing = TimeSpan.FromMilliseconds(1100);
 
-    public CandidatesWindow()
+    public ShortlistPage()
     {
         InitializeComponent();
         RowsList.ItemsSource = _shown;
         SearchBox.TextChanged += (_, _) => ApplyFilter();
-        Opened += async (_, _) =>
-        {
-            // Rows come from the local file, so the modal is populated and interactive straight
-            // away. Only then does the year fetch start, behind the ticker — yielding at
-            // Background priority so the first paint is finished rather than merely likely.
-            Load();
-            await Dispatcher.UIThread.InvokeAsync(() => { }, DispatcherPriority.Background);
-            await SyncFromSheetsAsync();
-            await PrefetchYearsAsync();
-        };
-        Closed += (_, _) => _closing.Cancel();
+    }
+
+    private bool _loaded;
+
+    public async void OnShown()
+    {
+        if (_loaded) return;
+        _loaded = true;
+
+        // Rows come from the local file, so the page is populated and interactive straight away.
+        // Only then does the year fetch start, behind the ticker — yielding at Background priority
+        // so the first paint is finished rather than merely likely.
+        Load();
+        await Dispatcher.UIThread.InvokeAsync(() => { }, DispatcherPriority.Background);
+        await SyncFromSheetsAsync();
+        await PrefetchYearsAsync();
     }
 
     // ---------- Loading ----------
@@ -415,7 +420,7 @@ public partial class CandidatesWindow : Window
         if (_busy) return;
 
         var form = new AddCandidateWindow(_all);
-        await form.ShowDialog(this);
+        await form.ShowDialog((Window)TopLevel.GetTopLevel(this)!);
 
         var album = form.Result;
         if (album is not null)
@@ -566,6 +571,4 @@ public partial class CandidatesWindow : Window
         // Picks up years for anything newly added to the file by hand.
         await PrefetchYearsAsync();
     }
-
-    private void OnClose(object? sender, RoutedEventArgs e) => Close();
 }
