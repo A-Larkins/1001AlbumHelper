@@ -61,11 +61,16 @@
   <Grid Margin="20,18,20,16" RowDefinitions="Auto,Auto,Auto,*,Auto">
 
     <!-- List picker -->
-    <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="8" Margin="0,0,0,12">
-      <Button x:Name="MasterButton" Classes="seg on" Content="📀  The 1001" Click="OnPickMaster" />
-      <Button x:Name="MustHearButton" Classes="seg" Content="⭐  Must Hear" Click="OnPickMustHear" />
-      <Button x:Name="ReplacementsButton" Classes="seg" Content="➕  Replacements" Click="OnPickReplacements" />
-    </StackPanel>
+    <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="0,0,0,12">
+      <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8">
+        <Button x:Name="MasterButton" Classes="seg on" Content="📀  The 1001" Click="OnPickMaster" />
+        <Button x:Name="MustHearButton" Classes="seg" Content="⭐  Must Hear" Click="OnPickMustHear" />
+        <Button x:Name="ReplacementsButton" Classes="seg" Content="➕  Replacements" Click="OnPickReplacements" />
+      </StackPanel>
+      <Button Grid.Column="1" x:Name="AddAlbumButton" Classes="ghost" Content="＋  Add album"
+              Click="OnAddAlbum" VerticalAlignment="Center"
+              ToolTip.Tip="Put an album straight onto the replacements list — it slots in by year. To decide later instead, add it on the Shortlist." />
+    </Grid>
 
     <!-- Search -->
     <Grid Grid.Row="1" ColumnDefinitions="*,Auto" Margin="0,0,0,10">

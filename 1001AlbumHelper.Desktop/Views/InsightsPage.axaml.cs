@@ -8,12 +8,21 @@ using LiveChartsCore.SkiaSharpView;
 
 namespace _1001AlbumHelper;
 
-public partial class AnalyticsWindow : Window
+/// <summary>Taste patterns across the ratings — the main window's Insights section.</summary>
+public partial class InsightsPage : UserControl, IPage
 {
-    public AnalyticsWindow()
+    public InsightsPage()
     {
         InitializeComponent();
-        Opened += async (_, _) => await LoadAsync();
+    }
+
+    private bool _loaded;
+
+    public async void OnShown()
+    {
+        if (_loaded) return;
+        _loaded = true;
+        await LoadAsync();
     }
 
     private async Task LoadAsync()
@@ -148,6 +157,4 @@ public partial class AnalyticsWindow : Window
         try { System.Diagnostics.Process.Start("open", $"-R \"{path}\""); }
         catch { /* non-fatal: the status line already shows where the file went */ }
     }
-
-    private void OnClose(object? sender, RoutedEventArgs e) => Close();
 }

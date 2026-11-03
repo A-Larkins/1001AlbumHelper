@@ -183,6 +183,16 @@ public static class AppleMusicCatalog
     private static bool IsSameTitle(AppleMusicAlbum c, string title) =>
         DiscogsApiClient.SameTitle(SplitEdition(c.CollectionName).Bare, SplitEdition(title).Bare);
 
+    /// <summary>
+    /// Whether two album names are the same record allowing for edition furniture on either side —
+    /// "Tago Mago" and "Tago Mago (2011 Remastered)", "Kind of Blue" and "Kind of Blue: Legacy" — but
+    /// never a different record that merely starts the same way: "Tical" is not "Tical 2000:
+    /// Judgement Day". The rule for deciding two playlist rows are one album, or what a removal takes.
+    /// </summary>
+    public static bool SameRelease(string a, string b) =>
+        DiscogsApiClient.SameTitle(SplitEdition(a).Bare, SplitEdition(b).Bare)
+        || DiscogsApiClient.SameTitle(MainTitle(a), MainTitle(b));
+
     /// <summary>A catalog name with edition tags and any ": subtitle" taken off.</summary>
     private static string MainTitle(string name)
     {

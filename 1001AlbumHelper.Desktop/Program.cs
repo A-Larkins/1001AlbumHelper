@@ -93,9 +93,9 @@ internal static class Program
             App.PreviewMobile = true;
         }
 
-        // The Analytics window needs LiveCharts, which only this head references (see
-        // AnalyticsWindowHost) — wire the factory so MainWindow's button can open it.
-        AnalyticsWindowHost.Factory = () => new AnalyticsWindow();
+        // The Insights page needs LiveCharts, which only this head references (see
+        // InsightsPageHost) — wire the factory so MainWindow can show it.
+        InsightsPageHost.Factory = () => new InsightsPage();
 
         // Apple Music, the Mac way: the iPhone's MediaPlayer framework doesn't exist here, so the
         // Mac drives the Music app over AppleScript instead. Windows/Linux get no writer, and the

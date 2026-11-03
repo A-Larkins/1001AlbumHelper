@@ -956,6 +956,13 @@ public static class Operations
             if (match.Year.Trim().Length == 0) match.Year = year.ToString();
         }
 
+        return await SaveShortlistAsync(repo, shortlist, cacheLocally);
+    }
+
+    /// <summary>Writes the shortlist back wherever it lives — local JSON and/or the Potentials sheet.</summary>
+    private static async Task<string?> SaveShortlistAsync(
+        CandidateRepository repo, List<CandidateAlbum> shortlist, bool cacheLocally)
+    {
         string? problem = null;
         if (cacheLocally)
         {
@@ -968,6 +975,46 @@ public static class Operations
             catch (Exception ex) { problem = $"Google Sheets sync failed ({ex.Message})."; }
         }
         return problem;
+    }
+
+    /// <summary>
+    /// The opposite of <see cref="KeepFromPlaylistAsync(PlaylistEntry, Action{string})"/>: an album
+    /// taken off Playlist 2 after a listen is a recommendation turned down, so the shortlist marks it
+    /// dropped — the shortlist's "Nah" — and it's never offered again, nor re-added by a later pull.
+    /// An album not on the shortlist yet goes on as dropped, for the same reason. One already
+    /// <em>kept</em> is left kept: removing a kept album from the listening queue just means done.
+    /// Returns one line for the status area.
+    /// </summary>
+    public static async Task<string> DropFromShortlistAsync(PlaylistEntry album, bool cacheLocally = true)
+    {
+        string title = DiscogsApiClient.BareTitle(album.Title);
+        var repo = CandidateRepository.Create();
+        if (!repo.SyncEnabled && !cacheLocally)
+            return $"⚠ The shortlist wasn't updated — Sheets sync {repo.Status}.";
+
+        List<CandidateAlbum> shortlist;
+        try { shortlist = await ShortlistIntake.LoadAsync(repo, cacheLocally); }
+        catch (Exception ex) { return $"⚠ The shortlist wasn't updated — couldn't read it ({ex.Message})."; }
+
+        var (_, match) = ReplacementCandidates.Classify(shortlist, c =>
+            DiscogsApiClient.SameTitle(DiscogsApiClient.BareTitle(c.Title), title)
+            && (NumberedList.Matches(c.Artist, album.Artist) || DiscogsApiClient.ArtistsOverlap(c.Artist, album.Artist)));
+
+        if (match is { Status: CandidateStatus.Added }) return $"“{title}” stays kept.";
+        if (match is { Status: CandidateStatus.Declined }) return $"“{title}” was already dropped from the shortlist.";
+
+        if (match is null)
+            shortlist.Add(new CandidateAlbum
+            {
+                Title = title, Artist = album.Artist, Year = album.Year, Status = CandidateStatus.Declined,
+            });
+        else
+            match.Status = CandidateStatus.Declined;
+
+        string? problem = await SaveShortlistAsync(repo, shortlist, cacheLocally);
+        return problem is null
+            ? $"Dropped “{title}” from the recommendations."
+            : $"⚠ Couldn't drop “{title}” from the shortlist — {problem}";
     }
 
     // ---------- Apple Music favourites ----------

@@ -14,10 +14,10 @@ using Avalonia.Threading;
 namespace _1001AlbumHelper;
 
 /// <summary>
-/// The app's one window: a sidebar of sections — Rate, Browse, Shortlist, Playlists, More — the
-/// same set as the phone's tab bar, with each section shown in place rather than in a window of its
-/// own. Rate is the home page. The tools that are run now and then (adding an album, favourites,
-/// analytics, export, sync) and the activity log live under More.
+/// The app's one window: a sidebar of sections — Rate, Browse, Shortlist, Playlists, Export,
+/// Insights, and Tools apart at the bottom — each shown in place rather than in a window of its own.
+/// Rate is the home page. Export is the finished list and what the app is ultimately for; Tools holds
+/// what's done now and then (the favourites backfill, the connection check) and the activity log.
 /// </summary>
 public partial class MainWindow : Window
 {
@@ -25,7 +25,7 @@ public partial class MainWindow : Window
     private static readonly IBrush RunningDot = new SolidColorBrush(Color.Parse("#e6a54b"));
     private const string LogPlaceholder = "Ready. Output from anything the app does streams here live.";
 
-    private enum Section { Rate, Browse, Shortlist, Playlists, More }
+    private enum Section { Rate, Browse, Shortlist, Playlists, Export, Insights, Tools }
 
     /// <summary>Pages built so far — each is made on first visit, then kept so it holds its place.</summary>
     private readonly Dictionary<Section, Control> _pages = new();
@@ -50,7 +50,8 @@ public partial class MainWindow : Window
         // the activity log, as well as wherever stdout was going (the terminal, under dotnet run).
         Console.SetOut(new UiLogWriter(line => Dispatcher.UIThread.Post(() => AppendLine(line)), Console.Out));
 
-        _pages[Section.More] = MorePage;
+        _pages[Section.Export] = ExportPage;
+        _pages[Section.Tools] = ToolsPage;
         Opened += async (_, _) =>
         {
             // Dev aid, like the mobile preview's ALBUMHELPER_PREVIEW_TAB: open straight onto one
@@ -63,7 +64,7 @@ public partial class MainWindow : Window
         // digits, and a shortcut must never reach it as one.
         AddHandler(KeyDownEvent, OnWindowKeyDown, Avalonia.Interactivity.RoutingStrategies.Tunnel);
 
-        InsightsSection.IsVisible = AnalyticsWindowHost.Factory is not null;
+        NavInsights.IsVisible = InsightsPageHost.Factory is not null;
     }
 
     /// <summary>The window's background, shared with <see cref="PageWindow"/> so a page looks the same in either.</summary>
@@ -87,7 +88,7 @@ public partial class MainWindow : Window
             Navigate(section);
     }
 
-    /// <summary>⌘1–⌘5 jump between sections, in sidebar order.</summary>
+    /// <summary>⌘1–⌘7 jump between sections, in sidebar order.</summary>
     private void OnWindowKeyDown(object? sender, KeyEventArgs e)
     {
         if (!e.KeyModifiers.HasFlag(KeyModifiers.Meta) && !e.KeyModifiers.HasFlag(KeyModifiers.Control)) return;
@@ -97,7 +98,9 @@ public partial class MainWindow : Window
             Key.D2 => Section.Browse,
             Key.D3 => Section.Shortlist,
             Key.D4 => Section.Playlists,
-            Key.D5 => Section.More,
+            Key.D5 => Section.Export,
+            Key.D6 when NavInsights.IsVisible => Section.Insights,
+            Key.D7 => Section.Tools,
             _ => null,
         };
         if (target is { } t) { e.Handled = true; Navigate(t); }
@@ -112,6 +115,7 @@ public partial class MainWindow : Window
                 Section.Rate => new RatePage(RatingMode.NextUp),
                 Section.Browse => new BrowsePage(),
                 Section.Shortlist => new ShortlistPage(),
+                Section.Insights => InsightsPageHost.Factory!(),
                 _ => new PlaylistsPage(),
             };
             _pages[section] = page;
@@ -124,13 +128,16 @@ public partial class MainWindow : Window
         NavBrowse.Classes.Set("on", section == Section.Browse);
         NavShortlist.Classes.Set("on", section == Section.Shortlist);
         NavPlaylists.Classes.Set("on", section == Section.Playlists);
-        NavMore.Classes.Set("on", section == Section.More);
+        NavExport.Classes.Set("on", section == Section.Export);
+        NavInsights.Classes.Set("on", section == Section.Insights);
+        NavTools.Classes.Set("on", section == Section.Tools);
 
         // Ratings made on the Rate page show up in Browse without re-reading the sheet.
         if (page is BrowsePage browse && _pages.TryGetValue(Section.Rate, out var rate))
             browse.ApplyRatings(((RatePage)rate).RatingsApplied);
 
         (page as IPage)?.OnShown();
+        if (section == Section.Export) _ = RefreshExportCountsAsync();
     }
 
     /// <summary>
@@ -147,7 +154,7 @@ public partial class MainWindow : Window
         {
             SyncDescText.Text = "Reconciles both lists with the 1001 list — couldn't check right now.";
             SyncBadge.IsVisible = false;
-            MoreDot.IsVisible = false;
+            ExportDot.IsVisible = false;
             return;
         }
 
@@ -156,13 +163,13 @@ public partial class MainWindow : Window
             SyncDescText.Text = status.Summary();
             SyncBadgeText.Text = "NEEDED";
             SyncBadge.IsVisible = true;
-            MoreDot.IsVisible = true;
+            ExportDot.IsVisible = true;
         }
         else
         {
             SyncDescText.Text = "Everything's in sync — nothing to reconcile.";
             SyncBadge.IsVisible = false;
-            MoreDot.IsVisible = false;
+            ExportDot.IsVisible = false;
         }
     }
 
@@ -292,7 +299,10 @@ public partial class MainWindow : Window
             else if (action == "favorites-backfill") ArmFavourites(null);
 
             // Reveal the finished PDF rather than making them hunt for it.
-            if (exportedPdf is not null) RevealInFinder(exportedPdf);
+            if (exportedPdf is not null) { RevealInFinder(exportedPdf); ShowLastExport(exportedPdf); }
+
+            // A sync changes what's on the finished list.
+            if (action == "sync-all" && _current == Section.Export) _ = RefreshExportCountsAsync();
         });
     }
 
@@ -301,7 +311,6 @@ public partial class MainWindow : Window
         StatusText.Text = on ? "Running…" : "Idle";
         StatusDot.Fill = on ? RunningDot : IdleDot;
         CheckButton.IsEnabled = !on;
-        AddAlbumButton.IsEnabled = !on;
         SyncButton.IsEnabled = !on;
         ExportButton.IsEnabled = !on;
     }
@@ -316,16 +325,40 @@ public partial class MainWindow : Window
 
     // ---------- Tools under More ----------
 
-    private async void OnAddAlbum(object? sender, RoutedEventArgs e)
+    // ---------- Export ----------
+
+    /// <summary>The PDF the last export wrote, for "Show in Finder".</summary>
+    private string? _lastExport;
+
+    /// <summary>
+    /// Fills in the Export page's three numbers from the sheet. Re-read on every visit (and after a
+    /// sync), because rating a ⭐ or keeping a replacement elsewhere in the app changes them.
+    /// </summary>
+    private async Task RefreshExportCountsAsync()
     {
-        if (!AddAlbumButton.IsEnabled) return;
-        await new AddAlbumWindow().ShowDialog(this);
+        var lists = await Task.Run(Operations.LoadAllListsAsync);
+        if (lists.Error is not null)
+        {
+            ExportNoteText.Text = $"Couldn't read the lists — {lists.Error}";
+            ExportNoteText.IsVisible = true;
+            return;
+        }
+        ExportNoteText.IsVisible = false;
+        MustHearCountText.Text = lists.MustHear.Count.ToString();
+        ReplacementsCountText.Text = lists.Replacements.Count.ToString();
+        TotalCountText.Text = (lists.MustHear.Count + lists.Replacements.Count).ToString();
     }
 
-    private void OnAnalytics(object? sender, RoutedEventArgs e)
+    private void ShowLastExport(string path)
     {
-        var window = AnalyticsWindowHost.Factory?.Invoke();
-        window?.ShowDialog(this);
+        _lastExport = path;
+        LastExportText.Text = $"Last export: {Path.GetFileName(path)}  ·  {DateTime.Now:h:mm tt}";
+        LastExportRow.IsVisible = true;
+    }
+
+    private void OnRevealExport(object? sender, RoutedEventArgs e)
+    {
+        if (_lastExport is not null) RevealInFinder(_lastExport);
     }
 
     /// <summary>Opens a Finder window with the file selected.</summary>

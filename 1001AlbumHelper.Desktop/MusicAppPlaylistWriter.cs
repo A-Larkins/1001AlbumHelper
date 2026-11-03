@@ -269,6 +269,49 @@ public sealed class MusicAppPlaylistWriter : IApplePlaylistWriter
                                           AppleMusicCatalog.SplitEdition(releaseName).Bare));
 
 
+    // ---------- Removing ----------
+
+    /// <summary>Music deletes a track from a user playlist without touching the library, so yes.</summary>
+    public bool CanRemove => true;
+
+    public async Task<PlaylistOpResult> RemoveAlbumAsync(string playlistName, PlaylistEntry album)
+    {
+        try
+        {
+            var output = await RunScriptAsync(ReadPlaylistTracksScript, playlistName).ConfigureAwait(false);
+            if (output.Trim() == NoPlaylist)
+                return new PlaylistOpResult(false, $"No Music playlist named “{playlistName}”.");
+
+            var ids = Rows(output)
+                .Where(f => IsSameAlbum(Field(f, 0), Field(f, 1).Length > 0 ? Field(f, 1) : Field(f, 2), album))
+                .Select(f => Field(f, 3))
+                .Where(id => id.Length > 0)
+                .ToList();
+            if (ids.Count == 0) return new PlaylistOpResult(true, $"{album.Title} wasn't in {playlistName}.");
+
+            var args = new List<string> { playlistName };
+            args.AddRange(ids);
+            var removed = (await RunScriptAsync(RemoveFromPlaylistScript, args.ToArray()).ConfigureAwait(false)).Trim();
+            return int.TryParse(removed, out int n) && n > 0
+                ? new PlaylistOpResult(true, $"Took {album.Title} out of {playlistName} ({n} track{(n == 1 ? "" : "s")}).")
+                : new PlaylistOpResult(false, $"Music didn't remove {album.Title} from {playlistName}.");
+        }
+        catch (Exception ex)
+        {
+            return new PlaylistOpResult(false, $"Couldn't remove {album.Title}: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Whether a playlist track belongs to this album. Stricter than the pull-down's prefix rule on
+    /// purpose — this decides what gets deleted, and "Tical" must not take "Tical 2000: Judgement
+    /// Day" with it — so the titles have to be the same once edition tags are set aside on both
+    /// sides ("Haunted Dancehall" and "Haunted Dancehall (Remastered)" are).
+    /// </summary>
+    internal static bool IsSameAlbum(string trackAlbum, string trackArtist, PlaylistEntry album) =>
+        AppleMusicCatalog.SameRelease(trackAlbum, album.Title)
+        && (NumberedList.Matches(trackArtist, album.Artist) || DiscogsApiClient.ArtistsOverlap(trackArtist, album.Artist));
+
     // ---------- Favourites ----------
 
     /// <summary>The Music app's <c>album favorited</c> is read/write over AppleScript, so yes.</summary>
@@ -596,6 +639,48 @@ public sealed class MusicAppPlaylistWriter : IApplePlaylistWriter
                 end if
               end repeat
               return touched as text
+            end tell
+          end timeout
+        end run
+        """;
+
+    private const string ReadPlaylistTracksScript = """
+        on run argv
+          set playlistName to item 1 of argv
+          with timeout of 280 seconds
+            tell application "Music"
+              if not (exists user playlist playlistName) then return "!!NOPLAYLIST"
+              set pl to first user playlist whose name is playlistName
+              set rows to {}
+              repeat with t in (every track of pl)
+                set end of rows to ((album of t) & tab & (album artist of t) & tab & (artist of t) & tab & (persistent ID of t))
+              end repeat
+              set AppleScript's text item delimiters to linefeed
+              return rows as text
+            end tell
+          end timeout
+        end run
+        """;
+
+    // Deletes tracks from one user playlist by persistent id. Deleting a playlist's track removes it
+    // from that playlist only — the library copy stays.
+    private const string RemoveFromPlaylistScript = """
+        on run argv
+          set playlistName to item 1 of argv
+          set wanted to items 2 thru -1 of argv
+          with timeout of 280 seconds
+            tell application "Music"
+              set pl to first user playlist whose name is playlistName
+              -- "gone", not "removed": that word is taken in Music's dictionary.
+              set gone to 0
+              repeat with pid in wanted
+                set hits to (every track of pl whose persistent ID is (pid as text))
+                repeat with t in hits
+                  delete t
+                  set gone to gone + 1
+                end repeat
+              end repeat
+              return gone as text
             end tell
           end timeout
         end run

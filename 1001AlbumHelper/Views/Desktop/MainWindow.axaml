@@ -149,6 +149,25 @@
       <Setter Property="Opacity" Value="0.4" />
     </Style>
 
+    <!-- ===== Export page numbers ===== -->
+    <Style Selector="Border.stat">
+      <Setter Property="CornerRadius" Value="14" />
+      <Setter Property="Background" Value="#1b1511" />
+      <Setter Property="BorderBrush" Value="#332921" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="Padding" Value="18,16" />
+    </Style>
+    <Style Selector="TextBlock.statNumber">
+      <Setter Property="FontSize" Value="30" />
+      <Setter Property="FontWeight" Value="Bold" />
+      <Setter Property="Foreground" Value="#f7cf90" />
+    </Style>
+    <Style Selector="TextBlock.statLabel">
+      <Setter Property="FontSize" Value="12" />
+      <Setter Property="Foreground" Value="#a99884" />
+      <Setter Property="Margin" Value="0,2,0,0" />
+    </Style>
+
     <Style Selector="TextBlock.sectionLabel">
       <Setter Property="Foreground" Value="#6f6053" />
       <Setter Property="FontSize" Value="10.5" />
@@ -191,6 +210,12 @@
           </StackPanel>
         </Border>
 
+        <!-- Tools sits apart from the sections you work in: it's for now and then. -->
+        <Button DockPanel.Dock="Bottom" x:Name="NavTools" Classes="nav" Click="OnNav" Tag="Tools" Margin="0,0,0,10"
+                ToolTip.Tip="Favourites backfill, connection check, and the activity log.  ⌘7">
+          <Grid ColumnDefinitions="28,*,Auto"><TextBlock Text="🛠" /><TextBlock Grid.Column="1" Text="Tools" /><TextBlock Grid.Column="2" Classes="hint" Text="⌘7" VerticalAlignment="Center" /></Grid>
+        </Button>
+
         <StackPanel Spacing="3">
           <Button x:Name="NavRate" Classes="nav on" Click="OnNav" Tag="Rate"
                   ToolTip.Tip="Rate the next album, backfill ✓ marks, or change a rating.  ⌘1">
@@ -208,17 +233,21 @@
                   ToolTip.Tip="Playlist 1 and 2 — send them to the Music app.  ⌘4">
             <Grid ColumnDefinitions="28,*,Auto"><TextBlock Text="🎵" /><TextBlock Grid.Column="1" Text="Playlists" /><TextBlock Grid.Column="2" Classes="hint" Text="⌘4" VerticalAlignment="Center" /></Grid>
           </Button>
-          <Button x:Name="NavMore" Classes="nav" Click="OnNav" Tag="More"
-                  ToolTip.Tip="Add an album, favourites, analytics, export, sync, and the activity log.  ⌘5">
+          <Button x:Name="NavExport" Classes="nav" Click="OnNav" Tag="Export"
+                  ToolTip.Tip="The finished list — sync it and export it as a PDF.  ⌘5">
             <Grid ColumnDefinitions="28,*,Auto">
-              <TextBlock Text="⋯" />
+              <TextBlock Text="📄" />
               <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="7">
-                <TextBlock Text="More" VerticalAlignment="Center" />
+                <TextBlock Text="Export" VerticalAlignment="Center" />
                 <!-- Lit when the lists have drifted from the 1001 and a sync would fix it. -->
-                <Ellipse x:Name="MoreDot" Width="7" Height="7" Fill="#e6a54b" IsVisible="False" VerticalAlignment="Center" />
+                <Ellipse x:Name="ExportDot" Width="7" Height="7" Fill="#e6a54b" IsVisible="False" VerticalAlignment="Center" />
               </StackPanel>
               <TextBlock Grid.Column="2" Classes="hint" Text="⌘5" VerticalAlignment="Center" />
             </Grid>
+          </Button>
+          <Button x:Name="NavInsights" Classes="nav" Click="OnNav" Tag="Insights"
+                  ToolTip.Tip="Taste patterns across your ratings — by decade and genre.  ⌘6">
+            <Grid ColumnDefinitions="28,*,Auto"><TextBlock Text="📊" /><TextBlock Grid.Column="1" Text="Insights" /><TextBlock Grid.Column="2" Classes="hint" Text="⌘6" VerticalAlignment="Center" /></Grid>
           </Button>
         </StackPanel>
       </DockPanel>
@@ -227,13 +256,72 @@
     <!-- ===== Pages: built on first visit, then kept (see MainWindow.Navigate) ===== -->
     <Panel Grid.Column="1" x:Name="PageHost">
 
-  <Grid x:Name="MorePage" IsVisible="False" Margin="24,20,24,18" RowDefinitions="Auto,*,Auto,Auto">
+  <!-- ===== Export: the finished list, and the point of the whole thing ===== -->
+  <ScrollViewer x:Name="ExportPage" IsVisible="False" VerticalScrollBarVisibility="Auto">
+    <StackPanel Margin="28,22,28,24" Spacing="20">
+      <StackPanel Spacing="3">
+        <TextBlock Text="Export" FontSize="21" FontWeight="Bold" Foreground="#f3e9df" />
+        <TextBlock Text="Your finished list: the 1001 albums you'd keep (Must Hear) and the ones you'd swap in (Replacements), numbered straight through."
+                   FontSize="12.5" Foreground="#a99884" TextWrapping="Wrap" />
+      </StackPanel>
 
-    <!-- ===== Header ===== -->
+      <Grid ColumnDefinitions="*,12,*,12,*">
+        <Border Grid.Column="0" Classes="stat">
+          <StackPanel><TextBlock Classes="statNumber" x:Name="MustHearCountText" Text="–" /><TextBlock Classes="statLabel" Text="⭐  Must Hear" /></StackPanel>
+        </Border>
+        <Border Grid.Column="2" Classes="stat">
+          <StackPanel><TextBlock Classes="statNumber" x:Name="ReplacementsCountText" Text="–" /><TextBlock Classes="statLabel" Text="➕  Replacements" /></StackPanel>
+        </Border>
+        <Border Grid.Column="4" Classes="stat">
+          <StackPanel><TextBlock Classes="statNumber" x:Name="TotalCountText" Text="–" /><TextBlock Classes="statLabel" Text="On the finished list" /></StackPanel>
+        </Border>
+      </Grid>
+      <TextBlock x:Name="ExportNoteText" Text="" FontSize="11.5" Foreground="#8b7969" TextWrapping="Wrap" IsVisible="False" />
+
+      <Button x:Name="SyncButton" Classes="card" Tag="sync-all" Click="OnRun">
+        <Grid ColumnDefinitions="Auto,*">
+          <Border Grid.Column="0" Classes="badge"><TextBlock Text="🔄" /></Border>
+          <StackPanel Grid.Column="1" Margin="16,0,0,0" VerticalAlignment="Center">
+            <StackPanel Orientation="Horizontal" Spacing="8">
+              <TextBlock Classes="title" Text="Sync with the 1001" VerticalAlignment="Center" />
+              <Border x:Name="SyncBadge" IsVisible="False" VerticalAlignment="Center"
+                      CornerRadius="999" Background="#5a3a12" BorderBrush="#d8a24a"
+                      BorderThickness="1" Padding="8,2">
+                <TextBlock x:Name="SyncBadgeText" Text="" FontSize="10" FontWeight="Bold" Foreground="#f7cf90" />
+              </Border>
+            </StackPanel>
+            <TextBlock x:Name="SyncDescText" Classes="desc" Text="Checking whether anything needs syncing…" />
+          </StackPanel>
+        </Grid>
+      </Button>
+
+      <Button x:Name="ExportButton" Classes="card hero" Tag="export-pdf" Click="OnRun">
+        <Grid ColumnDefinitions="Auto,*">
+          <Border Grid.Column="0" Classes="badge"><TextBlock Text="📄" /></Border>
+          <StackPanel Grid.Column="1" Margin="16,0,0,0" VerticalAlignment="Center">
+            <TextBlock Classes="title" Text="Export as PDF" />
+            <TextBlock Classes="desc" Text="Both lists, numbered straight through, in two sections. It opens in Finder when it's done." />
+          </StackPanel>
+        </Grid>
+      </Button>
+
+      <Grid ColumnDefinitions="*,Auto" x:Name="LastExportRow" IsVisible="False">
+        <TextBlock Grid.Column="0" x:Name="LastExportText" FontSize="12" Foreground="#a99884"
+                   VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+        <Button Grid.Column="1" Classes="ghost" Content="Show in Finder" Click="OnRevealExport" Margin="10,0,0,0" />
+      </Grid>
+
+      <TextBlock Text="Sync and export report their progress in Tools ▸ Activity log." FontSize="11" Foreground="#6f6053" />
+    </StackPanel>
+  </ScrollViewer>
+
+  <!-- ===== Tools: the now-and-then things, and the activity log ===== -->
+  <Grid x:Name="ToolsPage" IsVisible="False" Margin="24,20,24,18" RowDefinitions="Auto,Auto,Auto,*">
+
     <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="0,0,0,16">
       <StackPanel Grid.Column="0" VerticalAlignment="Center" Spacing="2">
-        <TextBlock Text="More" FontSize="21" FontWeight="Bold" Foreground="#f3e9df" />
-        <TextBlock Text="Everything that isn't rating, browsing, the shortlist or the playlists."
+        <TextBlock Text="Tools" FontSize="21" FontWeight="Bold" Foreground="#f3e9df" />
+        <TextBlock Text="Things you do now and then, and a log of what the app has been doing."
                    FontSize="12.5" Foreground="#a99884" />
       </StackPanel>
       <Button Grid.Column="1" x:Name="CheckButton" Classes="ghost" Content="Check connection"
@@ -241,25 +329,8 @@
               ToolTip.Tip="Sign in and list the sheet’s tabs — a safe, read-only check." />
     </Grid>
 
-    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Padding="0,0,10,0">
-    <StackPanel Spacing="20">
-      <StackPanel Spacing="10">
-        <TextBlock Classes="sectionLabel" Text="LISTS" />
-            <Button x:Name="AddAlbumButton" Classes="card" Click="OnAddAlbum">
-              <Grid ColumnDefinitions="Auto,*">
-                <Border Grid.Column="0" Classes="badge">
-                  <TextBlock Text="➕" />
-                </Border>
-                <StackPanel Grid.Column="1" Margin="13,0,0,0" VerticalAlignment="Center">
-                  <TextBlock Classes="title" Text="Add an album" />
-                  <TextBlock Classes="desc" Text="Put an album straight onto the replacements list — it slots in by year. (To decide later instead, use Shortlist.)" />
-                </StackPanel>
-              </Grid>
-            </Button>
-      </StackPanel>
-
-      <StackPanel Spacing="10">
-        <TextBlock Classes="sectionLabel" Text="APPLE MUSIC" />
+    <StackPanel Grid.Row="1" Spacing="10">
+      <TextBlock Classes="sectionLabel" Text="APPLE MUSIC" />
         <!-- Two presses, deliberately: the first only looks, the second writes to the real library.
              The card's own text is the confirmation step — see OnRun's "favorites-*" cases. -->
         <Button x:Name="FavoritesButton" Classes="card" Tag="favorites-check" Click="OnRun">
@@ -280,66 +351,7 @@
             </Border>
           </Grid>
         </Button>
-      </StackPanel>
-
-      <StackPanel Spacing="10" x:Name="InsightsSection" IsVisible="False">
-        <TextBlock Classes="sectionLabel" Text="INSIGHTS" />
-        <Button x:Name="AnalyticsButton" Classes="card" Click="OnAnalytics">
-          <Grid ColumnDefinitions="Auto,*">
-            <Border Grid.Column="0" Classes="badge">
-              <TextBlock Text="📊" />
-            </Border>
-            <StackPanel Grid.Column="1" Margin="16,0,0,0" VerticalAlignment="Center">
-              <TextBlock Classes="title" Text="Analytics" />
-              <TextBlock Classes="desc" Text="Taste patterns across your ratings — by decade and genre." />
-            </StackPanel>
-          </Grid>
-        </Button>
-      </StackPanel>
-
-      <StackPanel Spacing="10">
-        <TextBlock Classes="sectionLabel" Text="SHEETS &amp; EXPORT" />
-        <Grid ColumnDefinitions="*,*">
-        <Button Grid.Column="0" x:Name="ExportButton" Classes="card" Tag="export-pdf" Click="OnRun"
-                Margin="0,0,6,0">
-          <Grid ColumnDefinitions="Auto,*">
-            <Border Grid.Column="0" Classes="badge">
-              <TextBlock Text="📄" />
-            </Border>
-            <StackPanel Grid.Column="1" Margin="13,0,0,0" VerticalAlignment="Center">
-              <TextBlock Classes="title" Text="Export as PDF" />
-              <TextBlock Classes="desc" Text="Both lists, numbered straight through, in two sections." />
-            </StackPanel>
-          </Grid>
-        </Button>
-
-        <Button Grid.Column="1" x:Name="SyncButton" Classes="card" Tag="sync-all" Click="OnRun"
-                Margin="6,0,0,0">
-          <Grid ColumnDefinitions="Auto,*">
-            <Border Grid.Column="0" Classes="badge">
-              <TextBlock Text="🔄" />
-            </Border>
-            <StackPanel Grid.Column="1" Margin="13,0,0,0" VerticalAlignment="Center">
-              <!-- The badge sits beside the title so a half-width card doesn't squeeze it. -->
-              <StackPanel Orientation="Horizontal" Spacing="8">
-                <TextBlock Classes="title" Text="Sync all" VerticalAlignment="Center" />
-                <Border x:Name="SyncBadge" IsVisible="False" VerticalAlignment="Center"
-                        CornerRadius="999" Background="#5a3a12" BorderBrush="#d8a24a"
-                        BorderThickness="1" Padding="8,2">
-                  <TextBlock x:Name="SyncBadgeText" Text="" FontSize="10" FontWeight="Bold"
-                             Foreground="#f7cf90" />
-                </Border>
-              </StackPanel>
-              <TextBlock x:Name="SyncDescText" Classes="desc"
-                         Text="Reconciles both lists with the 1001 list." />
-            </StackPanel>
-          </Grid>
-        </Button>
-        </Grid>
-      </StackPanel>
-
     </StackPanel>
-    </ScrollViewer>
 
     <!-- ===== Log ===== -->
     <Grid Grid.Row="2" ColumnDefinitions="*,Auto" Margin="0,18,0,7">
@@ -350,7 +362,7 @@
       </StackPanel>
     </Grid>
 
-    <Border Grid.Row="3" Height="110" CornerRadius="12" Background="#120f0e"
+    <Border Grid.Row="3" CornerRadius="12" Background="#120f0e"
             BorderBrush="#282019" BorderThickness="1">
       <TextBox x:Name="LogBox" IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap"
                BorderThickness="0" Background="Transparent" Foreground="#bcae9f"

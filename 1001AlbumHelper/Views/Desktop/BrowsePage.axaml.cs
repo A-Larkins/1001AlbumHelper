@@ -204,6 +204,17 @@ public partial class BrowsePage : UserControl, IPage
     }
 
     /// <summary>
+    /// Adds an album straight to the replacements list (the form does the writing), then shows the
+    /// list it went on — re-read, since the add renumbers it.
+    /// </summary>
+    private async void OnAddAlbum(object? sender, RoutedEventArgs e)
+    {
+        await new AddAlbumWindow().ShowDialog((Window)TopLevel.GetTopLevel(this)!);
+        _cache.Remove(Which.Replacements);
+        Show(Which.Replacements);
+    }
+
+    /// <summary>
     /// Opens the rater on this one album, whatever it's rated now — the way an existing rating gets
     /// changed. Modal, so the window can fold the result back into the row it came from when it
     /// closes rather than making the whole list reload for one cell.

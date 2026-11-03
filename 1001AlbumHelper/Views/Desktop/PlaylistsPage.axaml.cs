@@ -107,7 +107,7 @@ public partial class PlaylistsPage : UserControl, IPage
 
         var toRemove = _store.ToRemove;
         ToRemoveSection.IsVisible = toRemove.Count > 0;
-        ToRemoveHeader.Text = $"Delete these from Apple Music ({toRemove.Count})";
+        ToRemoveHeader.Text = $"Still in the Music playlist ({toRemove.Count})";
         ToRemoveRows.ItemsSource = toRemove;
 
         UpdateButtons();
@@ -130,19 +130,62 @@ public partial class PlaylistsPage : UserControl, IPage
 
     // ---------- Editing the working list ----------
 
-    private void OnRemove(object? sender, RoutedEventArgs e)
+    /// <summary>
+    /// Takes an album off the working list — and, on the Mac, out of the Music playlist too (the
+    /// playlist only; the library keeps it). Where Music can't remove it, it goes on the
+    /// "delete these" checklist as before. On Playlist 2 a removal is also a verdict: the
+    /// recommendation was listened to and turned down, so the shortlist marks it dropped (see
+    /// <see cref="Operations.DropFromShortlistAsync"/>) and it isn't offered again.
+    /// </summary>
+    private async void OnRemove(object? sender, RoutedEventArgs e)
     {
-        if (_store is null || sender is not Button { DataContext: PlaylistEntry entry }) return;
+        if (_store is null || _busy || sender is not Button { DataContext: PlaylistEntry entry }) return;
 
-        // Anything Apple Music already has can't be deleted through the API, so removing it here
-        // moves it to the checklist instead of vanishing.
-        _store.RequestRemoval(entry);
-        Refresh();
+        bool recommendation = _current == 2;
+        SetBusy(true, $"Removing {entry.Title}…");
+        var notes = new List<string>();
+        try
+        {
+            if (entry.InAppleMusic && AppleMusic.CanRemove)
+            {
+                var result = await AppleMusic.Writer!.RemoveAlbumAsync(AppleMusicName, entry);
+                if (result.Ok) _store.ConfirmRemoved(entry);
+                else { _store.RequestRemoval(entry); notes.Add($"⚠ {result.Message} It's on the list below to delete by hand."); }
+                if (result.Ok) notes.Add(result.Message);
+            }
+            else
+            {
+                // Not in Music yet, or Music can't remove it here — the checklist covers the latter.
+                _store.RequestRemoval(entry);
+                notes.Add(entry.InAppleMusic ? $"{entry.Title} needs deleting in Music by hand (below)." : $"Removed {entry.Title}.");
+            }
+
+            if (recommendation) notes.Add(await Operations.DropFromShortlistAsync(entry));
+        }
+        catch (Exception ex) { notes.Add($"Couldn't remove {entry.Title} — {ex.Message}"); }
+        finally
+        {
+            SetBusy(false, string.Join(" ", notes));
+            Refresh();
+        }
     }
 
-    private void OnConfirmRemoved(object? sender, RoutedEventArgs e)
+    /// <summary>
+    /// Clears an album off the "delete these" checklist. On the Mac it does the deleting first,
+    /// taking the album out of the Music playlist — and one already deleted by hand simply isn't
+    /// found, which counts as done.
+    /// </summary>
+    private async void OnConfirmRemoved(object? sender, RoutedEventArgs e)
     {
-        if (_store is null || sender is not Button { DataContext: PlaylistEntry entry }) return;
+        if (_store is null || _busy || sender is not Button { DataContext: PlaylistEntry entry }) return;
+
+        if (AppleMusic.CanRemove)
+        {
+            SetBusy(true, $"Removing {entry.Title} from {AppleMusicName}…");
+            var result = await AppleMusic.Writer!.RemoveAlbumAsync(AppleMusicName, entry);
+            SetBusy(false, result.Ok ? result.Message : $"⚠ {result.Message}");
+            if (!result.Ok) return;
+        }
         _store.ConfirmRemoved(entry);
         Refresh();
     }
@@ -222,6 +265,10 @@ public partial class PlaylistsPage : UserControl, IPage
                 ? $"“{AppleMusicName}” is empty, or the Music app has no playlist by that name — the working list is now empty too."
                 : Summarise(sync, albums.Count);
 
+            // Music reports no years, so anything new arrives blank — fill those before moving on.
+            Refresh();
+            await FillMissingYearsAsync(line => Note($"{note} {line}"));
+
             if (isRecommendations && albums.Count > 0)
             {
                 // The pulled list is already on disk, so show it before the shortlist round trip —
@@ -247,6 +294,51 @@ public partial class PlaylistsPage : UserControl, IPage
             SetBusy(false);
             Refresh();
         }
+    }
+
+    /// <summary>
+    /// Gives albums with no year one: from the lists first — the 1001, Must Hear and Replacements,
+    /// which is where a Playlist 1 album nearly always comes from and whose year is the one the rest
+    /// of the app shows — then from Discogs, which dates an album by its first release rather than
+    /// a remaster, for anything the lists don't hold. Whatever neither knows stays blank.
+    /// </summary>
+    private async Task FillMissingYearsAsync(Action<string> progress)
+    {
+        if (_store is null || _store.Entries.All(e => !string.IsNullOrWhiteSpace(e.Year))) return;
+
+        progress("Looking up years…");
+        var known = new List<PlaylistEntry>();
+        try
+        {
+            var lists = await Task.Run(Operations.LoadAllListsAsync);
+            if (lists.Error is null)
+            {
+                known.AddRange(lists.Master.Select(a => new PlaylistEntry(a.Title, a.Artist, a.Year)));
+                known.AddRange(lists.MustHear.Concat(lists.Replacements).Select(r => new PlaylistEntry(r.Title, r.Artist, r.Year)));
+            }
+        }
+        catch { /* Discogs below still gets its turn */ }
+
+        _store.FillMissingYears(e =>
+            known.FirstOrDefault(k => !string.IsNullOrWhiteSpace(k.Year) && PlaylistStore.SameAlbum(k, e))?.Year);
+
+        var discogs = DiscogsApiClient.TryCreate();
+        var still = _store.Entries.Where(e => string.IsNullOrWhiteSpace(e.Year)).ToList();
+        if (discogs is null || still.Count == 0) return;
+
+        var found = new Dictionary<PlaylistEntry, string>();
+        for (int i = 0; i < still.Count; i++)
+        {
+            if (i > 0) await Task.Delay(1100); // Discogs allows about a request a second
+            progress($"Looking up years on Discogs… {i + 1}/{still.Count}");
+            try
+            {
+                var year = (await discogs.FindAlbumAsync(DiscogsApiClient.BareTitle(still[i].Title), still[i].Artist))?.Year;
+                if (!string.IsNullOrWhiteSpace(year)) found[still[i]] = year;
+            }
+            catch { /* one album Discogs can't answer for doesn't stop the rest */ }
+        }
+        _store.FillMissingYears(e => found.TryGetValue(e, out var y) ? y : null);
     }
 
     /// <summary>

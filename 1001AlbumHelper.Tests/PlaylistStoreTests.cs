@@ -108,6 +108,60 @@ public class PlaylistStoreTests : IDisposable
         Assert.True(arrived.InAppleMusic);
     }
 
+    /// <summary>
+    /// The real case: Tical 2000 went in by mistake, was taken off (so it sits on the removal
+    /// checklist), and the user swapped in the real Tical by hand in Music. The pull must bring
+    /// Tical in as its own album and see that Tical 2000 is gone — not file one under the other
+    /// because one title starts with the other.
+    /// </summary>
+    [Fact]
+    public void Pulling_down_never_mistakes_an_album_for_one_whose_title_it_starts()
+    {
+        var store = PlaylistStore.Open(_id);
+        store.Add("Tical 2000: Judgement Day", "Method Man", "");
+        store.MarkInAppleMusic(store.Active[0]);
+        store.RequestRemoval(store.Active[0]);
+
+        var sync = store.SyncFromAppleMusic(new[]
+        {
+            new PlaylistEntry("Tical", "Method Man", "") { TrackCount = 13 },
+        });
+
+        Assert.Equal("Tical", Assert.Single(store.Active).Title);
+        Assert.Empty(store.ToRemove);
+        Assert.Equal(1, sync.ClearedFromChecklist);
+    }
+
+    [Fact]
+    public void Pulling_down_still_sees_a_remaster_as_the_album_it_already_has()
+    {
+        var store = PlaylistStore.Open(_id);
+        store.Add("Haunted Dancehall", "The Sabres Of Paradise", "1994");
+
+        var sync = store.SyncFromAppleMusic(new[]
+        {
+            new PlaylistEntry("Haunted Dancehall (Remastered)", "The Sabres Of Paradise", "") { TrackCount = 14 },
+        });
+
+        Assert.Equal(0, sync.Added);
+        Assert.Equal("1994", Assert.Single(store.Active).Year); // the year carried across
+    }
+
+    [Fact]
+    public void Missing_years_are_filled_and_known_ones_left_alone()
+    {
+        var store = PlaylistStore.Open(_id);
+        store.Add("Tical", "Method Man", "");
+        store.Add("Dummy", "Portishead", "1994");
+        var asked = new List<string>();
+
+        int filled = store.FillMissingYears(e => { asked.Add(e.Title); return e.Title == "Tical" ? "1994" : null; });
+
+        Assert.Equal(1, filled);
+        Assert.Equal(new[] { "Tical" }, asked); // an album with a year is never asked about
+        Assert.All(PlaylistStore.Open(_id).Active, e => Assert.Equal("1994", e.Year)); // and it was saved
+    }
+
     [Fact]
     public void Pulling_down_drops_albums_apple_music_doesnt_have()
     {

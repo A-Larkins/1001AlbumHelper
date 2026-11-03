@@ -156,6 +156,27 @@ public sealed class PlaylistStore
         return removed;
     }
 
+    /// <summary>
+    /// Fills in years the list doesn't have — Apple Music's read-back carries none, so an album that
+    /// arrives by a pull-down has a blank year until something supplies it. <paramref name="yearFor"/>
+    /// answers per album (null or blank for "don't know"); entries that already have a year are never
+    /// asked. Returns how many were filled, and saves once if any were.
+    /// </summary>
+    public int FillMissingYears(Func<PlaylistEntry, string?> yearFor)
+    {
+        int filled = 0;
+        for (int i = 0; i < _entries.Count; i++)
+        {
+            if (!string.IsNullOrWhiteSpace(_entries[i].Year)) continue;
+            string? year = yearFor(_entries[i])?.Trim();
+            if (string.IsNullOrEmpty(year)) continue;
+            _entries[i] = _entries[i] with { Year = year };
+            filled++;
+        }
+        if (filled > 0) Save();
+        return filled;
+    }
+
     /// <summary>Marks an existing entry as confirmed present in Apple Music (after a successful push).</summary>
     public void MarkInAppleMusic(PlaylistEntry entry)
     {
@@ -166,13 +187,19 @@ public sealed class PlaylistStore
     }
 
     /// <summary>
-    /// Whether two entries name the same record. Titles are compared loosely — the same rule the
-    /// push path matches on. Apple Music names an album by whichever edition it stocks, so a strict
-    /// comparison would read the catalog's "Tago Mago (2011 Remastered)" as a different record from
-    /// our "Tago Mago", and every sync would drop ours, re-add theirs, and lose the year in the process.
+    /// Whether two entries name the same record. Edition furniture is set aside on both sides
+    /// (<see cref="AppleMusicCatalog.SameRelease"/>): Apple Music names an album by whichever edition
+    /// it stocks, so a strict comparison would read the catalog's "Tago Mago (2011 Remastered)" as a
+    /// different record from our "Tago Mago", and every sync would drop ours, re-add theirs, and lose
+    /// the year in the process.
+    /// <para>
+    /// It used to be a whole-word prefix rule, which read "Tical" and "Tical 2000: Judgement Day" as
+    /// one album: with Tical 2000 waiting on the removal checklist, a pull that brought in the real
+    /// Tical filed it under that row, and Tical never appeared.
+    /// </para>
     /// </summary>
     public static bool SameAlbum(PlaylistEntry a, PlaylistEntry b) =>
-        DiscogsApiClient.TitlesLineUp(a.Title, b.Title) && NumberedList.Matches(a.Artist, b.Artist);
+        AppleMusicCatalog.SameRelease(a.Title, b.Title) && NumberedList.Matches(a.Artist, b.Artist);
 
     /// <summary>
     /// Pulls the working list down from Apple Music, making that playlist the source of truth:

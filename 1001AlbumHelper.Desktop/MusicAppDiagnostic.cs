@@ -88,6 +88,17 @@ public static class MusicAppDiagnostic
             Console.WriteLine("▶ Checking the pull-down sync against what Music actually returned…");
             await CheckPullDownAsync(writer);
 
+            // Removing takes the album out of the playlist and leaves the library alone. Kind of Blue
+            // is in the library to start with, so a library count of zero afterwards would mean the
+            // delete reached past the playlist — exactly what it must never do.
+            Console.WriteLine("▶ Removing Kind of Blue from the playlist only…");
+            var removal = await writer.RemoveAlbumAsync(ScratchPlaylist, albums[0]);
+            Console.WriteLine($"   {(removal.Ok ? "✓" : "✗")} {removal.Message}");
+            var afterRemoval = await writer.ReadAlbumsAsync(ScratchPlaylist);
+            Report("gone from the playlist", afterRemoval.All(r => !DiscogsApiClient.TitlesLineUp(r.Title, albums[0].Title)));
+            Report("the other albums still there", afterRemoval.Count == real.Count - 1);
+            Report("still in the library", await LibraryTrackCountAsync("Kind of Blue", "Miles Davis") > 0);
+
             Console.WriteLine("▶ Checking a playlist that doesn't exist is reported, not crashed…");
             var missing = await writer.AddAlbumAsync("ZZ_AlbumHelper_NoSuchPlaylist", albums[0]);
             Console.WriteLine($"   {(missing.Ok ? "✗ unexpectedly succeeded" : "✓ " + missing.Message)}");
@@ -146,6 +157,30 @@ public static class MusicAppDiagnostic
     private static void Report(string what, bool ok) => Console.WriteLine($"   {(ok ? "✓" : "✗")} {what}");
 
     /// <summary>Creates or deletes the scratch playlist. Kept here, not in the writer, which has no business making playlists.</summary>
+    /// <summary>How many library tracks Music files under this album and artist.</summary>
+    private static async Task<int> LibraryTrackCountAsync(string album, string artist)
+    {
+        var startInfo = new ProcessStartInfo("/usr/bin/osascript")
+        {
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            UseShellExecute = false,
+        };
+        foreach (var arg in new[]
+                 {
+                     "-e", "on run argv",
+                     "-e", "tell application \"Music\" to return count (every track of library playlist 1 whose album is (item 1 of argv) and artist is (item 2 of argv))",
+                     "-e", "end run", album, artist,
+                 })
+            startInfo.ArgumentList.Add(arg);
+
+        using var process = Process.Start(startInfo);
+        if (process is null) return 0;
+        var output = await process.StandardOutput.ReadToEndAsync();
+        await process.WaitForExitAsync();
+        return int.TryParse(output.Trim(), out int n) ? n : 0;
+    }
+
     private static async Task<bool> ScratchAsync(bool create)
     {
         // $$ so AppleScript's own braces in `with properties {name:…}` stay literal.

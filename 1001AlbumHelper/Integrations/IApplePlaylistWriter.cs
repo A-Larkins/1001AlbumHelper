@@ -13,7 +13,8 @@ public sealed record PlaylistOpResult(bool Ok, string Message, string? OpenUrl =
 /// MediaPlayer-backed writer; other platforms have none (the mobile views guard on availability).
 /// <para>
 /// Note: Apple's MediaPlayer framework is add-only — there is no API to remove items from a
-/// playlist, so "remove" happens in the app's own working list, not in Apple Music.
+/// playlist, so on the phone "remove" happens in the app's own working list, not in Apple Music.
+/// The Mac's Music app can delete a track from a playlist, so there <see cref="CanRemove"/> is true.
 /// </para>
 /// </summary>
 public interface IApplePlaylistWriter
@@ -23,6 +24,20 @@ public interface IApplePlaylistWriter
 
     /// <summary>The albums currently in the Apple Music playlist named <paramref name="playlistName"/>.</summary>
     Task<IReadOnlyList<PlaylistEntry>> ReadAlbumsAsync(string playlistName);
+
+    /// <summary>
+    /// Whether an album can be taken back out of an Apple Music playlist from here. False on the
+    /// iPhone (MediaPlayer is add-only); true on the Mac.
+    /// </summary>
+    bool CanRemove => false;
+
+    /// <summary>
+    /// Takes one album's tracks out of the playlist named <paramref name="playlistName"/> — the
+    /// playlist only; the library keeps them. An album the playlist doesn't hold counts as removed.
+    /// Throws where <see cref="CanRemove"/> is false.
+    /// </summary>
+    Task<PlaylistOpResult> RemoveAlbumAsync(string playlistName, PlaylistEntry album) =>
+        throw new NotSupportedException("Albums can't be removed from an Apple Music playlist on this platform.");
 
     /// <summary>
     /// Whether this platform can read and set Apple Music's album favourites at all. False on the
@@ -56,6 +71,9 @@ public static class AppleMusic
     public static IApplePlaylistWriter? Writer { get; set; }
 
     public static bool IsAvailable => Writer is not null;
+
+    /// <summary>Whether albums can be removed from a playlist here — see <see cref="IApplePlaylistWriter.CanRemove"/>.</summary>
+    public static bool CanRemove => Writer is { CanRemove: true };
 
     /// <summary>Whether favourites can be read and set here — see <see cref="IApplePlaylistWriter.CanFavorite"/>.</summary>
     public static bool CanFavorite => Writer is { CanFavorite: true };
