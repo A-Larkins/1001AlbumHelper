@@ -192,4 +192,132 @@ public class AppleMusicCatalogTests
 
         Assert.Equal("music://music.apple.com/us/album/1440653096", AppleMusicCatalog.MusicAppUrl(album));
     }
+
+    // ----- Original over remaster over deluxe -----
+    // Apple Music lists an album several ways at once. The playlist wants the record as released:
+    // the original, else a remaster, and a deluxe edition only when there's nothing leaner.
+
+    private static AppleMusicAlbum Album(long id, string name, int tracks, string artist = "Portishead",
+                                         bool cleaned = false) =>
+        new(id, name, artist, tracks, Cleaned: cleaned);
+
+    [Fact]
+    public void The_original_beats_a_remaster_and_a_deluxe_edition()
+    {
+        var albums = new List<AppleMusicAlbum>
+        {
+            Album(1, "Dummy (Deluxe Edition)", 24),
+            Album(2, "Dummy (2014 Remastered)", 11),
+            Album(3, "Dummy", 11),
+        };
+
+        Assert.Equal(3, AppleMusicCatalog.FindBestMatch(albums, "Portishead", "Dummy")!.CollectionId);
+    }
+
+    [Fact]
+    public void A_remaster_beats_a_deluxe_edition_even_with_more_tracks_on_neither_side()
+    {
+        var albums = new List<AppleMusicAlbum>
+        {
+            Album(1, "Haunted Dancehall - 25th Anniversary", 14),
+            Album(2, "Haunted Dancehall (Remastered)", 14),
+        };
+
+        Assert.Equal(2, AppleMusicCatalog.FindBestMatch(albums, "Portishead", "Haunted Dancehall")!.CollectionId);
+    }
+
+    [Fact]
+    public void A_deluxe_edition_is_used_only_when_nothing_leaner_exists()
+    {
+        var albums = new List<AppleMusicAlbum> { Album(1, "Dummy (Super Deluxe)", 30) };
+
+        Assert.Equal(1, AppleMusicCatalog.FindBestMatch(albums, "Portishead", "Dummy")!.CollectionId);
+    }
+
+    /// <summary>
+    /// The bug that started this: the fewest-tracks rule handed a one-song listing the win. A single
+    /// sharing the album's name is never the album, however few tracks it has.
+    /// </summary>
+    [Fact]
+    public void A_single_named_like_the_album_is_never_picked()
+    {
+        var albums = new List<AppleMusicAlbum>
+        {
+            Album(1, "Dummy - Single", 1),
+            Album(2, "Dummy - EP", 4),
+            Album(3, "Dummy", 11),
+        };
+
+        Assert.Equal(3, AppleMusicCatalog.FindBestMatch(albums, "Portishead", "Dummy")!.CollectionId);
+    }
+
+    [Fact]
+    public void A_sequel_is_not_an_edition_of_the_first_album()
+    {
+        var albums = new List<AppleMusicAlbum>
+        {
+            Album(1, "Led Zeppelin II (Remaster)", 9, "Led Zeppelin"),
+            Album(2, "Led Zeppelin (Remaster)", 9, "Led Zeppelin"),
+        };
+
+        Assert.Equal(2, AppleMusicCatalog.FindBestMatch(albums, "Led Zeppelin", "Led Zeppelin")!.CollectionId);
+    }
+
+    [Fact]
+    public void The_explicit_album_beats_its_bleeped_twin()
+    {
+        var albums = new List<AppleMusicAlbum>
+        {
+            Album(1, "Ill Communication", 20, "Beastie Boys", cleaned: true),
+            Album(2, "Ill Communication", 20, "Beastie Boys"),
+        };
+
+        Assert.Equal(2, AppleMusicCatalog.FindBestMatch(albums, "Beastie Boys", "Ill Communication")!.CollectionId);
+    }
+
+    [Fact]
+    public void The_lists_own_furniture_doesnt_stop_a_match()
+    {
+        var albums = new List<AppleMusicAlbum> { Album(1, "Elvis Presley", 12, "Elvis Presley") };
+
+        Assert.Equal(1, AppleMusicCatalog.FindBestMatch(albums, "Elvis Presley", "Elvis Presley (self titled)")!.CollectionId);
+    }
+
+    [Theory]
+    [InlineData("Dummy", AlbumEdition.Original)]
+    [InlineData("Tago Mago (2011 Remastered)", AlbumEdition.Remaster)]
+    [InlineData("Pet Sounds [Mono]", AlbumEdition.Remaster)]
+    [InlineData("In Utero - 30th Anniversary", AlbumEdition.Deluxe)]
+    [InlineData("Doggystyle (Deluxe Edition)", AlbumEdition.Deluxe)]
+    [InlineData("Joan Baez (Bonus Track Version)", AlbumEdition.Deluxe)]
+    [InlineData("Abbey Road (Remastered Super Deluxe)", AlbumEdition.Deluxe)]
+    [InlineData("Glory Box - Single", AlbumEdition.Single)]
+    [InlineData("Unplugged (Live)", AlbumEdition.Other)]
+    [InlineData("Live - Throwing Copper", AlbumEdition.Original)]
+    public void Editions_are_read_off_the_name(string name, AlbumEdition expected)
+    {
+        Assert.Equal(expected, AppleMusicCatalog.EditionOf(name));
+    }
+
+    /// <summary>
+    /// iTunes's /search for "Method Man Tical" has no Tical in it at all — only Tical 2000. A title
+    /// that merely starts the same way is a different record, not an edition of this one.
+    /// </summary>
+    [Fact]
+    public void A_sequel_that_starts_with_the_same_word_is_not_the_album()
+    {
+        var albums = new List<AppleMusicAlbum> { Album(1, "Tical 2000: Judgement Day", 28, "Method Man") };
+
+        Assert.Null(AppleMusicCatalog.FindBestMatch(albums, "Method Man", "Tical"));
+    }
+
+    [Fact]
+    public void A_subtitle_after_a_colon_can_stand_in_when_nothing_else_matches()
+    {
+        var albums = new List<AppleMusicAlbum> { Album(1, "Kid A Mnesia: Kid A", 10, "Radiohead"), Album(2, "Kid A", 10, "Radiohead") };
+        Assert.Equal(2, AppleMusicCatalog.FindBestMatch(albums, "Radiohead", "Kid A")!.CollectionId);
+
+        var onlySubtitled = new List<AppleMusicAlbum> { Album(3, "Tago Mago: 40th", 7, "Can") };
+        Assert.Equal(3, AppleMusicCatalog.FindBestMatch(onlySubtitled, "Can", "Tago Mago")!.CollectionId);
+    }
 }
