@@ -1,21 +1,10 @@
-<Window xmlns="https://github.com/avaloniaui"
+<UserControl xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        x:Class="_1001AlbumHelper.PlaylistWindow"
-        xmlns:local="clr-namespace:_1001AlbumHelper"
-        Width="880" Height="680" MinWidth="640" MinHeight="480"
-        Title="Playlists"
-        WindowStartupLocation="CenterOwner"
-        RequestedThemeVariant="Dark">
+        x:Class="_1001AlbumHelper.PlaylistsPage"
+        xmlns:local="clr-namespace:_1001AlbumHelper">
 
-  <Window.Background>
-    <LinearGradientBrush StartPoint="0%,0%" EndPoint="30%,100%">
-      <GradientStop Color="#151020" Offset="0" />
-      <GradientStop Color="#0e0b09" Offset="0.45" />
-      <GradientStop Color="#0b0807" Offset="1" />
-    </LinearGradientBrush>
-  </Window.Background>
 
-  <Window.Styles>
+  <UserControl.Styles>
     <Style Selector="Button.seg">
       <Setter Property="Background" Value="#1d1714" />
       <Setter Property="BorderBrush" Value="#362b23" />
@@ -54,7 +43,7 @@
       <Setter Property="Padding" Value="0" />
       <Setter Property="MinHeight" Value="0" />
     </Style>
-  </Window.Styles>
+  </UserControl.Styles>
 
   <Grid Margin="20,18,20,16" RowDefinitions="Auto,Auto,Auto,*,Auto,Auto">
 
@@ -64,12 +53,12 @@
               Content="💿  Playlist 1 · from the 1001" Click="OnPickPlaylist1" Margin="0,0,8,0" />
       <Button Grid.Column="1" x:Name="Playlist2Button" Classes="seg"
               Content="✨  Playlist 2 · recommended" Click="OnPickPlaylist2" />
-      <Button Grid.Column="3" x:Name="ImportButton" Classes="ghost" Content="⬇  Pull down"
-              Click="OnImportFromAppleMusic" Margin="0,0,8,0"
-              ToolTip.Tip="Replace this working list with whatever the Music app playlist holds right now. Anything queued here but not in Apple Music is dropped." />
-      <Button Grid.Column="4" x:Name="PushButton" Classes="ghost" Content="⬆  Push all"
-              Click="OnPushToAppleMusic"
-              ToolTip.Tip="Add every album in the working list to the Music app playlist." />
+      <Button Grid.Column="3" x:Name="ImportButton" Classes="ghost" Content="Get from Music"
+              Click="OnImportFromAppleMusic" Margin="0,0,8,0" VerticalAlignment="Center"
+              ToolTip.Tip="Make this list match the Music app playlist exactly. Anything here that isn't in that playlist is dropped." />
+      <Button Grid.Column="4" x:Name="PushButton" Classes="ghost" Content="Send new to Music"
+              Click="OnPushToAppleMusic" VerticalAlignment="Center"
+              ToolTip.Tip="Add the albums marked “not sent yet” to the Music app playlist — the whole album, original release, never a deluxe edition." />
     </Grid>
 
     <!-- Status -->
@@ -100,6 +89,10 @@
                   <TextBlock DockPanel.Dock="Right" Text="{Binding PartialWarning}" FontSize="11"
                              Foreground="#d08a4a" Margin="7,0,0,0"
                              VerticalAlignment="Center" IsVisible="{Binding IsPartial}" />
+                  <!-- What "Send new to Music" will send. -->
+                  <TextBlock DockPanel.Dock="Right" Text="not sent yet" FontSize="11"
+                             Foreground="#c9a35a" Margin="7,0,0,0"
+                             VerticalAlignment="Center" IsVisible="{Binding !InAppleMusic}" />
                   <TextBlock Text="{Binding Title}" FontSize="13" Foreground="#f0e5da"
                              TextTrimming="CharacterEllipsis" VerticalAlignment="Center"
                              ToolTip.Tip="{Binding Title}" />
@@ -112,11 +105,11 @@
                      what the two replacement lists are for. "＋ Shortlist" writes the album down
                      undecided; "Keep" is the decision, and reaches the replacements list itself. -->
                 <Button Grid.Column="3" Classes="ghost" Content="＋  Shortlist" Click="OnAddToShortlist"
-                        IsVisible="{Binding $parent[local:PlaylistWindow].IsRecommendations}"
+                        IsVisible="{Binding $parent[local:PlaylistsPage].IsRecommendations}"
                         HorizontalAlignment="Right" Padding="8,4" FontSize="11"
                         ToolTip.Tip="Put this album on the potentials shortlist." />
                 <Button Grid.Column="4" Classes="ghost" Content="Keep" Click="OnKeep"
-                        IsVisible="{Binding $parent[local:PlaylistWindow].IsRecommendations}"
+                        IsVisible="{Binding $parent[local:PlaylistsPage].IsRecommendations}"
                         HorizontalAlignment="Right" Padding="8,4" FontSize="11"
                         ToolTip.Tip="Put this on the replacements list now, and mark it kept on the shortlist." />
                 <Button Grid.Column="5" Classes="ghost" Content="✕  Remove" Click="OnRemove"
@@ -130,7 +123,7 @@
         <TextBlock x:Name="EmptyText" FontSize="14" Foreground="#a99884"
                    HorizontalAlignment="Center" VerticalAlignment="Center" TextWrapping="Wrap"
                    TextAlignment="Center" Margin="40" IsHitTestVisible="False" IsVisible="False"
-                   Text="Nothing queued here yet — add albums from Browse or Potential replacements, or pull in what the Music app already has with Import." />
+                   Text="Nothing queued here yet — add albums from Browse or Potential replacements, or bring in what the Music app playlist already has with “Get from Music”." />
       </Panel>
     </Border>
 
@@ -179,8 +172,7 @@
       </ItemsControl>
       <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Bottom">
         <Button Classes="ghost" Content="Reload" Click="OnReload" />
-        <Button Classes="ghost" Content="Close" Click="OnClose" />
       </StackPanel>
     </Grid>
   </Grid>
-</Window>
+</UserControl>

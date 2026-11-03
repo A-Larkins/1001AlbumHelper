@@ -108,6 +108,7 @@ a **single view with four bottom tabs** (phones don't do windows).
 | 2026-08-21 | **An album is dated from its first release, not from a reissue.** A 1970 record remastered in 2010 should read 1970. The Discogs lookups already searched `type=master`, which is the original in the ordinary case — but Discogs files a reissue under an *extended name* (“Abbey Road (2019 Mix)”), so that is a master of its own, and when the playlist names the pressing it holds, the first rung of the search ladder finds exactly it. `PreferOriginalRelease` now sits over the verified candidates: where one candidate's title is a whole-word prefix of another's, the shorter is the album and the longer an edition of it, and the edition is set aside. **Deliberately not “take the earliest year”** — `AlbumRankingTests` already documents why that is wrong: Blue Train has masters at 1957 (a recording-date entry), 1958 (the release everyone owns) and 2010 (a reissue), and 1958 is the answer. Most-owned still decides between same-named masters; the new rule only fires when one title extends another, so that test is untouched. Five tests added. |
 | 2026-08-25 | **Finding an album to rate stopped happening at the bottom of the screen.** The Rate tab's find box sat in the last row of the layout, which on a phone is precisely where iOS puts the keyboard: tapping it hid the box, the matches it was producing *and* the four rating tiles, so you typed a name blind with nothing to pick from. The field moved **into the pinned header**, under the queue picker, where it is always on screen and the keyboard opens below it; the results take the album card's place rather than being buried under glass. A first cut put the field behind a "Jump to…" chip instead and that was wrong — a search you have to go and find reads as a search that was removed. Beside the field an **A–Z button** opens those same results *without* raising the keyboard, which is what makes the new **index rail** worth having: an empty field lists all 1089, and the rail down the right edge works like the index in Contacts — press and drag and the list skims, with the stop under your thumb shown in a bubble over the list (in the gutter your own finger would cover it). The rail indexes whatever order the list is in — initials for Title A–Z and Artist A–Z, hundreds for list order — takes each label once at its first row (symbol-led titles sort both before "A" and after "Z", and two "#" stops read as a broken rail), and offers only stops with rows behind them, so a drag can't land on nothing. A `Viewbox` shrinks the strip to whatever height is left when the keyboard *is* up. Filing follows `NumberedList.Normalize`, which already drops a leading "the", so The Beatles sits under B. |
 | 2026-10-30 | **Albums missing from the Music library get a way in.** A Mac push reported "Not found in Music: Dummy" for an album plainly in Apple Music. The cause wasn't the matching: `search library playlist 1` only reaches the *library*, never the catalog — the Sync Library claim from 2026-08-19 was wrong — and AppleScript can't add a catalog album at all. Now a library miss falls back to the iPhone's `AppleMusicCatalog` lookup; if Apple Music has the album, the failure row gets an **Open in Music** button (a `music://` link to its page) so one ＋ there and another push finishes the job. The message also says which it is — not in the library, or not in Apple Music at all. Alongside: the Playlists window's album titles now trim instead of running under the artist column (a horizontal StackPanel never constrains its children), its headings line up with the rows again, and **Browse lists opens the 1001 at the next album to rate** — the one after the furthest rated row — rather than at #1. |
+| 2026-11-03 | **One window, and whole albums from the catalog.** The Mac app was a dashboard of eleven cards, each opening its own modal; it's now **one window with a sidebar** — Rate · Browse · Shortlist · Playlists · More, the phone's sections — with each shown in place (`IPage`; pages are built on first visit and kept). Rate is the home page; adding an album, favourites, analytics, export, sync, "Check connection" and the activity log (now fed by all app output) live under More; ⌘1–⌘5 switch. The former windows became `RatePage`, `BrowsePage`, `ShortlistPage`, `PlaylistsPage`; Browse's ✎ opens a `RatePage` in a `PageWindow`. "Renew iPhone trial" is gone from the UI (the phone app is retired; its code and scripts stay). Playlists: "Pull down / Push all" became **Get from Music / Send new to Music**, rows say "not sent yet", and sending skips albums already in the playlist (it used to add them again). Browse opens at the first unrated album, matching Rate's Next up. And the add itself was rebuilt: the release is chosen in the **catalog** (original › remaster › deluxe, never a single or a sequel), added to the library by pressing Music's own "Add to Library", and copied whole — the old library-based pick had put one song of an album into PLAYLIST2. See §5. |
 
 ---
 
@@ -252,18 +253,25 @@ and stays null on Windows/Linux, where the playlist UI simply shows its Apple Mu
 - Drives **Music.app over AppleScript**, run through `osascript`. Scripts are passed their arguments
   via `on run argv` — never string-interpolated — so an album title full of quotes can't break, or
   rewrite, the script.
-- Adding is *search-then-duplicate*: ask Music to `search library playlist 1 … only albums`, pick the
-  right album, then `duplicate` its tracks into the target playlist. **That search only reaches the
-  library** — albums already added with ＋ — not the wider Apple Music catalog, Sync Library or not
-  (checked 2026-10-30: Portishead's *Dummy* is in the catalog, has no tracks in the library, and the
-  search returns nothing). AppleScript has no verb for adding a catalog album, so the Mac can't close
-  that gap itself. When the library search misses, the writer asks the iTunes Search API whether
-  Apple Music has the album; if so, the failure carries a `music://` link to its page, and the
-  Playlists window offers **Open in Music** — one click on ＋ there, then push again. Albums already
-  in the library cost no iTunes call, so the rate limit in §7 only touches the misses.
-- Which album to add is decided by the **same `AppleMusicCatalog.FindBestMatch` the phone uses**
-  (library hits are grouped into albums and handed to it), so both apps prefer the original release
-  over a padded "(Deluxe Edition)" sitting beside it in exactly the same way.
+- **The release is chosen in the catalog, never the library.** `AppleMusicCatalog.FindAlbumAsync`
+  (iTunes Search API, falling back to the artist's full catalog) picks the **original, else a
+  remaster, and a deluxe edition only when nothing leaner exists**; singles/EPs sharing the name and
+  sequels that merely start the same way ("Tical 2000" for "Tical") never qualify, and the explicit
+  version beats a bleeped one. Check a pick without writing anything:
+  `dotnet run --project 1001AlbumHelper.Desktop -- lookup "Method Man|Tical"`.
+- **The library is only a staging area.** `search library playlist 1` reaches the library alone,
+  never the catalog, and AppleScript has no verb for adding a catalog album — so when the library
+  doesn't already hold the whole release, the writer opens its page in Music (`music://` link),
+  waits until the page on screen *is* that release, and presses Music's toolbar **"Add to Library"**
+  over System Events UI scripting (it reads "Download" once added). It then polls the library until
+  the release's tracks arrive and `duplicate`s exactly those — filed under the release's own name and
+  artist — into the playlist. (Until 2026-11-03 the album was picked from library search hits with a
+  fewest-tracks tie-break, so a single song of an album sitting in the library won, and one song went
+  into the playlist. The favourites playlist still holds ~250 such short albums from that.)
+- UI scripting needs **Accessibility** for the app (System Settings ▸ Privacy & Security ▸
+  Accessibility), and can only see Music's window when it's **on the current desktop** — not a
+  different Space, and not hidden behind a full-screen app. Both are reported in plain words when
+  they're the problem, with an **Open in Music** link as the manual fallback.
 - Reading a playlist back and folding its tracks into albums is shared: `PlaylistTracks.CollapseToAlbums`.
 - Verify headlessly: `dotnet run --project 1001AlbumHelper.Desktop -- musictest` — creates its own
   scratch playlist, pushes real albums into it, reads them back, and deletes it, so it never touches
@@ -454,11 +462,20 @@ tab it creates and deletes, so it never risks the real lists.
   `PlaylistTracks.PreferPlayable` does. Statuses other than "no longer available" (subscription,
   purchased, matched, uploaded…) all count as playable — an unfamiliar one is far likelier to play
   than not.
-- **A Mac push only finds albums already in the library.** `search library playlist 1` never
-  reaches the Apple Music catalog — an album you haven't added with ＋ isn't found however exact the
-  name, so no amount of fuzzier matching helps. Sync Library still matters (without it, albums
-  added on another device aren't there either), but it doesn't widen the search. Misses get an
-  **Open in Music** button instead (see §5).
+- **`search library playlist 1` only finds albums already in the library** — never the catalog,
+  however exact the name. That's why a Mac push adds the release to the library first (see §5).
+- **UI scripting Music: windows on another Space are invisible.** System Events reports zero
+  windows for Music when it sits on a different desktop than the frontmost app (a full-screen
+  terminal counts), and `activate` from a background process won't switch to it. Keep Music on the
+  same desktop. Address its page by path (`toolbar 1`, the content `scroll area`), not
+  `entire contents`, which takes ~15s.
+- **Never send ⌘-digit keystrokes to the app to drive it.** The Rate page rates on bare 1–4; it now
+  ignores keys with modifiers and the window takes ⌘1–⌘5 first, but on 2026-11-03 a scripted ⌘2–⌘4
+  wrote three real ratings (reverted). To look at a section, launch with
+  `ALBUMHELPER_START_SECTION=Browse` (Rate, Browse, Shortlist, Playlists, More) instead.
+- **`dotnet run` on the Mac ignores the launch profile's working directory**, so the data folder
+  resolves to the repo root and the app can't find credentials. Run with
+  `--no-launch-profile` and `ALBUMHELPER_DATA_DIR=$PWD/1001AlbumHelper`.
 - **Automation permission.** The first Mac push makes macOS ask to let the app control Music
   (System Settings ▸ Privacy & Security ▸ Automation). Denying it makes every push fail; there's no
   way to re-prompt, it has to be re-enabled there by hand.
@@ -524,7 +541,7 @@ tab it creates and deletes, so it never risks the real lists.
   the bare next-unrated card. `RatingSession.Rebuild` (in `Data/RatingSession.cs`) already computes
   "first unrated" correctly (filters to blank-rating rows, sorts by `SheetRow`, resets index to 0), so
   `Current` is always the right album on open. What's missing: both `RateView` (mobile) and
-  `RatingWindow` (desktop) are single-card UIs with no visible list/context around that position — if
+  `RatePage` (desktop) are single-card UIs with no visible list/context around that position — if
   what's wanted is an actual scrollable list (like `AlbumListView`) that highlights/scrolls to the
   first unrated row while showing neighboring rows and their ratings, that's new UI, not yet built.
   Needs clarifying with Andrew before implementing further.

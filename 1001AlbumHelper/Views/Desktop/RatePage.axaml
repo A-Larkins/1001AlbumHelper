@@ -1,20 +1,9 @@
-<Window xmlns="https://github.com/avaloniaui"
+<UserControl xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        x:Class="_1001AlbumHelper.RatingWindow"
-        Width="660" Height="680" MinWidth="560" MinHeight="620"
-        Title="Rate albums"
-        WindowStartupLocation="CenterOwner"
-        RequestedThemeVariant="Dark">
+        x:Class="_1001AlbumHelper.RatePage">
 
-  <Window.Background>
-    <LinearGradientBrush StartPoint="0%,0%" EndPoint="30%,100%">
-      <GradientStop Color="#151020" Offset="0" />
-      <GradientStop Color="#0e0b09" Offset="0.45" />
-      <GradientStop Color="#0b0807" Offset="1" />
-    </LinearGradientBrush>
-  </Window.Background>
 
-  <Window.Styles>
+  <UserControl.Styles>
     <!-- Segmented mode switch -->
     <Style Selector="Button.seg">
       <Setter Property="Background" Value="#1d1714" />
@@ -88,7 +77,7 @@
     <Style Selector="Button.ghost:disabled /template/ ContentPresenter">
       <Setter Property="Opacity" Value="0.4" />
     </Style>
-  </Window.Styles>
+  </UserControl.Styles>
 
   <Grid Margin="22,18,22,16" RowDefinitions="Auto,Auto,Auto,*,Auto,Auto">
 
@@ -202,8 +191,7 @@
       <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
         <Button x:Name="BackButton" Classes="ghost" Content="Back  (B)" Click="OnBack" />
         <Button x:Name="SkipButton" Classes="ghost" Content="Skip  (S)" Click="OnSkip" />
-        <Button Classes="ghost" Content="Done" Click="OnClose" />
       </StackPanel>
     </Grid>
   </Grid>
-</Window>
+</UserControl>

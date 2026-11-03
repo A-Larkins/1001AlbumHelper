@@ -36,6 +36,24 @@ internal static class Program
             return;
         }
 
+        // Read-only: which Apple Music release a push would add for each "Artist|Title" given —
+        // e.g. `lookup "Method Man|Tical" "Portishead|Dummy"`. Writes nothing anywhere.
+        int lookupAt = Array.IndexOf(args, "lookup");
+        if (lookupAt >= 0)
+        {
+            foreach (var pair in args.Skip(lookupAt + 1))
+            {
+                var parts = pair.Split('|', 2);
+                if (parts.Length < 2) { Console.WriteLine($"✗ {pair}: expected \"Artist|Title\""); continue; }
+                var found = AppleMusicCatalog.FindAlbumAsync(parts[0], parts[1]).GetAwaiter().GetResult();
+                Console.WriteLine(found is null
+                    ? $"✗ {parts[1]} — {parts[0]}: not in Apple Music"
+                    : $"✓ {parts[1]} — {parts[0]} → {found.CollectionName} ({found.ArtistName}, "
+                      + $"{found.TrackCount} tracks, {AppleMusicCatalog.EditionOf(found.CollectionName)})");
+            }
+            return;
+        }
+
         // Read-only rehearsal of a PLAYLIST2 pull: says which albums would join the shortlist,
         // and writes nothing anywhere.
         if (args.Contains("intaketest"))

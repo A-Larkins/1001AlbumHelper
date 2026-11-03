@@ -272,6 +272,16 @@ public class DiscogsApiClient
     }
 
     /// <summary>
+    /// Whether two titles are the same once case, punctuation and the "and"/"the" that come and go
+    /// between catalogues are set aside — no prefix allowance, unlike <see cref="TitlesLineUp"/>.
+    /// </summary>
+    public static bool SameTitle(string a, string b)
+    {
+        var x = TitleWords(a);
+        return x.Length > 0 && x.SequenceEqual(TitleWords(b));
+    }
+
+    /// <summary>
     /// A title reduced to the words that identify it.
     /// <para>
     /// "and" and "the" come and go between catalogues — Discogs presses "Kirk Franklin &amp; The

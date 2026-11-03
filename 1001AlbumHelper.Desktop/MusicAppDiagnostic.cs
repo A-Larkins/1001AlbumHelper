@@ -26,14 +26,16 @@ public static class MusicAppDiagnostic
             return;
         }
 
-        // A mix on purpose: a famous album, two obscure ones off the 1001 (which only resolve if the
-        // search really does reach the whole catalog), one Apple Music lists twice with tracks
-        // withdrawn on one of the two, and one that shouldn't exist at all.
+        // A mix on purpose: a famous album, two that weren't in the library when this was written
+        // (so they only arrive if the catalog add — opening the page and pressing Add to Library —
+        // works; once added they stay, and later runs exercise the already-there path), one Apple
+        // Music lists twice with tracks withdrawn on one of the two, and one that shouldn't exist.
+        // Pushing needs Music on the same desktop as the terminal, and Accessibility for it.
         var albums = new[]
         {
             new PlaylistEntry("Kind of Blue", "Miles Davis", "1959"),
-            new PlaylistEntry("Tago Mago", "Can", "1971"),
-            new PlaylistEntry("The Modern Dance", "Pere Ubu", "1978"),
+            new PlaylistEntry("Haunted Dancehall", "The Sabres Of Paradise", "1994"),
+            new PlaylistEntry("Ill Communication", "Beastie Boys", "1994"),
             new PlaylistEntry("Tical 2000: Judgement Day", "Method Man", "1998"),
             new PlaylistEntry("Definitely Not A Real Album 12345", "Nobody At All", "1999"),
         };
@@ -67,7 +69,7 @@ public static class MusicAppDiagnostic
 
             // The four real albums should have gone in and come back; the made-up one shouldn't.
             // Compared loosely, because the catalog's name for an album is often the reissue's —
-            // "Tago Mago" comes back as "Tago Mago (2011 Remastered)", which is still a match.
+            // "Haunted Dancehall" comes back as "Haunted Dancehall (Remastered)", still a match.
             var real = albums.Take(albums.Length - 1).ToList();
             bool ok = read.Count == real.Count
                       && real.All(a => read.Any(r => DiscogsApiClient.TitlesLineUp(r.Title, a.Title)));
@@ -117,9 +119,9 @@ public static class MusicAppDiagnostic
 
             // One album the user has taken off the list but Apple Music still has: it must stay on
             // the checklist rather than being pulled back in as active.
-            store.Add("Tago Mago", "Can", "1971");
-            store.MarkInAppleMusic(store.Active.First(e => e.Title == "Tago Mago"));
-            store.RequestRemoval(store.Active.First(e => e.Title == "Tago Mago"));
+            store.Add("Haunted Dancehall", "The Sabres Of Paradise", "1994");
+            store.MarkInAppleMusic(store.Active.First(e => e.Title == "Haunted Dancehall"));
+            store.RequestRemoval(store.Active.First(e => e.Title == "Haunted Dancehall"));
 
             var albums = await writer.ReadAlbumsAsync(ScratchPlaylist);
             var sync = store.SyncFromAppleMusic(albums);
@@ -131,9 +133,9 @@ public static class MusicAppDiagnostic
             var kept = store.Active.FirstOrDefault(e => e.Title == "Kind of Blue");
             Report("stale album dropped", store.Active.All(e => e.Title != "Not In The Playlist"));
             Report("year preserved on the kept album", kept?.Year == "1959");
-            Report("checklist album not resurrected", store.Active.All(e => e.Title != "Tago Mago"));
-            Report("checklist album still listed", store.ToRemove.Any(e => e.Title == "Tago Mago"));
-            Report("the third album came in fresh", store.Active.Any(e => e.Title.Contains("Modern Dance")));
+            Report("checklist album not resurrected", store.Active.All(e => !DiscogsApiClient.TitlesLineUp(e.Title, "Haunted Dancehall")));
+            Report("checklist album still listed", store.ToRemove.Any(e => e.Title == "Haunted Dancehall"));
+            Report("the third album came in fresh", store.Active.Any(e => e.Title.Contains("Ill Communication")));
         }
         finally
         {

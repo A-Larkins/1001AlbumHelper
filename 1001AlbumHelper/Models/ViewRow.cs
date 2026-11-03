@@ -95,21 +95,15 @@ public sealed class ViewRow : INotifyPropertyChanged
     public event PropertyChangedEventHandler? PropertyChanged;
 
     /// <summary>
-    /// Where the 1001 picks up: the first blank row after the furthest one that carries any mark —
-    /// a rating or a "✓ listened". Rows skipped further back don't count, since the list is worked
-    /// through in order and those are leftovers, not the place reached. 0 when nothing is marked;
-    /// the last row when everything is.
+    /// Where the 1001 picks up: the first row with no mark at all, in list order — the album the
+    /// Rate page's "Next up" is showing, so Browse and Rate agree on where you are. A row rated far
+    /// ahead (one album played out of turn) doesn't move it. The last row when everything is marked.
     /// </summary>
     public static int ResumeIndex(IReadOnlyList<ViewRow> rows)
     {
-        int lastMarked = -1;
-        for (int i = rows.Count - 1; i >= 0; i--)
-        {
-            if (!string.IsNullOrWhiteSpace(rows[i].Rating)) { lastMarked = i; break; }
-        }
-
-        // Everything after the furthest mark is blank by definition, so the next row is the one.
-        return Math.Min(lastMarked + 1, Math.Max(0, rows.Count - 1));
+        for (int i = 0; i < rows.Count; i++)
+            if (string.IsNullOrWhiteSpace(rows[i].Rating)) return i;
+        return Math.Max(0, rows.Count - 1);
     }
 }
 

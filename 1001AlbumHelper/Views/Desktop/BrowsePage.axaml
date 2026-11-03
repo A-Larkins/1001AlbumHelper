@@ -1,21 +1,10 @@
-<Window xmlns="https://github.com/avaloniaui"
+<UserControl xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        x:Class="_1001AlbumHelper.ListViewerWindow"
-        xmlns:local="clr-namespace:_1001AlbumHelper"
-        Width="880" Height="680" MinWidth="640" MinHeight="480"
-        Title="Browse lists"
-        WindowStartupLocation="CenterOwner"
-        RequestedThemeVariant="Dark">
+        x:Class="_1001AlbumHelper.BrowsePage"
+        xmlns:local="clr-namespace:_1001AlbumHelper">
 
-  <Window.Background>
-    <LinearGradientBrush StartPoint="0%,0%" EndPoint="30%,100%">
-      <GradientStop Color="#151020" Offset="0" />
-      <GradientStop Color="#0e0b09" Offset="0.45" />
-      <GradientStop Color="#0b0807" Offset="1" />
-    </LinearGradientBrush>
-  </Window.Background>
 
-  <Window.Styles>
+  <UserControl.Styles>
     <Style Selector="Button.seg">
       <Setter Property="Background" Value="#1d1714" />
       <Setter Property="BorderBrush" Value="#362b23" />
@@ -67,7 +56,7 @@
       <Setter Property="Padding" Value="0" />
       <Setter Property="MinHeight" Value="0" />
     </Style>
-  </Window.Styles>
+  </UserControl.Styles>
 
   <Grid Margin="20,18,20,16" RowDefinitions="Auto,Auto,Auto,*,Auto">
 
@@ -136,8 +125,7 @@
                  VerticalAlignment="Center" />
       <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
         <Button Classes="ghost" Content="Reload" Click="OnReload" />
-        <Button Classes="ghost" Content="Close" Click="OnClose" />
       </StackPanel>
     </Grid>
   </Grid>
-</Window>
+</UserControl>

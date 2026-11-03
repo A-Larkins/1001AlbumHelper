@@ -12,12 +12,15 @@ namespace _1001AlbumHelper;
 /// this is the Mac's route to the same two playlists.
 ///
 /// <para>
-/// Where iOS resolves an album to a store id via <see cref="AppleMusicCatalog"/> and adds it by id,
-/// the Mac asks Music to <c>search</c> for it and duplicates the resulting tracks into the playlist.
-/// That search only reaches the library — albums already added — never the wider catalog, and
-/// AppleScript can't add a catalog album. A miss therefore falls back to the iPhone's catalog lookup
-/// to hand the user a link to the album in Music (see <see cref="NotInLibraryAsync"/>), so only the
-/// misses cost an iTunes Search API call (rate limit: PROJECT.md §7).
+/// Which album to add is decided in the Apple Music <em>catalog</em>, never the library: the
+/// iTunes Search API names the release (original, else a remaster, never a deluxe edition when
+/// there's anything leaner — see <see cref="AppleMusicCatalog.FindBestMatch"/>). The library only
+/// matters as the staging area AppleScript can reach: a playlist can only be handed library tracks,
+/// and AppleScript has no verb for adding a catalog album. So when the library doesn't already hold
+/// the whole release, the writer opens its page in Music and clicks Music's own "Add to Library"
+/// button over UI scripting (see <see cref="EnsureInLibraryAsync"/>), waits for the tracks to land,
+/// and copies exactly that release's tracks into the playlist. A stray song or two of the album
+/// already sitting in the library can't stand in for it any more.
 /// </para>
 ///
 /// <para>
@@ -43,30 +46,16 @@ public sealed class MusicAppPlaylistWriter : IApplePlaylistWriter
 
     public async Task<PlaylistOpResult> AddAlbumAsync(string playlistName, PlaylistEntry album)
     {
-        TrackSelection selection;
-        string term;
-        try
-        {
-            (selection, term) = await LocateAsync(album).ConfigureAwait(false);
-        }
-        catch (Exception ex)
-        {
-            return new PlaylistOpResult(false, $"Music app lookup failed: {ex.Message}");
-        }
+        var copy = await EnsureInLibraryAsync(album).ConfigureAwait(false);
+        if (copy.Problem is not null) return new PlaylistOpResult(false, copy.Problem, copy.OpenUrl);
 
+        var selection = copy.Selection;
         if (selection.Chosen.Count == 0)
-        {
-            // Told apart, because they call for different things: an album Music has never heard of
-            // is a lookup to fix, one Music has entirely withdrawn is nothing the app can do about.
-            return selection.Unavailable.Count > 0
-                ? new PlaylistOpResult(false, $"Apple Music no longer has a playable copy of {album.Title}.")
-                : await NotInLibraryAsync(album).ConfigureAwait(false);
-        }
+            return new PlaylistOpResult(false, $"Apple Music no longer has a playable copy of {album.Title}.");
 
         try
         {
-            // The term that found it, not the name as written — the add script re-runs the search.
-            var added = await DuplicateIntoPlaylistAsync(playlistName, term, selection.Chosen.ToList());
+            var added = await DuplicateIntoPlaylistAsync(playlistName, copy.Term, selection.Chosen.ToList());
             if (added == NoPlaylistResult)
                 return new PlaylistOpResult(false, $"No Music playlist named “{playlistName}” — create it in Music first.");
             if (added == 0)
@@ -79,7 +68,8 @@ public sealed class MusicAppPlaylistWriter : IApplePlaylistWriter
                 : $" ({selection.Unavailable.Count} not available in Apple Music: "
                   + string.Join(", ", selection.Unavailable.Select(t => t.Name)) + ")";
 
-            return new PlaylistOpResult(true, $"Added {added} track{(added == 1 ? "" : "s")} to {playlistName}{missing}");
+            return new PlaylistOpResult(true,
+                $"Added {copy.ReleaseName} ({added} track{(added == 1 ? "" : "s")}) to {playlistName}{missing}");
         }
         catch (Exception ex)
         {
@@ -88,151 +78,196 @@ public sealed class MusicAppPlaylistWriter : IApplePlaylistWriter
     }
 
     /// <summary>
-    /// Picks which of the search hits actually is the wanted album, and which copy of each of its
-    /// songs to add.
-    /// <para>
-    /// The hits are grouped into albums and handed to the very same
-    /// <see cref="AppleMusicCatalog.FindBestMatch"/> the iPhone uses, so both apps resolve an album
-    /// identically — including preferring the original release over a padded "(Deluxe Edition)"
-    /// reissue sitting beside it in the catalog. The group's index rides along in the record's id
-    /// field purely so the winner can be mapped back to its tracks.
-    /// </para>
-    /// <para>
-    /// Each group is reduced to one copy per song first (see
-    /// <see cref="PlaylistTracks.PreferPlayable"/>), because Apple Music stocks some albums twice
-    /// under identical names — nothing in the metadata separates them — and the copies aren't
-    /// always equally playable. Reducing before the match matters as well as after: an album listed
-    /// twice would otherwise count double, and could lose the fewest-tracks tie-break to a deluxe
-    /// edition that only appears once.
-    /// </para>
+    /// The library's copy of one catalog release, ready to act on — or why there isn't one.
     /// </summary>
-    /// <param name="bareTitle">
-    /// Set only on the fallback pass (see <see cref="LocateAsync"/>): the album's name with the
-    /// list's own furniture removed. When it's set, a candidate qualifies by having the <em>same</em>
-    /// bare name — its own parenthetical stripped too, since Music stocks "Led Zeppelin
-    /// (Remastered)" and "The Clash (2013 Remastered)". Equality, not the usual prefix rule: over a
-    /// search for "Led Zeppelin" a prefix would accept "Led Zeppelin II" and the tie-break could
-    /// then hand back the wrong record. Everything after the filter — artist, fewest tracks, the
-    /// original over the deluxe — is decided exactly as it always is.
-    /// </param>
-    private static TrackSelection ChooseAlbum(List<LibraryTrack> hits, string artist, string title,
-                                              string? bareTitle = null)
-    {
-        var groups = hits
-            .GroupBy(t => $"{NumberedList.Normalize(t.Album)}|{NumberedList.Normalize(t.AlbumArtist)}")
-            .Select(g => PlaylistTracks.PreferPlayable(g))
-            .Where(s => s.Chosen.Count > 0 || s.Unavailable.Count > 0)
-            .ToList();
+    /// <param name="Term">What to search the library for to find these tracks again: the release's name.</param>
+    /// <param name="OpenUrl">The release's page in Music, for a problem the user can fix there by hand.</param>
+    private sealed record LibraryCopy(
+        TrackSelection Selection, string Term, string ReleaseName, string? Problem = null, string? OpenUrl = null);
 
-        var candidates = groups
-            .Select((s, i) =>
-            {
-                var first = s.Chosen.Count > 0 ? s.Chosen[0] : s.Unavailable[0];
-                // Counted on the songs the album actually has, playable or not, so a couple of
-                // withdrawn tracks can't make a deluxe edition look like the leaner original.
-                return new AppleMusicAlbum(i, first.Album, first.AlbumArtist,
-                                           s.Chosen.Count + s.Unavailable.Count);
-            })
-            .ToList();
+    /// <summary>The last album resolved, so the favourites backfill's favourite-then-add pair resolves once.</summary>
+    private (string Key, DateTime At, LibraryCopy Copy)? _lastCopy;
 
-        if (bareTitle is not null)
-        {
-            candidates = candidates
-                .Where(c => NumberedList.Matches(DiscogsApiClient.BareTitle(c.CollectionName), bareTitle))
-                .ToList();
-            title = bareTitle;
-        }
-
-        var best = AppleMusicCatalog.FindBestMatch(candidates, artist, title);
-        return best is null
-            ? new TrackSelection(Array.Empty<LibraryTrack>(), Array.Empty<LibraryTrack>())
-            : groups[(int)best.CollectionId];
-    }
+    /// <summary>How long to wait for an added album's tracks to appear in the library.</summary>
+    private static readonly TimeSpan LibraryArrivalTimeout = TimeSpan.FromSeconds(60);
 
     /// <summary>
-    /// Finds the album in Music, and reports which search term found it — the caller needs that,
-    /// because both scripts that act on an album re-run the search rather than being handed track
-    /// references (AppleScript can't pass those between processes).
+    /// Makes sure the library holds the whole of the album's catalog release, adding it through
+    /// Music if not, and returns that release's library tracks.
     /// <para>
-    /// Only the <em>search</em> falls back to the bare name; which album is the right one is still
-    /// decided against the name as the list writes it, by the same
-    /// <see cref="ChooseAlbum"/> as before. So this can widen what Music offers, never what counts
-    /// as a match.
+    /// The release is chosen in the catalog. The library is then read for tracks filed under exactly
+    /// that release's name and artist — so a single song of the album added months ago is seen for
+    /// what it is, one track of eleven, and the album is added anyway. Music fills in the rest
+    /// rather than doubling the track that was already there.
     /// </para>
     /// </summary>
-    private async Task<(TrackSelection Selection, string Term)> LocateAsync(PlaylistEntry album)
+    private async Task<LibraryCopy> EnsureInLibraryAsync(PlaylistEntry album)
     {
-        var selection = new TrackSelection(Array.Empty<LibraryTrack>(), Array.Empty<LibraryTrack>());
-        string term = album.Title;
+        string key = $"{NumberedList.Normalize(album.Title)}|{NumberedList.Normalize(album.Artist)}";
+        if (_lastCopy is { } last && last.Key == key && DateTime.UtcNow - last.At < TimeSpan.FromMinutes(2)
+            && last.Copy.Problem is null)
+            return last.Copy;
 
-        foreach (var attempt in SearchTerms(album.Title))
-        {
-            term = attempt;
-            var hits = await SearchLibraryAsync(attempt).ConfigureAwait(false);
-
-            // The first attempt is the name as written, matched as it always has been. A later one
-            // is the bare name, and is matched bare on both sides — see ChooseAlbum's bareTitle.
-            selection = attempt == album.Title
-                ? ChooseAlbum(hits, album.Artist, album.Title)
-                : ChooseAlbum(hits, album.Artist, album.Title, bareTitle: attempt);
-
-            if (selection.Chosen.Count > 0 || selection.Unavailable.Count > 0) break;
-        }
-
-        return (selection, term);
+        var copy = await ResolveAsync(album).ConfigureAwait(false);
+        _lastCopy = (key, DateTime.UtcNow, copy);
+        return copy;
     }
 
-    /// <summary>
-    /// What to ask Music for, in order: the album as the list writes it, then — where the list has
-    /// put its own furniture on the end — the bare name.
-    /// <para>
-    /// The list distinguishes rows with suffixes Music has never heard of: "Audioslave (self
-    /// titled)", "Tarzan (soundtrack)", "Metallica (Black Album)". Searching for the literal string
-    /// returns nothing at all, which is why 44 of the 76 albums the first favourites backfill
-    /// couldn't find were of exactly this shape (2026-08-25). Dropping the trailing parenthetical
-    /// leaves the name Music actually files them under.
-    /// </para>
-    /// <para>
-    /// Widening the search alone recovered only 30 of them, because Music's own copy usually wears
-    /// a parenthetical of its own — "Led Zeppelin (Remastered)", "The Clash (2013 Remastered)",
-    /// "Joan Baez (Bonus Track Version)" — and "(self titled)" makes our name the longer of the two,
-    /// so the prefix rule fails. Hence the bare-on-both-sides match in <see cref="ChooseAlbum"/>.
-    /// </para>
-    /// </summary>
-    private static IEnumerable<string> SearchTerms(string title)
+    private static async Task<LibraryCopy> ResolveAsync(PlaylistEntry album)
     {
-        yield return title;
+        var none = new TrackSelection(Array.Empty<LibraryTrack>(), Array.Empty<LibraryTrack>());
 
-        // BareTitle hands back the original when there'd be nothing left of it — a title that is
-        // wholly a parenthetical, like Lynyrd Skynyrd's "(Pronounced 'Lĕh-'nérd 'Skin-'nérd)".
-        string bare = DiscogsApiClient.BareTitle(title);
-        if (!string.Equals(bare, title, StringComparison.OrdinalIgnoreCase)) yield return bare;
-    }
-
-    /// <summary>
-    /// The failure for an album the library search can't see. That search only reaches the library
-    /// — what's been added with ＋ — never the wider Apple Music catalog, and AppleScript has no way
-    /// to add a catalog album. So ask the catalog itself (the iPhone's lookup) whether Apple Music
-    /// has the album at all: if it does, hand back a link to its page in Music, where one click adds
-    /// it and the next push goes through. A failed catalog lookup only costs the link.
-    /// </summary>
-    private static async Task<PlaylistOpResult> NotInLibraryAsync(PlaylistEntry album)
-    {
-        AppleMusicAlbum? found;
+        AppleMusicAlbum? release;
         try
         {
-            found = await AppleMusicCatalog.FindAlbumAsync(album.Artist, album.Title).ConfigureAwait(false);
+            release = await AppleMusicCatalog.FindAlbumAsync(album.Artist, album.Title).ConfigureAwait(false);
         }
-        catch (Exception)
+        catch (Exception ex)
         {
-            return new PlaylistOpResult(false, $"Not in your Music library: {album.Title}");
+            return new LibraryCopy(none, album.Title, album.Title, $"Couldn't look {album.Title} up in Apple Music: {ex.Message}");
         }
+        if (release is null)
+            return new LibraryCopy(none, album.Title, album.Title, $"Apple Music doesn't seem to have {album.Title}.");
 
-        return found is null
-            ? new PlaylistOpResult(false, $"Not in your Music library, and Apple Music doesn't seem to have it: {album.Title}")
-            : new PlaylistOpResult(false, "Not in your Music library yet — open it in Music, add it with ＋, then push again.",
-                                   AppleMusicCatalog.MusicAppUrl(found));
+        string name = release.CollectionName;
+        string url = AppleMusicCatalog.MusicAppUrl(release);
+        LibraryCopy Copy(TrackSelection sel, string? problem = null) =>
+            new(sel, name, name, problem, problem is null ? null : url);
+
+        try
+        {
+            var selection = await ReadLibraryCopyAsync(release).ConfigureAwait(false);
+            if (Count(selection) >= release.TrackCount) return Copy(selection);
+
+            string? addProblem = await AddToLibraryAsync(release, url).ConfigureAwait(false);
+            if (addProblem is not null)
+                return Count(selection) > 0 ? Copy(selection) : Copy(selection, addProblem);
+
+            selection = await WaitForLibraryCopyAsync(release, Count(selection)).ConfigureAwait(false);
+            return Count(selection) > 0
+                ? Copy(selection)
+                : Copy(selection, $"Music didn't put {name} in your library in time — try pushing again.");
+        }
+        catch (Exception ex)
+        {
+            return Copy(none, $"Music app lookup failed: {ex.Message}");
+        }
     }
+
+    private static int Count(TrackSelection s) => s.Chosen.Count + s.Unavailable.Count;
+
+    /// <summary>
+    /// The library's tracks of exactly this release: filed under its name, by its artist, reduced
+    /// to one copy per song (see <see cref="PlaylistTracks.PreferPlayable"/>).
+    /// </summary>
+    private static async Task<TrackSelection> ReadLibraryCopyAsync(AppleMusicAlbum release)
+    {
+        var hits = await RunSearchAsync(release.CollectionName).ConfigureAwait(false);
+        return PlaylistTracks.PreferPlayable(hits.Where(t =>
+            NumberedList.Matches(t.Album, release.CollectionName)
+            && (NumberedList.Matches(t.AlbumArtist, release.ArtistName)
+                || DiscogsApiClient.ArtistsOverlap(t.AlbumArtist, release.ArtistName))));
+    }
+
+    /// <summary>
+    /// Polls the library until the release's tracks have arrived: all of them, or a count that has
+    /// stopped growing (a withdrawn song never arrives), or the timeout.
+    /// </summary>
+    private static async Task<TrackSelection> WaitForLibraryCopyAsync(AppleMusicAlbum release, int before)
+    {
+        var deadline = DateTime.UtcNow + LibraryArrivalTimeout;
+        var selection = new TrackSelection(Array.Empty<LibraryTrack>(), Array.Empty<LibraryTrack>());
+        int lastCount = -1, steady = 0;
+
+        while (DateTime.UtcNow < deadline)
+        {
+            await Task.Delay(TimeSpan.FromSeconds(2)).ConfigureAwait(false);
+            selection = await ReadLibraryCopyAsync(release).ConfigureAwait(false);
+            int count = Count(selection);
+            if (count >= release.TrackCount) break;
+
+            steady = count == lastCount && count > before ? steady + 1 : 0;
+            if (steady >= 3) break;
+            lastCount = count;
+        }
+        return selection;
+    }
+
+    /// <summary>How long to wait for Music to show the album's page after opening its link.</summary>
+    private static readonly TimeSpan PageTimeout = TimeSpan.FromSeconds(20);
+
+    /// <summary>
+    /// Opens the release's page in Music and presses "Add to Library" — the one step AppleScript's
+    /// own dictionary can't take. Null when it was pressed (or the page says it's already added),
+    /// else what stopped it, worded for the user.
+    /// <para>
+    /// The button is only pressed once the page on screen is this release's: until Music has
+    /// navigated, the toolbar still belongs to the previous album, and pressing it there would add
+    /// the wrong record. UI scripting needs the Accessibility permission, and can only see Music's
+    /// window when it's on the current desktop — both are spelled out when they're the problem.
+    /// </para>
+    /// </summary>
+    private static async Task<string?> AddToLibraryAsync(AppleMusicAlbum release, string url)
+    {
+        try
+        {
+            using (var open = Process.Start(new ProcessStartInfo("/usr/bin/open", new[] { url }) { UseShellExecute = false }))
+                if (open is not null) await open.WaitForExitAsync().ConfigureAwait(false);
+
+            var deadline = DateTime.UtcNow + PageTimeout;
+            bool sawWindow = false, nudged = false;
+            string seen = "";
+
+            while (DateTime.UtcNow < deadline)
+            {
+                var state = (await RunScriptAsync(ReadMusicPageScript).ConfigureAwait(false)).TrimEnd('\n', '\r');
+                if (state == NoWindow)
+                {
+                    // `open` usually brings Music forward; if it didn't, ask once more.
+                    if (!nudged) { nudged = true; await RunScriptAsync(ActivateMusicScript).ConfigureAwait(false); }
+                }
+                else
+                {
+                    sawWindow = true;
+                    var parts = state.Split(Sep);
+                    string heading = parts[0];
+                    var buttons = parts.Length > 1 ? parts[1].Split(',') : Array.Empty<string>();
+                    seen = heading;
+
+                    if (IsPageFor(heading, release.CollectionName))
+                    {
+                        if (buttons.Contains(AddToLibraryButton))
+                        {
+                            var clicked = (await RunScriptAsync(ClickAddToLibraryScript, heading).ConfigureAwait(false)).Trim();
+                            if (clicked == "clicked") return null;
+                        }
+                        else if (buttons.Contains("Download") || buttons.Contains("Remove from Library"))
+                        {
+                            return null; // already added, under whatever name the library files it
+                        }
+                    }
+                }
+                await Task.Delay(500).ConfigureAwait(false);
+            }
+
+            return sawWindow
+                ? $"Music's page for {release.CollectionName} didn't offer “Add to Library”" + (seen.Length > 0 ? $" (it showed “{seen}”)." : ".")
+                : "Couldn't see the Music window. Keep Music open on the same desktop as this app — not in full screen — and push again.";
+        }
+        catch (Exception ex) when (ex.Message.Contains("assistive access", StringComparison.OrdinalIgnoreCase)
+                                   || ex.Message.Contains("-1728") || ex.Message.Contains("-25211"))
+        {
+            return "Allow “1001 Albums Helper” in System Settings ▸ Privacy & Security ▸ Accessibility, so it can press Add in Music.";
+        }
+    }
+
+    /// <summary>Whether the album page on screen is this release's — exact name, else same bare title.</summary>
+    internal static bool IsPageFor(string heading, string releaseName) =>
+        heading.Length > 0
+        && (NumberedList.Matches(heading, releaseName)
+            || DiscogsApiClient.SameTitle(AppleMusicCatalog.SplitEdition(heading).Bare,
+                                          AppleMusicCatalog.SplitEdition(releaseName).Bare));
+
 
     // ---------- Favourites ----------
 
@@ -265,26 +300,18 @@ public sealed class MusicAppPlaylistWriter : IApplePlaylistWriter
     /// </summary>
     public async Task<PlaylistOpResult> FavoriteAlbumAsync(PlaylistEntry album)
     {
-        TrackSelection selection;
-        string term;
-        try
-        {
-            (selection, term) = await LocateAsync(album).ConfigureAwait(false);
-        }
-        catch (Exception ex)
-        {
-            return new PlaylistOpResult(false, $"Music app lookup failed: {ex.Message}");
-        }
+        var copy = await EnsureInLibraryAsync(album).ConfigureAwait(false);
+        if (copy.Problem is not null) return new PlaylistOpResult(false, copy.Problem, copy.OpenUrl);
 
         // Unlike adding, a withdrawn track is no obstacle: it still carries the album's favourite
         // flag, so an album Apple Music no longer streams can still be marked.
-        var marked = selection.Chosen.Concat(selection.Unavailable).ToList();
+        var marked = copy.Selection.Chosen.Concat(copy.Selection.Unavailable).ToList();
         if (marked.Count == 0)
-            return await NotInLibraryAsync(album).ConfigureAwait(false);
+            return new PlaylistOpResult(false, $"Music has no tracks of {album.Title} to favourite.");
 
         try
         {
-            var args = new List<string> { term };
+            var args = new List<string> { copy.Term };
             args.AddRange(marked.Select(t => t.PersistentId));
             var output = (await RunScriptAsync(FavoriteAlbumScript, args.ToArray()).ConfigureAwait(false)).Trim();
 
@@ -314,33 +341,6 @@ public sealed class MusicAppPlaylistWriter : IApplePlaylistWriter
     }
 
     // ---------- Music app plumbing ----------
-
-    /// <summary>
-    /// The last few searches and what they returned. The favourites backfill asks for the same album
-    /// twice in a row — once to favourite it, once to put it in the playlist — and a library search
-    /// is by some way the slowest thing here, so the second ask is answered from this instead.
-    /// <para>
-    /// Kept a handful deep rather than one, because <see cref="SearchTerms"/> can try two names for
-    /// a single album: one-deep would remember only the second, and the next call would pay for the
-    /// first all over again. Small on purpose — it exists to collapse that handful, not to be a
-    /// cache of the library — and cleared wholesale rather than aged, since which entry is oldest
-    /// stops mattering at this size.
-    /// </para>
-    /// </summary>
-    private readonly Dictionary<string, List<LibraryTrack>> _recentSearches = new();
-
-    /// <summary>How many searches to remember: two terms each for the favourite and the add.</summary>
-    private const int RecentSearchLimit = 4;
-
-    private async Task<List<LibraryTrack>> SearchLibraryAsync(string term)
-    {
-        if (_recentSearches.TryGetValue(term, out var cached)) return cached;
-
-        var hits = await RunSearchAsync(term).ConfigureAwait(false);
-        if (_recentSearches.Count >= RecentSearchLimit) _recentSearches.Clear();
-        _recentSearches[term] = hits;
-        return hits;
-    }
 
     private static async Task<List<LibraryTrack>> RunSearchAsync(string term)
     {
@@ -451,7 +451,8 @@ public sealed class MusicAppPlaylistWriter : IApplePlaylistWriter
           with timeout of 280 seconds
             tell application "Music"
               set rows to {}
-              -- This reaches the library only — albums already added — not the Apple Music catalog.
+              -- This reaches the library only — albums already added — not the Apple Music catalog,
+              -- which is why EnsureInLibraryAsync adds a release before it's searched for here.
               repeat with t in (search library playlist 1 for searchTerm only albums)
                 -- cloud status tells a playable track from one Apple Music has withdrawn; disc and
                 -- track number say which song it is, so a withdrawn copy can be swapped for a live
@@ -463,6 +464,70 @@ public sealed class MusicAppPlaylistWriter : IApplePlaylistWriter
               end repeat
               set AppleScript's text item delimiters to linefeed
               return rows as text
+            end tell
+          end timeout
+        end run
+        """;
+
+    /// <summary>Sentinel the page reader returns when Music has no window it can see.</summary>
+    private const string NoWindow = "!!NOWINDOW";
+
+    /// <summary>The accessibility description Music gives its toolbar ＋ on an album page.</summary>
+    private const string AddToLibraryButton = "Add to Library";
+
+    private const string ActivateMusicScript = """
+        tell application "Music"
+          reopen
+          activate
+        end tell
+        """;
+
+    // Reads the album page Music is showing: its title (the first text in the content pane's list)
+    // and the descriptions of the toolbar's buttons — "Add to Library" before the album is added,
+    // "Download" after. Addressed by path rather than by `entire contents`, which takes ~15s here.
+    private const string ReadMusicPageScript = """
+        with timeout of 20 seconds
+          tell application "System Events" to tell process "Music"
+            if (count windows) = 0 then return "!!NOWINDOW"
+            set heading to ""
+            try
+              set sg to splitter group 1 of window 1
+              set lst to list 1 of list 1 of scroll area (count scroll areas of sg) of sg
+              repeat with u in (UI elements of lst)
+                try
+                  set heading to value of static text 1 of u
+                  exit repeat
+                end try
+              end repeat
+            end try
+            set btns to {}
+            try
+              set btns to description of every button of toolbar 1 of window 1
+            end try
+            set AppleScript's text item delimiters to ","
+            return heading & tab & (btns as text)
+          end tell
+        end timeout
+        """;
+
+    // Presses "Add to Library" — but only if the page is still the one the caller just read.
+    private const string ClickAddToLibraryScript = """
+        on run argv
+          set wanted to item 1 of argv
+          with timeout of 20 seconds
+            tell application "System Events" to tell process "Music"
+              set sg to splitter group 1 of window 1
+              set lst to list 1 of list 1 of scroll area (count scroll areas of sg) of sg
+              set heading to ""
+              repeat with u in (UI elements of lst)
+                try
+                  set heading to value of static text 1 of u
+                  exit repeat
+                end try
+              end repeat
+              if heading is not wanted then return "moved"
+              click (first button of toolbar 1 of window 1 whose description is "Add to Library")
+              return "clicked"
             end tell
           end timeout
         end run

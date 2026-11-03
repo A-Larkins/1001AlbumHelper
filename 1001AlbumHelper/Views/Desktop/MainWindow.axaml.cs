@@ -1,21 +1,35 @@
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Avalonia.Controls;
+using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Media;
 using Avalonia.Threading;
 
 namespace _1001AlbumHelper;
 
+/// <summary>
+/// The app's one window: a sidebar of sections — Rate, Browse, Shortlist, Playlists, More — the
+/// same set as the phone's tab bar, with each section shown in place rather than in a window of its
+/// own. Rate is the home page. The tools that are run now and then (adding an album, favourites,
+/// analytics, export, sync) and the activity log live under More.
+/// </summary>
 public partial class MainWindow : Window
 {
     private static readonly IBrush IdleDot = new SolidColorBrush(Color.Parse("#7c6d60"));
     private static readonly IBrush RunningDot = new SolidColorBrush(Color.Parse("#e6a54b"));
-    private const string LogPlaceholder = "Ready. Pick an action above — output streams here live.";
+    private const string LogPlaceholder = "Ready. Output from anything the app does streams here live.";
+
+    private enum Section { Rate, Browse, Shortlist, Playlists, More }
+
+    /// <summary>Pages built so far — each is made on first visit, then kept so it holds its place.</summary>
+    private readonly Dictionary<Section, Control> _pages = new();
+    private Section _current = Section.Rate;
 
     private readonly SemaphoreSlim _gate = new(1, 1);
     private readonly DispatcherTimer _timer;
@@ -32,9 +46,91 @@ public partial class MainWindow : Window
             ElapsedText.Text = s < 60 ? $"{s:0.0}s" : $"{(int)(s / 60)}m {(int)(s % 60)}s";
         };
 
-        Opened += async (_, _) => await RefreshSyncStatusAsync();
+        // Everything the app prints — sheet writes from the shortlist, adding an album — lands in
+        // the activity log, as well as wherever stdout was going (the terminal, under dotnet run).
+        Console.SetOut(new UiLogWriter(line => Dispatcher.UIThread.Post(() => AppendLine(line)), Console.Out));
+
+        _pages[Section.More] = MorePage;
+        Opened += async (_, _) =>
+        {
+            // Dev aid, like the mobile preview's ALBUMHELPER_PREVIEW_TAB: open straight onto one
+            // section (Rate, Browse, Shortlist, Playlists, More) to look at it without clicking.
+            Navigate(Enum.TryParse<Section>(Environment.GetEnvironmentVariable("ALBUMHELPER_START_SECTION"),
+                                            ignoreCase: true, out var start) ? start : Section.Rate);
+            await RefreshSyncStatusAsync();
+        };
+        // Tunnel, so ⌘1–⌘5 are taken here before a page sees the key — the Rate page rates on bare
+        // digits, and a shortcut must never reach it as one.
+        AddHandler(KeyDownEvent, OnWindowKeyDown, Avalonia.Interactivity.RoutingStrategies.Tunnel);
 
         InsightsSection.IsVisible = AnalyticsWindowHost.Factory is not null;
+    }
+
+    /// <summary>The window's background, shared with <see cref="PageWindow"/> so a page looks the same in either.</summary>
+    public static IBrush PageBackground() => new LinearGradientBrush
+    {
+        StartPoint = new Avalonia.RelativePoint(0, 0, Avalonia.RelativeUnit.Relative),
+        EndPoint = new Avalonia.RelativePoint(0.3, 1, Avalonia.RelativeUnit.Relative),
+        GradientStops =
+        {
+            new GradientStop(Color.Parse("#151020"), 0),
+            new GradientStop(Color.Parse("#0e0b09"), 0.45),
+            new GradientStop(Color.Parse("#0b0807"), 1),
+        },
+    };
+
+    // ---------- Sections ----------
+
+    private void OnNav(object? sender, RoutedEventArgs e)
+    {
+        if (sender is Button { Tag: string tag } && Enum.TryParse<Section>(tag, out var section))
+            Navigate(section);
+    }
+
+    /// <summary>⌘1–⌘5 jump between sections, in sidebar order.</summary>
+    private void OnWindowKeyDown(object? sender, KeyEventArgs e)
+    {
+        if (!e.KeyModifiers.HasFlag(KeyModifiers.Meta) && !e.KeyModifiers.HasFlag(KeyModifiers.Control)) return;
+        Section? target = e.Key switch
+        {
+            Key.D1 => Section.Rate,
+            Key.D2 => Section.Browse,
+            Key.D3 => Section.Shortlist,
+            Key.D4 => Section.Playlists,
+            Key.D5 => Section.More,
+            _ => null,
+        };
+        if (target is { } t) { e.Handled = true; Navigate(t); }
+    }
+
+    private void Navigate(Section section)
+    {
+        if (!_pages.TryGetValue(section, out var page))
+        {
+            page = section switch
+            {
+                Section.Rate => new RatePage(RatingMode.NextUp),
+                Section.Browse => new BrowsePage(),
+                Section.Shortlist => new ShortlistPage(),
+                _ => new PlaylistsPage(),
+            };
+            _pages[section] = page;
+            PageHost.Children.Add(page);
+        }
+
+        _current = section;
+        foreach (var (key, p) in _pages) p.IsVisible = key == section;
+        NavRate.Classes.Set("on", section == Section.Rate);
+        NavBrowse.Classes.Set("on", section == Section.Browse);
+        NavShortlist.Classes.Set("on", section == Section.Shortlist);
+        NavPlaylists.Classes.Set("on", section == Section.Playlists);
+        NavMore.Classes.Set("on", section == Section.More);
+
+        // Ratings made on the Rate page show up in Browse without re-reading the sheet.
+        if (page is BrowsePage browse && _pages.TryGetValue(Section.Rate, out var rate))
+            browse.ApplyRatings(((RatePage)rate).RatingsApplied);
+
+        (page as IPage)?.OnShown();
     }
 
     /// <summary>
@@ -51,6 +147,7 @@ public partial class MainWindow : Window
         {
             SyncDescText.Text = "Reconciles both lists with the 1001 list — couldn't check right now.";
             SyncBadge.IsVisible = false;
+            MoreDot.IsVisible = false;
             return;
         }
 
@@ -59,11 +156,13 @@ public partial class MainWindow : Window
             SyncDescText.Text = status.Summary();
             SyncBadgeText.Text = "NEEDED";
             SyncBadge.IsVisible = true;
+            MoreDot.IsVisible = true;
         }
         else
         {
             SyncDescText.Text = "Everything's in sync — nothing to reconcile.";
             SyncBadge.IsVisible = false;
+            MoreDot.IsVisible = false;
         }
     }
 
@@ -111,7 +210,7 @@ public partial class MainWindow : Window
             FavoritesTitleText.Text = $"Backfill {plan!.Work.Count} albums now";
             FavoritesDescText.Text =
                 $"{plan.ToFavorite} to favourite, {plan.ToAddToPlaylist} to add to "
-                + $"“{AppleMusic.FavoritesPlaylistName}” — the log above lists them. Press to write it "
+                + $"“{AppleMusic.FavoritesPlaylistName}” — the log below lists them. Press to write it "
                 + "to Apple Music. Expect a second or two per album, and note that the app can't undo "
                 + "a playlist add afterwards.";
             return;
@@ -202,81 +301,9 @@ public partial class MainWindow : Window
         StatusText.Text = on ? "Running…" : "Idle";
         StatusDot.Fill = on ? RunningDot : IdleDot;
         CheckButton.IsEnabled = !on;
-        RenewTrialButton.IsEnabled = !on;
-        RateNextButton.IsEnabled = !on;
-        BackfillButton.IsEnabled = !on;
-        RevisitButton.IsEnabled = !on;
         AddAlbumButton.IsEnabled = !on;
-        BrowseButton.IsEnabled = !on;
-        CandidatesButton.IsEnabled = !on;
         SyncButton.IsEnabled = !on;
         ExportButton.IsEnabled = !on;
-    }
-
-    /// <summary>
-    /// Renews the iPhone's 7-day free-account signing profile and redeploys, by shelling out to
-    /// deploy-to-device.sh — the same script used from the terminal (see PROJECT.md §4 and §7).
-    /// </summary>
-    private async void OnRenewTrial(object? sender, RoutedEventArgs e)
-    {
-        if (!_gate.Wait(0)) return;
-
-        SetRunning(true);
-        LogBox.Text = "";
-        _startedAt = DateTime.Now;
-        _timer.Start();
-
-        var sw = Stopwatch.StartNew();
-        bool ok = false;
-        string? err = null;
-
-        await Task.Run(async () =>
-        {
-            try
-            {
-                var scriptPath = Path.Combine(FindRepoRoot(), "1001AlbumHelper.iOS", "deploy-to-device.sh");
-
-                var psi = new ProcessStartInfo("/bin/bash", $"\"{scriptPath}\"")
-                {
-                    RedirectStandardOutput = true,
-                    RedirectStandardError = true,
-                    UseShellExecute = false,
-                };
-
-                using var proc = Process.Start(psi)!;
-                proc.OutputDataReceived += (_, args) =>
-                {
-                    if (args.Data is not null) Dispatcher.UIThread.Post(() => AppendLine(args.Data));
-                };
-                proc.ErrorDataReceived += (_, args) =>
-                {
-                    if (args.Data is not null) Dispatcher.UIThread.Post(() => AppendLine(args.Data));
-                };
-                proc.BeginOutputReadLine();
-                proc.BeginErrorReadLine();
-                await proc.WaitForExitAsync();
-
-                if (proc.ExitCode != 0) throw new InvalidOperationException($"exited with code {proc.ExitCode}");
-                ok = true;
-            }
-            catch (Exception ex)
-            {
-                err = ex.Message;
-            }
-        });
-
-        sw.Stop();
-
-        Dispatcher.UIThread.Post(() =>
-        {
-            _timer.Stop();
-            AppendLine("");
-            AppendLine(ok
-                ? $"✓ Finished in {sw.Elapsed.TotalSeconds:0.0}s."
-                : $"✗ Failed{(err != null ? ": " + err : ".")}");
-            SetRunning(false);
-            _gate.Release();
-        });
     }
 
     private void AppendLine(string line)
@@ -287,89 +314,18 @@ public partial class MainWindow : Window
 
     private void OnClearLog(object? sender, RoutedEventArgs e) => LogBox.Text = LogPlaceholder;
 
-    // ---------- Rating & adding ----------
-    private void OnRateNext(object? sender, RoutedEventArgs e) => OpenRater(RatingMode.NextUp);
-    private void OnBackfill(object? sender, RoutedEventArgs e) => OpenRater(RatingMode.Backfill);
-    private void OnRevisit(object? sender, RoutedEventArgs e) => OpenRater(RatingMode.Revisit);
-
-    private void OpenRater(RatingMode mode)
-    {
-        // Don't open mid-run: both talk to the same sheet.
-        if (!RateNextButton.IsEnabled) return;
-        new RatingWindow(mode).ShowDialog(this);
-    }
-
-    private void OnBrowse(object? sender, RoutedEventArgs e)
-    {
-        if (!BrowseButton.IsEnabled) return;
-        new ListViewerWindow().ShowDialog(this);
-    }
-
-    private void OnPlaylists(object? sender, RoutedEventArgs e)
-    {
-        if (!PlaylistsButton.IsEnabled) return;
-        new PlaylistWindow().ShowDialog(this);
-    }
+    // ---------- Tools under More ----------
 
     private async void OnAddAlbum(object? sender, RoutedEventArgs e)
     {
         if (!AddAlbumButton.IsEnabled) return;
-        await ShowLoggingDialogAsync(new AddAlbumWindow());
-    }
-
-    private async void OnCandidates(object? sender, RoutedEventArgs e)
-    {
-        if (!CandidatesButton.IsEnabled) return;
-        await ShowLoggingDialogAsync(new CandidatesWindow());
+        await new AddAlbumWindow().ShowDialog(this);
     }
 
     private void OnAnalytics(object? sender, RoutedEventArgs e)
     {
         var window = AnalyticsWindowHost.Factory?.Invoke();
         window?.ShowDialog(this);
-    }
-
-    /// <summary>
-    /// Shows a dialog that writes to the sheet. Those writes go through Operations, whose progress
-    /// goes to Console — capture it into the log the same way a run does, so the main window still
-    /// shows what happened once the dialog is closed.
-    /// </summary>
-    private async Task ShowLoggingDialogAsync(Window dialog)
-    {
-        var writer = new UiLogWriter(line => Dispatcher.UIThread.Post(() => AppendLine(line)));
-        var previousOut = Console.Out;
-        Console.SetOut(writer);
-        try
-        {
-            await dialog.ShowDialog(this);
-        }
-        finally
-        {
-            Console.SetOut(previousOut);
-            writer.Flush();
-        }
-    }
-
-    /// <summary>
-    /// Walks up from the running app's directory to find the repo root, identified by a sibling
-    /// "1001AlbumHelper.iOS" directory (a plain *.sln check is ambiguous — there's one both at the
-    /// true repo root and one level down, inside the shared-library project folder). Falls back to the
-    /// known checkout path since the published app (installed to /Applications) is disconnected from
-    /// the source tree it was built from.
-    /// </summary>
-    private static string FindRepoRoot()
-    {
-        var dir = new DirectoryInfo(AppContext.BaseDirectory);
-        while (dir is not null)
-        {
-            if (Directory.Exists(Path.Combine(dir.FullName, "1001AlbumHelper.iOS"))) return dir.FullName;
-            dir = dir.Parent;
-        }
-
-        const string fallback = "/Users/alarks/code/C#/1001AlbumHelper";
-        if (Directory.Exists(fallback)) return fallback;
-
-        throw new InvalidOperationException("Couldn't locate the repo root from " + AppContext.BaseDirectory);
     }
 
     /// <summary>Opens a Finder window with the file selected.</summary>
@@ -389,20 +345,28 @@ public partial class MainWindow : Window
     private sealed class UiLogWriter : TextWriter
     {
         private readonly Action<string> _emit;
+        private readonly TextWriter? _also;
         private readonly StringBuilder _line = new();
 
-        public UiLogWriter(Action<string> emit) => _emit = emit;
+        /// <param name="also">Another writer to copy everything to — the original stdout.</param>
+        public UiLogWriter(Action<string> emit, TextWriter? also = null)
+        {
+            _emit = emit;
+            _also = also;
+        }
 
         public override Encoding Encoding => Encoding.UTF8;
 
         public override void Write(char value)
         {
+            _also?.Write(value);
             if (value == '\n') { _emit(_line.ToString()); _line.Clear(); }
             else if (value != '\r') _line.Append(value);
         }
 
         public override void Flush()
         {
+            _also?.Flush();
             if (_line.Length > 0) { _emit(_line.ToString()); _line.Clear(); }
         }
     }
