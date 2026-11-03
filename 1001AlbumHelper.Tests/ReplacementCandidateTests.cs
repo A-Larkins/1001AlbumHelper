@@ -1,4 +1,3 @@
-using System.Runtime.CompilerServices;
 using _1001AlbumHelper;
 
 namespace _1001AlbumHelper.Tests;
@@ -234,38 +233,6 @@ public class ReplacementCandidateTests : IDisposable
             .Select(a => a.Title);
 
         Assert.Equal(new[] { "First", "Second", "Third" }, order);
-    }
-
-    /// <summary>
-    /// The shipped file, found via the source tree rather than <see cref="Operations.ProjectDir"/>
-    /// — under the test host that resolves to the test project, not the app's.
-    /// </summary>
-    private static string SeedPath([CallerFilePath] string thisFile = "") =>
-        Path.Combine(
-            Path.GetDirectoryName(Path.GetDirectoryName(thisFile)!)!,
-            "1001AlbumHelper", ReplacementCandidates.FileName);
-
-    [Fact]
-    public void The_shipped_shortlist_is_usable()
-    {
-        // The app writes to this file as it goes, so its statuses and years are whatever the last
-        // session left behind. Only what stays true of it as it's used is worth asserting.
-        var seed = ReplacementCandidates.Load(SeedPath());
-
-        Assert.NotEmpty(seed);
-        Assert.All(seed, a =>
-        {
-            Assert.NotEmpty(a.Title);
-            Assert.NotEmpty(a.Artist);
-        });
-
-        // Two rows for the same album would offer it twice and add it twice.
-        var duplicates = seed
-            .GroupBy(a => (NumberedList.Normalize(a.Title), NumberedList.Normalize(a.Artist)))
-            .Where(g => g.Count() > 1)
-            .Select(g => g.Key.Item1)
-            .ToList();
-        Assert.Empty(duplicates);
     }
 
     // ---------- Merging on the way up to Sheets ----------

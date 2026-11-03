@@ -20,3 +20,6 @@ service-account*.json
 # Xcode per-user state (from the SignHelper signing stub)
 xcuserdata/
 *.xcuserstate
+
+# The shortlist's local copy — user data, kept in ~/Library/Application Support now; the sheet is the record
+1001AlbumHelper/replacement-candidates.json

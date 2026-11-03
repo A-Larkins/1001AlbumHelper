@@ -122,7 +122,33 @@ public sealed class RatingSession
                 Genre: Cell(5)));
         }
 
+        if (LayoutProblem(all) is { } problem)
+            throw new InvalidOperationException($"Tab \"{tab}\" doesn't look the way the app expects — {problem} "
+                + "Nothing will be written until it does: rating writes into column B by position.");
+
         return new RatingSession(writer, tab, mustHearTab, all);
+    }
+
+    /// <summary>
+    /// Whether the master list still has the shape ratings are written against — # in A, rating in
+    /// B, title in C, artist in D, year in E — judged from the data rather than the headings, which
+    /// can be reworded freely. A column inserted or moved in the browser shows up as years that
+    /// aren't years, or ratings that aren't ratings, and would otherwise send every rating into the
+    /// wrong cell. A few odd rows are tolerated; it's a shifted column this is after. Null when fine.
+    /// </summary>
+    public static string? LayoutProblem(IReadOnlyList<AlbumEntry> albums)
+    {
+        if (albums.Count == 0) return null; // nothing to rate, so nothing to write into the wrong cell
+
+        int tolerance = Math.Max(3, albums.Count / 10);
+        int badYears = albums.Count(a => !(a.Year.Length == 4 && a.Year.All(char.IsDigit)));
+        int badRatings = albums.Count(a => a.Rating.Trim().Length > 0 && a.Rating.Trim() != Listened && !IsRated(a.Rating));
+        int noTitle = albums.Count(a => a.Title.Length == 0 || a.Artist.Length == 0);
+
+        if (badYears > tolerance) return $"{badYears} of {albums.Count} rows have no four-digit year in column E.";
+        if (badRatings > tolerance) return $"{badRatings} of {albums.Count} rows have something other than a rating in column B.";
+        if (noTitle > tolerance) return $"{noTitle} of {albums.Count} rows are missing a title (C) or artist (D).";
+        return null;
     }
 
     /// <summary>

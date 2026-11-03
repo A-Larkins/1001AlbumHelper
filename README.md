@@ -196,13 +196,22 @@ dotnet run --project 1001AlbumHelper.Desktop -- console
 # Tests
 dotnet test 1001AlbumHelper.Tests
 
+# Build the signed, self-contained Mac app and install it into /Applications
+./1001AlbumHelper/build-macos-app.sh --install
+
 # The phone UI in a phone-sized window, without a device deploy
 dotnet run --project 1001AlbumHelper.Desktop -- mobilepreview
 # …opening straight onto one tab (0-4: List, Rate, Shortlist, Playlist 1, Playlist 2)
 ALBUMHELPER_PREVIEW_TAB=1 dotnet run --project 1001AlbumHelper.Desktop -- mobilepreview
 ```
 
-**iPhone.** Plug the phone in, unlock it, and double-click **`Re-deploy to iPhone.command`** in the
+The installed Mac app needs nothing from this checkout: its settings and service-account key are
+built into it, its data lives in `~/Library/Application Support/1001AlbumHelper` (shortlist cache,
+playlists, cover art, a snapshot of the lists for offline use), and exports go to
+`~/Documents/1001 Albums Helper`. It's signed with your Apple Development certificate, so the
+permissions macOS grants it survive a rebuild.
+
+**iPhone (retired).** Plug the phone in, unlock it, and double-click **`Re-deploy to iPhone.command`** in the
 repo root. It renews the 7-day signing profile, rebuilds, reinstalls and launches. The underlying
 build flags are all load-bearing — see [`PROJECT.md`](PROJECT.md) §4 before running it by hand.
 
@@ -210,8 +219,11 @@ build flags are all load-bearing — see [`PROJECT.md`](PROJECT.md) §4 before r
 
 ## Configuration
 
-Google Sheets sync and Discogs lookups need your own credentials in `1001AlbumHelper/appsettings.json`
-(not committed — copy `appsettings.example.json`). **The app runs fine without them, just local-only.**
+Google Sheets and Discogs need your own credentials in `1001AlbumHelper/appsettings.json` and
+`1001AlbumHelper/service-account.json` (neither committed — copy `appsettings.example.json`). They're
+built into the app at build time; a copy in `~/Library/Application Support/1001AlbumHelper` overrides
+them without a rebuild. Everything goes through the one service account — share the spreadsheet with
+its email as Editor — so there's no browser sign-in.
 
 | Key | What it's for |
 |---|---|
@@ -220,10 +232,7 @@ Google Sheets sync and Discogs lookups need your own credentials in `1001AlbumHe
 | `GoogleSheets:AlbumsTab` | The master 1001 list (ratings live here) |
 | `GoogleSheets:PotentialsTab` | The replacements shortlist |
 | `GoogleSheets:StarredTab` / `ReplacementsTab` | Derived "Must Hear" and replacements lists |
-| `GoogleSheets:ServiceAccountKeyFile` | Service-account JSON key — this is what avoids an OAuth screen |
-
-On the phone the config and key are loaded from **embedded resources** baked into the assembly, since
-there's no filesystem to drop them into.
+| `GoogleSheets:ServiceAccountKeyFile` | Service-account JSON key — the only Google sign-in there is |
 
 ---
 

@@ -18,6 +18,9 @@ public partial class BrowsePage : UserControl, IPage
     private readonly PlaylistStore _playlist2 = PlaylistStore.Open(2);
     private Which _current = Which.Master;
 
+    /// <summary>When the lists on show are the saved copy (the sheet couldn't be reached), when that copy is from.</summary>
+    private DateTime? _offlineSince;
+
     /// <summary>
     /// Set when the 1001 tab is (re)opened, so the list lands on the next album to rate instead of
     /// on #1. Spent by the next unfiltered showing, so re-rating a row or typing a search never
@@ -70,6 +73,7 @@ public partial class BrowsePage : UserControl, IPage
                 SetButtonsEnabled(true);
                 return;
             }
+            _offlineSince = loaded.CachedAt;
 
             _cache[Which.Master] = loaded.Master
                 .Select(a => new ViewRow(a.Number, a.Rating, a.Title, a.Artist, a.Year,
@@ -159,9 +163,11 @@ public partial class BrowsePage : UserControl, IPage
         if (shown.Count == 0)
             MessageText.Text = all.Count == 0 ? "This list is empty." : $"Nothing matches “{query}”.";
 
-        StatusText.Text = _current == Which.Master
-            ? "Ratings: ⭐ favourite · 👍 good · 👎 poor · ❌ trash · ✓ listened, unrated"
-            : "";
+        StatusText.Text = _offlineSince is { } since
+            ? $"⚠️ Offline — showing the lists as they were at {since:MMM d, h:mm tt}. Reload once you're back online."
+            : _current == Which.Master
+                ? "Ratings: ⭐ favourite · 👍 good · 👎 poor · ❌ trash · ✓ listened, unrated"
+                : "";
     }
 
     /// <summary>

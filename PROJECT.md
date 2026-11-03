@@ -111,6 +111,34 @@ a **single view with four bottom tabs** (phones don't do windows).
 | 2026-11-03 | **One window, and whole albums from the catalog.** The Mac app was a dashboard of eleven cards, each opening its own modal; it's now **one window with a sidebar** — Rate · Browse · Shortlist · Playlists · More, the phone's sections — with each shown in place (`IPage`; pages are built on first visit and kept). Rate is the home page; adding an album, favourites, analytics, export, sync, "Check connection" and the activity log (now fed by all app output) live under More; ⌘1–⌘5 switch. The former windows became `RatePage`, `BrowsePage`, `ShortlistPage`, `PlaylistsPage`; Browse's ✎ opens a `RatePage` in a `PageWindow`. "Renew iPhone trial" is gone from the UI (the phone app is retired; its code and scripts stay). Playlists: "Pull down / Push all" became **Get from Music / Send new to Music**, rows say "not sent yet", and sending skips albums already in the playlist (it used to add them again). Browse opens at the first unrated album, matching Rate's Next up. And the add itself was rebuilt: the release is chosen in the **catalog** (original › remaster › deluxe, never a single or a sequel), added to the library by pressing Music's own "Add to Library", and copied whole — the old library-based pick had put one song of an album into PLAYLIST2. See §5. |
 | 2026-11-03 | **Remove means remove — and on Playlist 2, "no thanks".** On the Mac, ✕ Remove now takes the album out of the Music playlist itself (`IApplePlaylistWriter.RemoveAlbumAsync`; deleting a playlist's track leaves the library copy), instead of parking it on a "delete these by hand" checklist — the phone's MediaPlayer is add-only, the Mac's Music app isn't. Matching for a delete is deliberately stricter than the pull-down's prefix rule, so "Tical" can't take "Tical 2000" with it. On Playlist 2 a removal is also a verdict: `Operations.DropFromShortlistAsync` marks the album dropped on the shortlist (adding it as dropped if it wasn't there), so it's never offered or re-absorbed again — unless it was already kept, which stays kept. The old checklist's "✓ Deleted" became "Remove from Music", which deletes and clears. `musictest` checks a removal leaves the library alone. Same day, `PlaylistStore.SameAlbum` dropped its whole-word prefix rule for `AppleMusicCatalog.SameRelease` (edition tags and a ": subtitle" set aside, nothing else): with Tical 2000 on the removal checklist, a pull bringing in the real Tical had filed it under that row, so Tical never appeared. |
 | 2026-11-03 | **More split up; Export gets a page of its own.** The sidebar is now Rate · Browse · Shortlist · Playlists · **Export** · **Insights**, with **Tools** apart at the bottom (⌘1–⌘7). Export is the finished list and the point of the app: the Must Hear / Replacements / total counts (re-read from the sheet on each visit), the sync status with its button, and Export PDF with "Show in Finder". The Analytics window became `InsightsPage`, still built in the Desktop head for LiveCharts' sake (`InsightsPageHost` hands the shared library a `Control`). "Add an album" moved to a button in Browse; Tools keeps the favourites backfill, the connection check and the activity log. A "Get from Music" pull now fills blank years — from the lists, then Discogs — since Music's read-back has none. |
+| 2026-11-03 | **Standalone.** The installed app no longer needs the source checkout. Data moved to `~/Library/Application Support/1001AlbumHelper` (it was the project folder, which the launcher pointed at), exports to `~/Documents/1001 Albums Helper`; settings and the service-account key come from the copies built into the app, overridden by any in the data folder. **One Google auth**: the master-list client signs in as the service account rather than via browser OAuth, so no sign-in, no token to expire, no `credentials.json`. The shortlist's local copy left the repo and git (the Potentials sheet was already the record). The bundle runs the apphost directly and is **signed with the Apple Development certificate** so macOS permissions survive rebuilds. Also: the master list's shape is checked on load (a shifted column refuses to open for rating rather than writing into the wrong cell), Browse and Export fall back to a snapshot of the last good read when offline, and Avalonia went 11.3.0 → 11.3.22, which clears the Tmds.DBus advisory. |
+
+---
+
+## Weak points (reviewed 2026-11-03)
+
+Where the app can break, roughly most likely first, and what's been done about each.
+
+- [x] **Tied to the source checkout** — settings, keys, the shortlist cache and exports lived in the
+  project folder. *Fixed:* data in Application Support, exports in Documents, settings built in.
+- [x] **Two Google sign-ins** — browser OAuth for the master list (its refresh token can expire after
+  a week in a "testing" Google project) plus a service account for Potentials. *Fixed:* service account only.
+- [x] **The shortlist stored twice, once in git** — `replacement-candidates.json` was tracked and
+  always dirty. *Fixed:* untracked; local copy is an offline cache in Application Support.
+- [x] **Rebuilds wiped macOS permissions** — unsigned app, new identity each build. *Fixed:* signed
+  with the Apple Development certificate. (It's a free-account certificate: when it expires, Xcode
+  issues a new one with the same name, and the grants should carry over.)
+- [ ] **Apple Music add path** — the iTunes Search API (undocumented, ~20 requests/minute) and UI
+  scripting Music's "Add to Library" button (breaks if Apple moves it; needs Music on the current
+  desktop). No official alternative without a paid developer account; "Open in Music" is the fallback.
+  Recheck after macOS/Music updates — `musictest` is the quickest way.
+- [x] **Sheet layout assumed** — rating is written into column B by position. *Fixed:* the shape is
+  checked on load (`RatingSession.LayoutProblem`); a shifted column refuses to open for rating.
+- [x] **Nothing worked offline** — *Partly fixed:* Browse, Export (and an export) use the last good
+  read, marked as offline. Rating still needs the sheet, by design: it writes to it.
+- [ ] **Leftovers** — the retired iPhone head (code kept on purpose; its build output is ~1.3 GB of
+  untracked files), and ~250 one-track albums in the favourites playlist from the old library-based
+  pick. Neither breaks anything.
 
 ---
 
@@ -379,9 +407,10 @@ playlist is somewhere you can sit down and play.
 
 Keeps the potentials shortlist in sync across devices via a **"Potentials" tab** in the Google Sheet.
 
-- Auth is a **Google service account** (works on Mac *and* iPhone with no login screen — unlike the
-  browser OAuth the desktop list-writer uses). Key file: `1001AlbumHelper/service-account.json`
-  (git-ignored). Share the sheet with the service account email as **Editor**.
+- Auth is a **Google service account** (no login screen), and since 2026-11-03 it's the *only* Google
+  auth: the desktop's master-list client (`GoogleSheetsWriter`) uses the same key through Google.Apis
+  instead of the browser OAuth it used to. Key file: `1001AlbumHelper/service-account.json`
+  (git-ignored, embedded into the app at build). Share the sheet with the service account email as **Editor**.
   - Service account: `albums-sync@secret-319922.iam.gserviceaccount.com`.
 - Config lives in `appsettings.json` → `GoogleSheets:{PotentialsTab, ServiceAccountKeyFile}`.
 - Code: `CandidateSheet` talks to the **Sheets v4 REST API directly** (service-account JWT signed with
@@ -399,7 +428,7 @@ Keeps the potentials shortlist in sync across devices via a **"Potentials" tab**
 
 **The master list ("1001 albums") needs the same REST treatment, separately.** `CandidateSheet` only
 covers the Potentials tab; rating and Must Hear insertion go through `NumberedList`/`RatingSession`,
-which talk to an `ISheetsClient` — `GoogleSheetsWriter` (OAuth) on desktop, `RestSheetsClient`
+which talk to an `ISheetsClient` — `GoogleSheetsWriter` (service account, Google.Apis) on desktop, `RestSheetsClient`
 (service account, same REST approach as `CandidateSheet`) on mobile. `RestSheetsClient` is the harder
 of the two: `InsertRowAsync` needs a hand-built `batchUpdate` (insertDimension + copyPaste) to match
 `GoogleSheetsWriter`'s row-insert-with-formatting behavior exactly, since that's what a ⭐ rating's
@@ -477,10 +506,14 @@ tab it creates and deletes, so it never risks the real lists.
 - **Never send ⌘-digit keystrokes to the app to drive it.** The Rate page rates on bare 1–4; it now
   ignores keys with modifiers and the window takes ⌘1–⌘5 first, but on 2026-11-03 a scripted ⌘2–⌘4
   wrote three real ratings (reverted). To look at a section, launch with
-  `ALBUMHELPER_START_SECTION=Browse` (Rate, Browse, Shortlist, Playlists, More) instead.
-- **`dotnet run` on the Mac ignores the launch profile's working directory**, so the data folder
-  resolves to the repo root and the app can't find credentials. Run with
-  `--no-launch-profile` and `ALBUMHELPER_DATA_DIR=$PWD/1001AlbumHelper`.
+  `ALBUMHELPER_START_SECTION=Browse` (Rate, Browse, Shortlist, Playlists, Export, Insights, Tools) instead.
+- **Data lives in `~/Library/Application Support/1001AlbumHelper`** for `dotnet run` and the
+  installed app alike — no launch-profile tricks needed. `ALBUMHELPER_DATA_DIR` overrides it.
+- **Rebuilds and macOS permissions.** The build signs with the Apple Development certificate (the
+  free account's), whose designated requirement — bundle id + certificate name — is the same build to
+  build, so Accessibility and Automation grants stick. An ad-hoc signature changes every build, and
+  macOS quietly drops the grants. The executable is the apphost itself in `Contents/MacOS`, not a
+  launcher script, so the bundle's signature is the one macOS checks.
 - **Automation permission.** The first Mac push makes macOS ask to let the app control Music
   (System Settings ▸ Privacy & Security ▸ Automation). Denying it makes every push fail; there's no
   way to re-prompt, it has to be re-enabled there by hand.

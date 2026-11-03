@@ -9,43 +9,28 @@ namespace _1001AlbumHelper;
 /// </summary>
 public static class Operations
 {
-    // The folder that holds input/ and output/. Resolved so it works both when run via
-    // `dotnet run` (bin/<config>/<tfm>/ -> project dir) and from a packaged .app bundle.
+    /// <summary>
+    /// Where the app keeps its own data: the shortlist's local copy, the playlists, cover art, and
+    /// any settings that override the ones built in. It's the standard per-user folder —
+    /// ~/Library/Application Support/1001AlbumHelper on the Mac — so the installed app needs nothing
+    /// from the source checkout it was built from. (It used to be the project folder itself, found by
+    /// walking up from the executable, which meant moving or cleaning the checkout broke the app.)
+    /// <c>ALBUMHELPER_DATA_DIR</c> overrides it, for tests and diagnostics.
+    /// </summary>
     public static string ProjectDir { get; } = ResolveDataDir();
 
     public static string InputDir => Path.Combine(ProjectDir, "input");
-    public static string OutputDir => Path.Combine(ProjectDir, "output");
+
+    /// <summary>Where exports land: a folder in Documents, so the finished PDF is somewhere you'd look.</summary>
+    public static string OutputDir => Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "1001 Albums Helper");
 
     private static string ResolveDataDir()
     {
-        // Explicit override wins (the .app launcher sets this).
         var env = Environment.GetEnvironmentVariable("ALBUMHELPER_DATA_DIR");
         if (!string.IsNullOrWhiteSpace(env) && Directory.Exists(env))
             return Path.GetFullPath(env);
-
-        // Otherwise walk up from the executable looking for the project/data folder.
-        // Markers: the .csproj (dev runs) or an existing input/ folder (a packaged app with
-        // data placed beside it). We deliberately do NOT key on output/, since the app
-        // creates that itself and it would make resolution circular.
-        var dir = AppContext.BaseDirectory;
-        for (int i = 0; i < 8 && !string.IsNullOrEmpty(dir); i++)
-        {
-            try
-            {
-                if (Directory.Exists(Path.Combine(dir, "input"))
-                    || Directory.EnumerateFiles(dir, "*.csproj").Any())
-                    return dir;
-            }
-            // On a sandboxed platform (iOS) enumerating a parent directory is "Operation not
-            // permitted" — stop walking rather than letting it kill this whole type initializer,
-            // which any code that touches Operations would then trip over.
-            catch (IOException) { break; }
-            catch (UnauthorizedAccessException) { break; }
-
-            dir = Path.GetDirectoryName(dir.TrimEnd(Path.DirectorySeparatorChar));
-        }
-
-        return AppContext.BaseDirectory;
+        return PlaylistStore.DataDir;
     }
 
     public const string RatedListFile = "1001 Albums You Must Hear Before You Die - 1001 albums.csv";
@@ -268,7 +253,7 @@ public static class Operations
         }
         catch (Google.GoogleApiException ex) when (ex.HttpStatusCode == System.Net.HttpStatusCode.Forbidden)
         {
-            Console.WriteLine("✗ The signed-in Google account can't read this sheet. Check that it owns or is shared on it.");
+            Console.WriteLine("✗ The service account can't read this sheet — share the spreadsheet with its email as Editor.");
         }
         catch (Google.GoogleApiException ex) when (ex.HttpStatusCode == System.Net.HttpStatusCode.NotFound)
         {
@@ -276,36 +261,37 @@ public static class Operations
         }
     }
 
-    private static async Task<GoogleSheetsWriter?> CreateWriterAsync(GoogleSheetsConfig cfg)
+    private static Task<GoogleSheetsWriter?> CreateWriterAsync(GoogleSheetsConfig cfg)
+    {
+        var (writer, problem) = CreateWriter(cfg);
+        if (problem is not null) Console.WriteLine(problem);
+        return Task.FromResult(writer);
+    }
+
+    /// <summary>Connects without the console output, for the startup check and the playlist page.</summary>
+    private static Task<GoogleSheetsWriter?> CreateWriterQuietlyAsync(GoogleSheetsConfig cfg) =>
+        Task.FromResult(CreateWriter(cfg).Writer);
+
+    /// <summary>
+    /// A Sheets client signed in as the service account, or why there isn't one. The key comes from
+    /// the data folder if a copy is there, else the one built into the app.
+    /// </summary>
+    private static (GoogleSheetsWriter? Writer, string? Problem) CreateWriter(GoogleSheetsConfig cfg)
     {
         if (string.IsNullOrWhiteSpace(cfg.SpreadsheetId) || cfg.SpreadsheetId.StartsWith("PUT_"))
-        {
-            Console.WriteLine("⚠️  Google Sheets isn't configured yet.");
-            Console.WriteLine("   Set \"GoogleSheets:SpreadsheetId\" in appsettings.json to your test sheet's ID.");
-            return null;
-        }
+            return (null, "⚠️  Google Sheets isn't configured: set \"GoogleSheets:SpreadsheetId\" in appsettings.json.");
 
-        string credPath = Path.Combine(ProjectDir, cfg.CredentialsFile);
-        if (!File.Exists(credPath))
-        {
-            Console.WriteLine("⚠️  Google OAuth credentials were not found at:");
-            Console.WriteLine($"     {credPath}");
-            Console.WriteLine("   Download an OAuth 'Desktop app' credentials.json from Google Cloud and place it there.");
-            return null;
-        }
-
-        Console.WriteLine("Authenticating with Google… (a browser window opens the first time — sign in and approve).");
+        string? key = EmbeddedConfig.ReadFileOrEmbedded(cfg.ServiceAccountKeyFile);
+        if (string.IsNullOrWhiteSpace(key))
+            return (null, $"⚠️  No service-account key ({cfg.ServiceAccountKeyFile}) — it's built into the app "
+                          + $"from the project folder, or can be put in {ProjectDir}.");
         try
         {
-            var writer = await GoogleSheetsWriter.CreateAsync(
-                cfg.SpreadsheetId, credPath, Path.Combine(ProjectDir, ".google-sheets-token"));
-            Console.WriteLine("✓ Authenticated with Google.");
-            return writer;
+            return (GoogleSheetsWriter.CreateWithServiceAccount(cfg.SpreadsheetId, key), null);
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"✗ Google authentication failed: {ex.Message}");
-            return null;
+            return (null, $"✗ Couldn't connect to Google Sheets: {ex.Message}");
         }
     }
 
@@ -327,8 +313,8 @@ public static class Operations
         }
         catch (Google.GoogleApiException ex) when (ex.HttpStatusCode == System.Net.HttpStatusCode.Forbidden)
         {
-            Console.WriteLine("✗ The signed-in Google account doesn't have permission to edit this sheet.");
-            Console.WriteLine("   Share the sheet as Editor with the account you approved, or use a sheet that account owns.");
+            Console.WriteLine("✗ The service account doesn't have permission to edit this sheet.");
+            Console.WriteLine("   Share the spreadsheet with its email (in service-account.json) as Editor.");
         }
         catch (Google.GoogleApiException ex) when (ex.HttpStatusCode == System.Net.HttpStatusCode.NotFound)
         {
@@ -340,22 +326,20 @@ public static class Operations
         }
     }
 
+    /// <summary>
+    /// The sheet's settings: the copy built into the app, overridden by an appsettings.json in the
+    /// data folder if there is one (see <see cref="EmbeddedConfig"/>).
+    /// </summary>
     private static GoogleSheetsConfig LoadSheetsConfig()
     {
-        // Read the copy next to the executable first, then let the live copy in the data
-        // folder override it — so editing appsettings.json takes effect without a rebuild
-        // (matters for the packaged .app, whose baked-in copy would otherwise be stale).
-        var config = new ConfigurationBuilder()
-            .AddJsonFile(Path.Combine(AppContext.BaseDirectory, "appsettings.json"), optional: true)
-            .AddJsonFile(Path.Combine(ProjectDir, "appsettings.json"), optional: true)
-            .Build();
+        var config = EmbeddedConfig.Load("appsettings.json");
 
         return new GoogleSheetsConfig(
             SpreadsheetId: config["GoogleSheets:SpreadsheetId"] ?? "",
             StarredTab: config["GoogleSheets:StarredTab"] ?? "Must Hear",
             ReplacementsTab: config["GoogleSheets:ReplacementsTab"] ?? "Replacements",
             AlbumsTab: config["GoogleSheets:AlbumsTab"] ?? "1001 albums",
-            CredentialsFile: config["GoogleSheets:CredentialsFile"] ?? "credentials.json");
+            ServiceAccountKeyFile: config["GoogleSheets:ServiceAccountKeyFile"] ?? "service-account.json");
     }
 
     /// <summary>
@@ -632,11 +616,16 @@ public static class Operations
     }
 
     /// <summary>All three lists as read from the sheet, for read-only consumers.</summary>
+    /// <param name="CachedAt">
+    /// Set when these are the saved copy from an earlier read — the sheet couldn't be reached — so
+    /// callers can say the lists may be out of date. Null for a live read.
+    /// </param>
     public sealed record AllLists(
         IReadOnlyList<AlbumEntry> Master,
         IReadOnlyList<NumberedList.Row> MustHear,
         IReadOnlyList<NumberedList.Row> Replacements,
-        string? Error = null);
+        string? Error = null,
+        DateTime? CachedAt = null);
 
     /// <summary>Reads every list in one pass. Read-only — nothing is written.</summary>
     public static async Task<AllLists> LoadAllListsAsync()
@@ -662,12 +651,40 @@ public static class Operations
             var master = await RatingSession.LoadAsync(writer, cfg.AlbumsTab, cfg.StarredTab);
             var mustHear = await NumberedList.ReadAsync(writer, cfg.StarredTab);
             var replacements = await NumberedList.ReadAsync(writer, cfg.ReplacementsTab);
-            return new AllLists(master.AllAlbums, mustHear.Rows, replacements.Rows);
+            var lists = new AllLists(master.AllAlbums, mustHear.Rows, replacements.Rows);
+            SaveListsSnapshot(lists);
+            return lists;
         }
         catch (Exception ex)
         {
-            return new AllLists(noAlbums, noRows, noRows, $"Couldn't read the lists: {ex.Message}");
+            // Offline, or the sheet didn't answer: the last good read, marked as such, beats nothing.
+            return LoadListsSnapshot() is { } cached
+                ? cached
+                : new AllLists(noAlbums, noRows, noRows, $"Couldn't read the lists: {ex.Message}");
         }
+    }
+
+    /// <summary>The last good read of the lists, kept so Browse and Export still work offline.</summary>
+    private static string ListsSnapshotPath => Path.Combine(ProjectDir, "lists-snapshot.json");
+
+    private static void SaveListsSnapshot(AllLists lists)
+    {
+        try
+        {
+            File.WriteAllText(ListsSnapshotPath, System.Text.Json.JsonSerializer.Serialize(lists with { CachedAt = DateTime.Now }));
+        }
+        catch { /* a cache that can't be written just means no offline fallback */ }
+    }
+
+    private static AllLists? LoadListsSnapshot()
+    {
+        try
+        {
+            return File.Exists(ListsSnapshotPath)
+                ? System.Text.Json.JsonSerializer.Deserialize<AllLists>(File.ReadAllText(ListsSnapshotPath))
+                : null;
+        }
+        catch { return null; }
     }
 
     /// <summary>
@@ -679,6 +696,8 @@ public static class Operations
         Console.WriteLine("\n=== Export to PDF ===\n");
 
         var lists = await LoadAllListsAsync();
+        if (lists.CachedAt is { } cachedAt)
+            Console.WriteLine($"⚠️  Couldn't reach the sheet — exporting the lists as they were at {cachedAt:MMM d, h:mm tt}.");
         if (lists.Error is not null)
         {
             Console.WriteLine($"✗ {lists.Error}");
@@ -849,7 +868,7 @@ public static class Operations
     }
 
     /// <summary>
-    /// The desktop's way in: builds its own OAuth writer and reads the tab names from appsettings,
+    /// The desktop's way in: builds its own Sheets client and reads the tab names from appsettings,
     /// so the Mac's playlist window can call this with just the album.
     /// </summary>
     public static async Task<PlaylistKeepResult> KeepFromPlaylistAsync(
@@ -1196,18 +1215,6 @@ public static class Operations
         return summary;
     }
 
-    /// <summary>Authenticates without the chatty console output, for the startup check.</summary>
-    private static async Task<GoogleSheetsWriter?> CreateWriterQuietlyAsync(GoogleSheetsConfig cfg)
-    {
-        if (string.IsNullOrWhiteSpace(cfg.SpreadsheetId) || cfg.SpreadsheetId.StartsWith("PUT_"))
-            return null;
-        string credPath = Path.Combine(ProjectDir, cfg.CredentialsFile);
-        if (!File.Exists(credPath)) return null;
-
-        return await GoogleSheetsWriter.CreateAsync(
-            cfg.SpreadsheetId, credPath, Path.Combine(ProjectDir, ".google-sheets-token"));
-    }
-
     /// <summary>How an attempt to add a replacement album turned out.</summary>
     public enum AddOutcome
     {
@@ -1247,7 +1254,7 @@ public static class Operations
     /// <inheritdoc cref="AddReplacementAlbumAsync(string, string, int)"/>
     /// <para>
     /// Takes the client and tab names outright so the phone can call it too: mobile reaches the same
-    /// spreadsheet over REST (<see cref="RestSheetsClient"/>) rather than the desktop's OAuth writer,
+    /// spreadsheet over REST (<see cref="RestSheetsClient"/>) rather than the desktop's Google.Apis client,
     /// and reads its config from the embedded copy — see <see cref="EmbeddedConfig"/>.
     /// </para>
     /// </summary>
@@ -1347,5 +1354,5 @@ public static class Operations
     }
 
     private sealed record GoogleSheetsConfig(
-        string SpreadsheetId, string StarredTab, string ReplacementsTab, string AlbumsTab, string CredentialsFile);
+        string SpreadsheetId, string StarredTab, string ReplacementsTab, string AlbumsTab, string ServiceAccountKeyFile);
 }

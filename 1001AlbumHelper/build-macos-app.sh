@@ -11,15 +11,21 @@
 # that skipped its checks.
 #
 # The bundle includes its own copy of the .NET runtime, so it runs even without
-# .NET installed. It launches the Avalonia UI and reads/writes the input/ and
-# output/ folders (and appsettings.json / credentials.json) in this project
-# directory.
+# .NET installed, and needs nothing from this checkout once built: the sheet
+# settings and service-account key are built into it, its data lives in
+# ~/Library/Application Support/1001AlbumHelper, and exports go to
+# ~/Documents/1001 Albums Helper.
+#
+# It's signed with your Apple Development certificate when there is one, so the
+# permissions macOS grants it (Accessibility, controlling Music) survive a
+# rebuild — an unsigned app gets a new identity every build, and macOS quietly
+# forgets them. Override with SIGN_IDENTITY="…"; without any, it's ad-hoc
+# signed and the permissions have to be granted again after each build.
 #
 set -euo pipefail
 
-# PROJ_DIR is the shared project's folder — it also holds the data (appsettings.json,
-# credentials.json, input/, output/) that the launcher points the app at. The thing we
-# actually publish is the Desktop head, which produces the "1001AlbumHelper" executable.
+# PROJ_DIR is the shared project's folder. The thing we actually publish is the Desktop
+# head, which produces the "1001AlbumHelper" executable.
 PROJ_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_DIR="$(dirname "$PROJ_DIR")"
 CSPROJ="$REPO_DIR/1001AlbumHelper.Desktop/1001AlbumHelper.Desktop.csproj"
@@ -63,24 +69,17 @@ dotnet publish "$CSPROJ" -c Release -r "$RID" --self-contained true -o "$PUBLISH
 
 echo "▶ Assembling $APP_NAME.app…"
 rm -rf "$APP"
-mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources/app"
+mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 
-# Publish output → Resources/app
-cp -R "$PUBLISH_DIR/." "$APP/Contents/Resources/app/"
+# The apphost is the bundle's executable, with the rest of the publish output beside it — so
+# macOS identifies the running app by the bundle's own signature (a launcher script exec-ing a
+# binary elsewhere in the bundle muddles that, and with it the permissions).
+cp -R "$PUBLISH_DIR/." "$APP/Contents/MacOS/"
 
 # App icon (if present)
 if [ -f "$PROJ_DIR/AppIcon.icns" ]; then
   cp "$PROJ_DIR/AppIcon.icns" "$APP/Contents/Resources/AppIcon.icns"
 fi
-
-# Launcher: point the app at this project's data folder, then run the apphost.
-cat > "$APP/Contents/MacOS/launch" <<LAUNCH
-#!/bin/bash
-export ALBUMHELPER_DATA_DIR="$PROJ_DIR"
-DIR="\$(cd "\$(dirname "\$0")" && pwd)"
-exec "\$DIR/../Resources/app/1001AlbumHelper" "\$@"
-LAUNCH
-chmod +x "$APP/Contents/MacOS/launch"
 
 # Info.plist
 cat > "$APP/Contents/Info.plist" <<'PLIST'
@@ -93,14 +92,27 @@ cat > "$APP/Contents/Info.plist" <<'PLIST'
   <key>CFBundleIdentifier</key>        <string>com.larkins.albumhelper</string>
   <key>CFBundleVersion</key>           <string>1.0</string>
   <key>CFBundleShortVersionString</key><string>1.0</string>
-  <key>CFBundleExecutable</key>        <string>launch</string>
+  <key>CFBundleExecutable</key>        <string>1001AlbumHelper</string>
   <key>CFBundleIconFile</key>          <string>AppIcon</string>
   <key>CFBundlePackageType</key>       <string>APPL</string>
   <key>LSMinimumSystemVersion</key>    <string>11.0</string>
   <key>NSHighResolutionCapable</key>   <true/>
+  <key>NSAppleEventsUsageDescription</key>
+  <string>Adds albums to your playlists in the Music app, and reads them back.</string>
 </dict>
 </plist>
 PLIST
+
+IDENTITY="${SIGN_IDENTITY:-$(security find-identity -v -p codesigning 2>/dev/null \
+  | sed -n 's/.*"\(Apple Development: [^"]*\)".*/\1/p' | head -1)}"
+if [ -n "$IDENTITY" ]; then
+  echo "▶ Signing as ${IDENTITY}…"
+  codesign --force --deep --timestamp=none --sign "$IDENTITY" "$APP"
+else
+  echo "⚠️  No signing certificate — signing ad hoc. macOS will ask for permissions again after every build."
+  codesign --force --deep --sign - "$APP"
+fi
+codesign --verify --deep --strict "$APP"
 
 echo "✓ Built: $APP"
 

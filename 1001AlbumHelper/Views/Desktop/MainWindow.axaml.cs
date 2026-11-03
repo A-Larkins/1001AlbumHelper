@@ -343,7 +343,10 @@ public partial class MainWindow : Window
             ExportNoteText.IsVisible = true;
             return;
         }
-        ExportNoteText.IsVisible = false;
+        ExportNoteText.Text = lists.CachedAt is { } since
+            ? $"⚠️ Offline — these are the lists as they were at {since:MMM d, h:mm tt}. An export now would use that copy."
+            : "";
+        ExportNoteText.IsVisible = lists.CachedAt is not null;
         MustHearCountText.Text = lists.MustHear.Count.ToString();
         ReplacementsCountText.Text = lists.Replacements.Count.ToString();
         TotalCountText.Text = (lists.MustHear.Count + lists.Replacements.Count).ToString();

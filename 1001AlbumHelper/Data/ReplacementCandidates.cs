@@ -103,6 +103,11 @@ public static class ReplacementCandidates
 {
     public const string FileName = "replacement-candidates.json";
 
+    /// <summary>
+    /// The shortlist's local copy, in the app's data folder. The Potentials sheet is the record —
+    /// it wins whenever it answers (see ShortlistPage.SyncFromSheetsAsync) — so this is the copy
+    /// for offline use and for the moment before the sheet replies, not a second source.
+    /// </summary>
     public static string FilePath => Path.Combine(Operations.ProjectDir, FileName);
 
     private static readonly JsonSerializerOptions Options = new()
