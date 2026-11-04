@@ -212,7 +212,7 @@
 
         <!-- Tools sits apart from the sections you work in: it's for now and then. -->
         <Button DockPanel.Dock="Bottom" x:Name="NavTools" Classes="nav" Click="OnNav" Tag="Tools" Margin="0,0,0,10"
-                ToolTip.Tip="Favourites backfill, connection check, and the activity log.  ⌘7">
+                ToolTip.Tip="Favorites backfill, connection check, and the activity log.  ⌘7">
           <Grid ColumnDefinitions="28,*,Auto"><TextBlock Text="🛠" /><TextBlock Grid.Column="1" Text="Tools" /><TextBlock Grid.Column="2" Classes="hint" Text="⌘7" VerticalAlignment="Center" /></Grid>
         </Button>
 
@@ -339,7 +339,7 @@
               <TextBlock Text="♥" />
             </Border>
             <StackPanel Grid.Column="1" Margin="16,0,0,0" VerticalAlignment="Center">
-              <TextBlock x:Name="FavoritesTitleText" Classes="title" Text="Backfill favourites" />
+              <TextBlock x:Name="FavoritesTitleText" Classes="title" Text="Backfill favorites" />
               <TextBlock x:Name="FavoritesDescText" Classes="desc"
                          Text="Put a heart on every album of the finished list that Apple Music hasn't already got one on, and mirror the same albums into “Almost forgot to listen to these today”. Press once to see what it would do — nothing is written until you press again." />
             </StackPanel>

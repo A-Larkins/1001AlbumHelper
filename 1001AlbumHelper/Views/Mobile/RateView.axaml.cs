@@ -428,7 +428,7 @@ public partial class RateView : UserControl
 
         var art = await AlbumArtwork.LoadAsync(album.Artist, album.Title, token);
 
-        // The queue may have moved on while this was in flight — a cancelled lookup returns null,
+        // The queue may have moved on while this was in flight — a canceled lookup returns null,
         // but a finished one still has to prove it's for the album currently on screen.
         if (token.IsCancellationRequested || _session?.Current != album) return;
 

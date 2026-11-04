@@ -51,10 +51,10 @@ is the decision — it goes on the replacements list proper, slotted into its ye
 renumbered, and is marked kept on the shortlist. Keep looks the year up on Discogs when Apple Music
 didn't supply one, and refuses if the album turns out to be on the 1001 already.
 
-**Backfill Apple Music favourites** *(Mac only)*. The finished list and Apple Music's own favourites
+**Backfill Apple Music favorites** *(Mac only)*. The finished list and Apple Music's own favorites
 are the same list twice over, and they drift. One action reconciles them: a heart on every album of
 the list that hasn't got one, mirrored into the playlist called *Almost forgot to listen to these
-today*. It previews before it writes, and only ever turns a favourite on.
+today*. It previews before it writes, and only ever turns a favorite on.
 
 **Sync across devices.** Ratings and the shortlist live in a Google Sheet, so the Mac and the phone
 see the same thing without either being the master.
@@ -79,7 +79,7 @@ do windows).
 | Shortlist: add, keep, drop, edit years | ✅ | ✅ |
 | Playlists: queue, push, pull | ✅ | ✅ |
 | Playlist 2 row → shortlist, or Keep → replacements | ✅ | ✅ |
-| Backfill Apple Music favourites | ✅ | — *(no favourite API on iOS)* |
+| Backfill Apple Music favorites | ✅ | — *(no favorite API on iOS)* |
 | Google Sheets sync | ✅ | ✅ |
 | Apple Music | Music.app via AppleScript | MediaPlayer framework |
 | Per-track playability picking | ✅ | n/a (see below) |
@@ -124,7 +124,7 @@ browser sign-in — and it's trim/AOT-safe on iOS, which `Google.Apis` is not.
 same `AppleMusicCatalog.FindBestMatch` on both, so each prefers the original release over a
 "(Deluxe Edition)" identically.
 
-**Tests cover the judgement calls, not the plumbing.** The rules that decide which album Discogs
+**Tests cover the judgment calls, not the plumbing.** The rules that decide which album Discogs
 means, which pressing to add, and how two copies of a shortlist merge are all unit-tested without a
 network — because getting those wrong doesn't crash anything, it just quietly writes something wrong.
 
@@ -166,7 +166,7 @@ Per-platform behind one interface, because the two systems can do different thin
 resolves a store id via the iTunes Search API and adds by id.
 
 **Mac** — drives Music.app over AppleScript (`osascript`), asking Music to `search` and duplicating
-the resulting tracks. With Sync Library on, that search reaches the **whole Apple Music catalogue**,
+the resulting tracks. With Sync Library on, that search reaches the **whole Apple Music catalog**,
 so obscure 1001 entries resolve just like on the phone, with no iTunes rate limit in play.
 
 **Both are add-only.** There is no public API to remove a track from a playlist, so removals become a
@@ -246,7 +246,7 @@ dotnet run --project 1001AlbumHelper.Desktop -- synctest         # Sheets potent
 dotnet run --project 1001AlbumHelper.Desktop -- resttest         # the mobile-safe REST Sheets client (scratch tab)
 dotnet run --project 1001AlbumHelper.Desktop -- musictest        # the Mac's Apple Music path (scratch playlist)
 dotnet run --project 1001AlbumHelper.Desktop -- intaketest       # rehearse a PLAYLIST2 pull, writing nothing
-dotnet run --project 1001AlbumHelper.Desktop -- favtest          # rehearse the favourites backfill, writing nothing
+dotnet run --project 1001AlbumHelper.Desktop -- favtest          # rehearse the favorites backfill, writing nothing
 dotnet run --project 1001AlbumHelper.Desktop -- backfill-favorites  # heart the list in Apple Music (Mac only)
 dotnet run --project 1001AlbumHelper.Desktop -- backfill-genres  # fill missing genres via Discogs (resumable)
 ```

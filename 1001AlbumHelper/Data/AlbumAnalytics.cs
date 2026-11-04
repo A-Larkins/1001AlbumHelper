@@ -92,7 +92,7 @@ public static class AlbumAnalytics
     /// tie-in like "A Hard Day's Night" comes back "Rock, Pop, Stage &amp; Screen" — and crediting
     /// every co-tag equally lets an incidental one (here, "Stage &amp; Screen") win outright if a
     /// handful of albums that happen to share it are all ⭐, even though none of them are actually
-    /// about film or theatre. The first tag is Discogs' primary classification, so it's the one
+    /// about film or theater. The first tag is Discogs' primary classification, so it's the one
     /// that should represent "your favorite genre."
     /// </para>
     /// </summary>

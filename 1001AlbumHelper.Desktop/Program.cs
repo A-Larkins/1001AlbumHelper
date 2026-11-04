@@ -62,7 +62,7 @@ internal static class Program
             return;
         }
 
-        // Read-only rehearsal of the Apple Music favourites backfill: says how many albums off the
+        // Read-only rehearsal of the Apple Music favorites backfill: says how many albums off the
         // lists Apple Music is missing a heart on (and which), and writes nothing anywhere.
         if (args.Contains("favtest"))
         {
@@ -70,8 +70,8 @@ internal static class Program
             return;
         }
 
-        // Headless favourites backfill: hearts every album on the finished list that Apple Music
-        // hasn't already got one on, and mirrors them into the favourites playlist. Mac only.
+        // Headless favorites backfill: hearts every album on the finished list that Apple Music
+        // hasn't already got one on, and mirrors them into the favorites playlist. Mac only.
         if (args.Contains("backfill-favorites"))
         {
             if (OperatingSystem.IsMacOS()) AppleMusic.Writer ??= new MusicAppPlaylistWriter();

@@ -5,8 +5,8 @@ using System.Threading.Tasks;
 namespace _1001AlbumHelper;
 
 /// <summary>
-/// A dry run of the Apple Music favourites backfill. Like <see cref="ShortlistIntakeDiagnostic"/>
-/// it writes <em>nothing at all</em> — no favourite is set, no playlist is touched — so it can be
+/// A dry run of the Apple Music favorites backfill. Like <see cref="ShortlistIntakeDiagnostic"/>
+/// it writes <em>nothing at all</em> — no favorite is set, no playlist is touched — so it can be
 /// run first to see exactly what the real backfill would do, and to how many albums.
 ///
 /// <para>
@@ -26,12 +26,12 @@ public static class FavoritesBackfillDiagnostic
     {
         if (!OperatingSystem.IsMacOS())
         {
-            Console.WriteLine("✗ Apple Music favourites are macOS-only — see PROJECT.md §5.");
+            Console.WriteLine("✗ Apple Music favorites are macOS-only — see PROJECT.md §5.");
             return;
         }
         AppleMusic.Writer ??= new MusicAppPlaylistWriter();
 
-        Console.WriteLine("▶ Reading the lists from Google Sheets and the favourites from the Music app…");
+        Console.WriteLine("▶ Reading the lists from Google Sheets and the favorites from the Music app…");
         var plan = await Operations.PlanFavoritesBackfillAsync();
         if (plan.Error is not null)
         {
@@ -40,11 +40,11 @@ public static class FavoritesBackfillDiagnostic
             return;
         }
 
-        Console.WriteLine($"   Apple Music: {plan.FavoritedInLibrary} favourited albums, "
+        Console.WriteLine($"   Apple Music: {plan.FavoritedInLibrary} favorited albums, "
                           + $"{plan.InPlaylist} in “{AppleMusic.FavoritesPlaylistName}”.");
         Console.WriteLine($"   {plan.Summary}");
 
-        Report("would be favourited", plan.Items.Where(i => i.NeedsFavorite));
+        Report("would be favorited", plan.Items.Where(i => i.NeedsFavorite));
         Report($"would be added to “{AppleMusic.FavoritesPlaylistName}”", plan.Items.Where(i => i.NeedsPlaylist));
 
         Console.WriteLine($"▶ {plan.Work.Count} album{(plan.Work.Count == 1 ? "" : "s")} to touch — "
@@ -64,7 +64,7 @@ public static class FavoritesBackfillDiagnostic
         {
             var favorited = await AppleMusic.Writer!.ReadFavoritedAlbumsAsync();
             var inPlaylist = await AppleMusic.Writer!.ReadAlbumsAsync(AppleMusic.FavoritesPlaylistName);
-            Console.WriteLine($"   ✓ {favorited.Count} favourited albums in the library.");
+            Console.WriteLine($"   ✓ {favorited.Count} favorited albums in the library.");
             Console.WriteLine($"   {(inPlaylist.Count > 0 ? "✓" : "⚠")} {inPlaylist.Count} albums in "
                               + $"“{AppleMusic.FavoritesPlaylistName}”"
                               + (inPlaylist.Count == 0 ? " — check the playlist exists under that name." : "."));

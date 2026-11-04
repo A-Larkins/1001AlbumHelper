@@ -48,7 +48,7 @@ public static class AlbumArtwork
 
         // The shared task deliberately isn't tied to any one caller's cancellation token — the user
         // moving to the next album must not cancel a fetch another caller is still waiting on, and
-        // a half-cancelled task must never be left in the cache. Callers wait with their own token.
+        // a half-canceled task must never be left in the cache. Callers wait with their own token.
         var task = Cache.GetOrAdd(key, _ => FetchAsync(artist, title));
 
         Fetched result;

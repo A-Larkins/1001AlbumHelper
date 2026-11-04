@@ -173,7 +173,7 @@ public partial class PlaylistView : UserControl
 
             string note = albums.Count == 0
                 ? $"“{_appleMusicName}” is empty — so this list is now too."
-                : Summarise(sync, albums.Count);
+                : Summarize(sync, albums.Count);
 
             if (isRecommendations && albums.Count > 0)
             {
@@ -195,7 +195,7 @@ public partial class PlaylistView : UserControl
     }
 
     /// <summary>Spells out what the pull actually changed, rather than just saying it finished.</summary>
-    private static string Summarise(PlaylistSyncResult sync, int inAppleMusic)
+    private static string Summarize(PlaylistSyncResult sync, int inAppleMusic)
     {
         var parts = new List<string>();
         if (sync.Added > 0) parts.Add($"{sync.Added} new");

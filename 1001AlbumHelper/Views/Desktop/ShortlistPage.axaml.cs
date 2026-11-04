@@ -436,7 +436,7 @@ public partial class ShortlistPage : UserControl, IPage
         }
         else
         {
-            return; // Cancelled.
+            return; // Canceled.
         }
 
         Persist();

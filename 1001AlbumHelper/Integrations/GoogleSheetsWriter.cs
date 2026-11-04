@@ -159,7 +159,7 @@ public sealed class GoogleSheetsWriter : ISheetsClient
     /// insert) whose formatting the new row should copy. Row inheritance alone isn't enough: a row
     /// inserted directly under the header would inherit the header's bold, and one appended at the
     /// end inherits whatever the final row happened to look like. Copying from a known-good
-    /// neighbour makes the new row match the list instead.
+    /// neighbor makes the new row match the list instead.
     /// </para>
     /// </summary>
     public async Task InsertRowAsync(

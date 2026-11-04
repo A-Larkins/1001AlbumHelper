@@ -4,7 +4,7 @@ namespace _1001AlbumHelper;
 /// The potentials shortlist, backed by Google Sheets when a service account is configured and always
 /// cached to the local JSON file. Callers load the local cache instantly, then <see cref="TryPullAsync"/>
 /// refreshes it from Sheets in the background; <see cref="PushAsync"/> writes changes back. When sync
-/// isn't set up (no key / no spreadsheet id) both are no-ops, so behaviour is exactly local-only.
+/// isn't set up (no key / no spreadsheet id) both are no-ops, so behavior is exactly local-only.
 /// </summary>
 public sealed class CandidateRepository
 {

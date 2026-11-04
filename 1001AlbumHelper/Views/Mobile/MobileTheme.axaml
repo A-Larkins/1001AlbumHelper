@@ -1,13 +1,13 @@
 <Styles xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
   <!--
-    The mobile design system — every colour, type size and control look the phone app uses.
+    The mobile design system — every color, type size and control look the phone app uses.
 
     Scoped deliberately: this is included by MainView (the mobile root), NOT by App.axaml, because
     App is shared with the Mac head. Styles included at MainView cascade to all five phone screens
     and reach nothing on the desktop.
 
-    The look is "late-night record shop": a near-black canvas, warm gold accent (the colour the
+    The look is "late-night record shop": a near-black canvas, warm gold accent (the color the
     Keep button already used), Inter throughout, hairline rules instead of boxes, and one rounding
     radius family so nothing looks borrowed from a different app.
 
@@ -46,7 +46,7 @@
     <SolidColorBrush x:Key="GoldWashHi" Color="#E9B872" Opacity="0.22" />
     <SolidColorBrush x:Key="GoldEdge" Color="#E9B872" Opacity="0.38" />
 
-    <!-- Verdict colours, used only by the four rating tiles and error text. -->
+    <!-- Verdict colors, used only by the four rating tiles and error text. -->
     <SolidColorBrush x:Key="Good" Color="#86C79B" />
     <SolidColorBrush x:Key="GoodWash" Color="#86C79B" Opacity="0.13" />
     <SolidColorBrush x:Key="Meh" Color="#D9A05B" />
@@ -168,7 +168,7 @@
 
   <!-- ── Screen scaffolding ────────────────────────────────────────────────────────────────── -->
 
-  <!-- The page itself. Every tab's root gets this so the canvas is one colour throughout. -->
+  <!-- The page itself. Every tab's root gets this so the canvas is one color throughout. -->
   <Style Selector="Border.page">
     <Setter Property="Background" Value="{StaticResource Ink}" />
   </Style>
@@ -384,8 +384,8 @@
   </Style>
 
   <!-- ── Rating tiles ──────────────────────────────────────────────────────────────────────── -->
-  <!-- The four verdicts, each in its own colour so the row reads at a glance from ⭐ down to ❌
-       instead of as four identical grey boxes. -->
+  <!-- The four verdicts, each in its own color so the row reads at a glance from ⭐ down to ❌
+       instead of as four identical gray boxes. -->
 
   <!-- Stretch, not hug: "Mostly enjoyable" wraps to two lines where "Trash" doesn't, and tiles
        sized to their own content come out visibly uneven next to each other. -->
@@ -571,7 +571,7 @@
     <Setter Property="Padding" Value="6,7,6,9" />
   </Style>
 
-  <!-- Icon over label. The whole item takes the state colour, and the active one sits in a soft
+  <!-- Icon over label. The whole item takes the state color, and the active one sits in a soft
        gold pill — the same accent the segmented control and rating tiles use. -->
   <Style Selector="Button.nav">
     <Setter Property="MinHeight" Value="0" />

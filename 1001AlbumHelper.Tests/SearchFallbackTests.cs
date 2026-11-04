@@ -5,7 +5,7 @@ namespace _1001AlbumHelper.Tests;
 /// <summary>
 /// The naming gap between the list and Apple Music. The list distinguishes rows with suffixes Music
 /// has never heard of — "(self titled)", "(soundtrack)", "(Black Album)" — and asking Music for the
-/// literal string returns nothing at all: 44 of the 76 albums the first favourites backfill couldn't
+/// literal string returns nothing at all: 44 of the 76 albums the first favorites backfill couldn't
 /// find were exactly this shape (2026-08-25). The Mac writer now retries the search with the bare
 /// name, and this pins the trimming that produces it, over the titles that actually failed.
 /// <para>
@@ -79,7 +79,7 @@ public class SearchFallbackTests
 
     /// <summary>
     /// The other half of the same gap, and the one that stopped the backfill converging: the list
-    /// and Apple Music disagree about who made a record, so an album that had just been favourited
+    /// and Apple Music disagree about who made a record, so an album that had just been favorited
     /// read as still missing on the next run — and each run pushed it into the playlist again, which
     /// Apple Music has no way to undo. Detection allows the credits to overlap rather than match,
     /// the same leniency the add path already had. These are the real pairs it has to bridge.
@@ -95,13 +95,13 @@ public class SearchFallbackTests
     [InlineData("James Taylor (2)", "James Taylor")]
     [InlineData("Chicago Transit Authority", "Chicago")]
     [InlineData("Tools and the Maytals", "Toots and the Maytals")]
-    public void The_same_act_under_two_credits_is_recognised(string ours, string theirs)
+    public void The_same_act_under_two_credits_is_recognized(string ours, string theirs)
     {
         Assert.True(DiscogsApiClient.ArtistsOverlap(ours, theirs));
     }
 
     /// <summary>
-    /// Overlap is not a licence to match anyone: it wants a substantial word in common, so two
+    /// Overlap is not a license to match anyone: it wants a substantial word in common, so two
     /// unrelated acts stay apart and an album isn't counted as held when it isn't.
     /// </summary>
     [Theory]

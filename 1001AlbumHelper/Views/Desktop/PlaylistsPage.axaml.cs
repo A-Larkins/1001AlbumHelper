@@ -24,8 +24,8 @@ public sealed record PushFailure(string Text, string? OpenUrl)
 /// app playlist it maps to by name is an add-only listening queue.
 ///
 /// <para>
-/// "Get from Music" replaces the working list with whatever the Music app playlist currently
-/// holds; "Send new to Music" sends the albums not yet there the other way, naming any album that
+/// "Get from Apple Music" replaces the working list with whatever the Music app playlist currently
+/// holds; "Send new to Apple Music" sends the albums not yet there the other way, naming any album that
 /// couldn't be added and why. Albums already in the playlist aren't sent again, which used to
 /// leave a second copy of each one in it. The two are deliberately not symmetrical — pulling is a full sync because Apple Music is
 /// where the listening happens, while pushing can only add (see PROJECT.md §5). Both need
@@ -107,7 +107,7 @@ public partial class PlaylistsPage : UserControl, IPage
 
         var toRemove = _store.ToRemove;
         ToRemoveSection.IsVisible = toRemove.Count > 0;
-        ToRemoveHeader.Text = $"Still in the Music playlist ({toRemove.Count})";
+        ToRemoveHeader.Text = $"Still in your Apple Music playlist ({toRemove.Count})";
         ToRemoveRows.ItemsSource = toRemove;
 
         UpdateButtons();
@@ -157,7 +157,7 @@ public partial class PlaylistsPage : UserControl, IPage
             {
                 // Not in Music yet, or Music can't remove it here — the checklist covers the latter.
                 _store.RequestRemoval(entry);
-                notes.Add(entry.InAppleMusic ? $"{entry.Title} needs deleting in Music by hand (below)." : $"Removed {entry.Title}.");
+                notes.Add(entry.InAppleMusic ? $"{entry.Title} needs deleting in Apple Music by hand (below)." : $"Removed {entry.Title}.");
             }
 
             if (recommendation) notes.Add(await Operations.DropFromShortlistAsync(entry));
@@ -263,7 +263,7 @@ public partial class PlaylistsPage : UserControl, IPage
             var sync = _store.SyncFromAppleMusic(albums);
             string note = albums.Count == 0
                 ? $"“{AppleMusicName}” is empty, or the Music app has no playlist by that name — the working list is now empty too."
-                : Summarise(sync, albums.Count);
+                : Summarize(sync, albums.Count);
 
             // Music reports no years, so anything new arrives blank — fill those before moving on.
             Refresh();
@@ -351,7 +351,7 @@ public partial class PlaylistsPage : UserControl, IPage
         if (!AppleMusic.IsAvailable) { Note("The Music app isn't available on this platform."); return; }
 
         var albums = _store.Active.Where(a => !a.InAppleMusic).ToList();
-        if (albums.Count == 0) { Note("Everything here is already in Music."); return; }
+        if (albums.Count == 0) { Note("Everything here is already in Apple Music."); return; }
 
         SetBusy(true, "");
         int added = 0;
@@ -394,7 +394,7 @@ public partial class PlaylistsPage : UserControl, IPage
     }
 
     /// <summary>Spells out what the pull actually changed, rather than just saying it finished.</summary>
-    private static string Summarise(PlaylistSyncResult sync, int inAppleMusic)
+    private static string Summarize(PlaylistSyncResult sync, int inAppleMusic)
     {
         var parts = new List<string>();
         if (sync.Added > 0) parts.Add($"{sync.Added} new");

@@ -55,7 +55,7 @@ public class ShortlistIntakeTests
     }
 
     [Fact]
-    public void The_shortened_title_still_recognises_the_album_on_the_next_pull()
+    public void The_shortened_title_still_recognizes_the_album_on_the_next_pull()
     {
         var shortlist = new List<CandidateAlbum>();
         ShortlistIntake.Merge(shortlist, new[] { Album("Cassini (5th Anniversary Remaster)", "Sithu Aye") });

@@ -895,7 +895,7 @@ public static class Operations
     /// </para>
     /// <para>
     /// This is not cosmetic — it is what makes the backfill converge. Without it an album the
-    /// backfill had just favourited read as still missing on the next run, so every run redid the
+    /// backfill had just favorited read as still missing on the next run, so every run redid the
     /// same work and pushed the same albums into the playlist again; Apple Music has no remove, so
     /// those duplicate tracks stay. It is the same blind spot the Music-app search had, at the other
     /// end of the same round trip (see MusicAppPlaylistWriter.SearchTerms).
@@ -1036,7 +1036,7 @@ public static class Operations
             : $"⚠ Couldn't drop “{title}” from the shortlist — {problem}";
     }
 
-    // ---------- Apple Music favourites ----------
+    // ---------- Apple Music favorites ----------
 
     /// <summary>One album off the lists, with what Apple Music is missing for it.</summary>
     public sealed record FavoritesBackfillItem(PlaylistEntry Album, bool NeedsFavorite, bool NeedsPlaylist)
@@ -1045,8 +1045,8 @@ public static class Operations
 
         /// <summary>What the backfill would do to this album, for a log line.</summary>
         public string Intent => NeedsNothing ? "nothing to do"
-            : NeedsFavorite && NeedsPlaylist ? "favourite + playlist"
-            : NeedsFavorite ? "favourite"
+            : NeedsFavorite && NeedsPlaylist ? "favorite + playlist"
+            : NeedsFavorite ? "favorite"
             : "playlist";
     }
 
@@ -1055,8 +1055,8 @@ public static class Operations
     /// Read-only — <see cref="PlanFavoritesBackfillAsync"/> produces it, the backfill acts on it, and
     /// the <c>favtest</c> rehearsal prints it and stops.
     /// </summary>
-    /// <param name="FavoritedInLibrary">How many favourited albums Apple Music holds in total.</param>
-    /// <param name="InPlaylist">How many albums the favourites playlist holds.</param>
+    /// <param name="FavoritedInLibrary">How many favorited albums Apple Music holds in total.</param>
+    /// <param name="InPlaylist">How many albums the favorites playlist holds.</param>
     public sealed record FavoritesBackfillPlan(
         IReadOnlyList<FavoritesBackfillItem> Items,
         int FavoritedInLibrary,
@@ -1076,17 +1076,17 @@ public static class Operations
             Items.Where(i => !i.NeedsNothing).ToList();
 
         public string Summary =>
-            $"{Considered} albums on the lists · {AlreadyFavorited} already favourited · "
-            + $"{ToFavorite} to favourite · {ToAddToPlaylist} to add to “{AppleMusic.FavoritesPlaylistName}”";
+            $"{Considered} albums on the lists · {AlreadyFavorited} already favorited · "
+            + $"{ToFavorite} to favorite · {ToAddToPlaylist} to add to “{AppleMusic.FavoritesPlaylistName}”";
     }
 
     /// <summary>
-    /// Works out what the favourites backfill would have to do, writing nothing. Reads the two lists
-    /// off Google Sheets, reads every favourited album and the favourites playlist out of Apple
+    /// Works out what the favorites backfill would have to do, writing nothing. Reads the two lists
+    /// off Google Sheets, reads every favorited album and the favorites playlist out of Apple
     /// Music, and pairs them up.
     /// <para>
     /// The two halves are checked separately and independently. An album can perfectly well be
-    /// favourited but missing from the playlist — that is what a hand-kept duplicate list drifts
+    /// favorited but missing from the playlist — that is what a hand-kept duplicate list drifts
     /// into — and each gap is decided on its own.
     /// </para>
     /// </summary>
@@ -1094,7 +1094,7 @@ public static class Operations
     {
         if (!AppleMusic.CanFavorite)
             return FavoritesBackfillPlan.Failed(AppleMusic.IsAvailable
-                ? "This platform can add to a playlist but can't set favourites — see PROJECT.md §5."
+                ? "This platform can add to a playlist but can't set favorites — see PROJECT.md §5."
                 : "The Music app isn't available on this platform.");
         var writer = AppleMusic.Writer!;
 
@@ -1130,31 +1130,31 @@ public static class Operations
         return new FavoritesBackfillPlan(items, favorited.Count, inPlaylist.Count);
     }
 
-    /// <summary>What one run of the favourites backfill actually did.</summary>
-    /// <param name="Favorited">Albums this run marked as favourites.</param>
-    /// <param name="AddedToPlaylist">Albums this run put in the favourites playlist.</param>
+    /// <summary>What one run of the favorites backfill actually did.</summary>
+    /// <param name="Favorited">Albums this run marked as favorites.</param>
+    /// <param name="AddedToPlaylist">Albums this run put in the favorites playlist.</param>
     /// <param name="Failures">One line per album that couldn't be marked or added, and why.</param>
     public sealed record FavoritesBackfillResult(
         FavoritesBackfillPlan Plan, int Favorited, int AddedToPlaylist, IReadOnlyList<string> Failures)
     {
         public string Summary =>
-            $"{Plan.Considered} albums on the lists · {Plan.AlreadyFavorited} already favourited · "
-            + $"{Favorited} newly favourited · {AddedToPlaylist} added to “{AppleMusic.FavoritesPlaylistName}”"
+            $"{Plan.Considered} albums on the lists · {Plan.AlreadyFavorited} already favorited · "
+            + $"{Favorited} newly favorited · {AddedToPlaylist} added to “{AppleMusic.FavoritesPlaylistName}”"
             + (Failures.Count > 0 ? $" · {Failures.Count} couldn't be done" : "");
     }
 
     /// <summary>
     /// Puts a heart on every album of the finished list — the ⭐ picks kept from the 1001 plus the
     /// replacements — that Apple Music doesn't already have one on, and mirrors the same albums into
-    /// the favourites playlist. A backfill: it works over a list that mostly already agrees with
+    /// the favorites playlist. A backfill: it works over a list that mostly already agrees with
     /// Apple Music, and touches only where the two differ.
     /// <para>
     /// Mac only. Apple's MediaPlayer framework on the phone can read a playlist and add to it but
-    /// exposes no favourite at all — the same Swift-only MusicKit wall the missing remove API runs
+    /// exposes no favorite at all — the same Swift-only MusicKit wall the missing remove API runs
     /// into (PROJECT.md §5) — so the phone says so rather than half-doing it.
     /// </para>
     /// <para>
-    /// Idempotent, and safe to interrupt: it only ever sets a favourite on, never off, and it works
+    /// Idempotent, and safe to interrupt: it only ever sets a favorite on, never off, and it works
     /// from a plan read fresh from Apple Music each run, so a second run after an interrupted one
     /// carries on from where the first stopped.
     /// </para>
@@ -1168,13 +1168,13 @@ public static class Operations
     {
         void Say(string line) { Console.WriteLine(line); progress?.Invoke(line); }
 
-        Console.WriteLine("\n=== Backfill Apple Music favourites ===\n");
+        Console.WriteLine("\n=== Backfill Apple Music favorites ===\n");
         Say("Reading the lists, and what Apple Music already has…");
 
         var plan = await PlanFavoritesBackfillAsync();
         if (plan.Error is not null) { Say($"✗ {plan.Error}"); return null; }
 
-        Say($"Apple Music holds {plan.FavoritedInLibrary} favourited albums and {plan.InPlaylist} "
+        Say($"Apple Music holds {plan.FavoritedInLibrary} favorited albums and {plan.InPlaylist} "
             + $"in “{AppleMusic.FavoritesPlaylistName}”. {plan.Summary}");
 
         var work = plan.Work;
@@ -1192,7 +1192,7 @@ public static class Operations
             var (album, needsFavorite, needsPlaylist) = work[i];
             Say($"[{i + 1}/{work.Count}] {album.Title} — {album.Artist} · {work[i].Intent}");
 
-            // Favourite first: it also warms the writer's one-deep search memo, so the playlist add
+            // Favorite first: it also warms the writer's one-deep search memo, so the playlist add
             // that follows doesn't search the library for the same album all over again.
             if (needsFavorite)
             {

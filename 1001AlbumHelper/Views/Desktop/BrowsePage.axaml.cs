@@ -166,7 +166,7 @@ public partial class BrowsePage : UserControl, IPage
         StatusText.Text = _offlineSince is { } since
             ? $"⚠️ Offline — showing the lists as they were at {since:MMM d, h:mm tt}. Reload once you're back online."
             : _current == Which.Master
-                ? "Ratings: ⭐ favourite · 👍 good · 👎 poor · ❌ trash · ✓ listened, unrated"
+                ? "Ratings: ⭐ favorite · 👍 good · 👎 poor · ❌ trash · ✓ listened, unrated"
                 : "";
     }
 

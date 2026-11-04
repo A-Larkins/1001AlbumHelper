@@ -85,7 +85,7 @@ public sealed class MusicAppPlaylistWriter : IApplePlaylistWriter
     private sealed record LibraryCopy(
         TrackSelection Selection, string Term, string ReleaseName, string? Problem = null, string? OpenUrl = null);
 
-    /// <summary>The last album resolved, so the favourites backfill's favourite-then-add pair resolves once.</summary>
+    /// <summary>The last album resolved, so the favorites backfill's favorite-then-add pair resolves once.</summary>
     private (string Key, DateTime At, LibraryCopy Copy)? _lastCopy;
 
     /// <summary>How long to wait for an added album's tracks to appear in the library.</summary>
@@ -312,13 +312,13 @@ public sealed class MusicAppPlaylistWriter : IApplePlaylistWriter
         AppleMusicCatalog.SameRelease(trackAlbum, album.Title)
         && (NumberedList.Matches(trackArtist, album.Artist) || DiscogsApiClient.ArtistsOverlap(trackArtist, album.Artist));
 
-    // ---------- Favourites ----------
+    // ---------- Favorites ----------
 
     /// <summary>The Music app's <c>album favorited</c> is read/write over AppleScript, so yes.</summary>
     public bool CanFavorite => true;
 
     /// <summary>
-    /// Every favourited album in the library. Read with three <c>whose album favorited is true</c>
+    /// Every favorited album in the library. Read with three <c>whose album favorited is true</c>
     /// passes rather than by walking the library and asking each track: a bulk get is one AppleEvent
     /// returning a whole column, where the walk would be tens of thousands of round trips against a
     /// library this size. The three columns line up row for row, and are folded into albums by the
@@ -337,7 +337,7 @@ public sealed class MusicAppPlaylistWriter : IApplePlaylistWriter
     }
 
     /// <summary>
-    /// Marks an album as a favourite, choosing which album that is exactly the way
+    /// Marks an album as a favorite, choosing which album that is exactly the way
     /// <see cref="AddAlbumAsync"/> does — so the record that gets the heart is the record that
     /// would have gone into the playlist, deluxe-edition tie-breaks and all.
     /// </summary>
@@ -346,11 +346,11 @@ public sealed class MusicAppPlaylistWriter : IApplePlaylistWriter
         var copy = await EnsureInLibraryAsync(album).ConfigureAwait(false);
         if (copy.Problem is not null) return new PlaylistOpResult(false, copy.Problem, copy.OpenUrl);
 
-        // Unlike adding, a withdrawn track is no obstacle: it still carries the album's favourite
+        // Unlike adding, a withdrawn track is no obstacle: it still carries the album's favorite
         // flag, so an album Apple Music no longer streams can still be marked.
         var marked = copy.Selection.Chosen.Concat(copy.Selection.Unavailable).ToList();
         if (marked.Count == 0)
-            return new PlaylistOpResult(false, $"Music has no tracks of {album.Title} to favourite.");
+            return new PlaylistOpResult(false, $"Music has no tracks of {album.Title} to favorite.");
 
         try
         {
@@ -359,12 +359,12 @@ public sealed class MusicAppPlaylistWriter : IApplePlaylistWriter
             var output = (await RunScriptAsync(FavoriteAlbumScript, args.ToArray()).ConfigureAwait(false)).Trim();
 
             return int.TryParse(output, out int touched) && touched > 0
-                ? new PlaylistOpResult(true, $"Favourited {album.Title}")
-                : new PlaylistOpResult(false, $"Music didn't mark {album.Title} as a favourite.");
+                ? new PlaylistOpResult(true, $"Favorited {album.Title}")
+                : new PlaylistOpResult(false, $"Music didn't mark {album.Title} as a favorite.");
         }
         catch (Exception ex)
         {
-            return new PlaylistOpResult(false, $"Couldn't favourite: {ex.Message}");
+            return new PlaylistOpResult(false, $"Couldn't favorite: {ex.Message}");
         }
     }
 
@@ -630,7 +630,7 @@ public sealed class MusicAppPlaylistWriter : IApplePlaylistWriter
           with timeout of 280 seconds
             tell application "Music"
               set touched to 0
-              -- Setting it on any one track of the album favourites the whole album; every track is
+              -- Setting it on any one track of the album favorites the whole album; every track is
               -- set anyway so that a copy Music files separately can't be left behind.
               repeat with t in (search library playlist 1 for searchTerm only albums)
                 if (persistent ID of t) is in wanted then

@@ -47,7 +47,7 @@ public static class RestSheetsClientDiagnostic
             Check(read.Count == 4, $"WriteRangeAsync/ReadTabAsync round-trip sees {read.Count} rows (expected 4)");
             Check(read[2][1] == "Aja", $"row 2 title reads back as \"{read[2][1]}\" (expected \"Aja\")");
 
-            Console.WriteLine("→ UpdateCellAsync: renaming one title without touching its neighbours…");
+            Console.WriteLine("→ UpdateCellAsync: renaming one title without touching its neighbors…");
             await client.UpdateCellAsync(ScratchTab, "B4", "Zuma (renamed)");
             read = await client.ReadTabAsync(ScratchTab, "A1:D");
             Check(read[3][1] == "Zuma (renamed)", "UpdateCellAsync changed B4");

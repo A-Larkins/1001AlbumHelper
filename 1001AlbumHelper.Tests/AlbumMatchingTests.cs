@@ -58,7 +58,7 @@ public class AlbumMatchingTests
     [InlineData("The Costello Show Featuring The Attractions And Confederates", "Elvis Costello")]
     [InlineData("Neil Young With Crazy Horse", "Neil Young & Crazy Horse")]
     [InlineData("Hootie & The Blowfish", "Hootie and the Blowfish")]
-    public void A_differently_billed_artist_is_still_recognised(string discogs, string ours)
+    public void A_differently_billed_artist_is_still_recognized(string discogs, string ours)
     {
         Assert.True(DiscogsApiClient.ArtistsOverlap(discogs, ours));
     }

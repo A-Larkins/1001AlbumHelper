@@ -3,7 +3,7 @@ using _1001AlbumHelper;
 namespace _1001AlbumHelper.Tests;
 
 /// <summary>
-/// Sorting the browse lists. The judgement call worth pinning down is the "#" column: it's the way
+/// Sorting the browse lists. The judgment call worth pinning down is the "#" column: it's the way
 /// back out of a sort you no longer want, so it has to reproduce the list's own order exactly —
 /// which a string sort of "1", "2", "10" does not.
 /// </summary>

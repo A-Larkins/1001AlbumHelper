@@ -3,8 +3,8 @@
              xmlns:local="clr-namespace:_1001AlbumHelper"
              x:Class="_1001AlbumHelper.RateView">
   <!--
-    Rate. The album card is the screen: sleeve, title, artist, year, centred and given room, with
-    the four verdicts as coloured tiles directly under your thumb.
+    Rate. The album card is the screen: sleeve, title, artist, year, centered and given room, with
+    the four verdicts as colored tiles directly under your thumb.
 
     Everything you steer with lives in the pinned header: the queue picker, and under it a search
     field that is always on screen. The field used to sit in the last row of the layout, which on a
@@ -110,7 +110,7 @@
           </Panel>
         </Border>
 
-        <!-- The four verdicts, each in its own colour so the row reads ⭐ → ❌ at a glance. -->
+        <!-- The four verdicts, each in its own color so the row reads ⭐ → ❌ at a glance. -->
         <Grid Grid.Row="1" x:Name="RatingRow" ColumnDefinitions="*,*,*,*" ColumnSpacing="8"
               Margin="0,14,0,0">
           <Button Grid.Column="0" Classes="rate star" Tag="⭐" Click="OnRate">

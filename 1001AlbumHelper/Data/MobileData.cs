@@ -45,7 +45,7 @@ public static class MobileData
         typeof(MobileData).Assembly.GetManifestResourceStream(logicalName)
             ?? throw new InvalidOperationException($"Embedded resource '{logicalName}' not found.");
 
-    /// <summary>Splits one CSV line, honouring double-quoted fields with embedded commas.</summary>
+    /// <summary>Splits one CSV line, honoring double-quoted fields with embedded commas.</summary>
     internal static List<string> ParseCsvLine(string line)
     {
         var fields = new List<string>();

@@ -3,7 +3,7 @@ using _1001AlbumHelper;
 namespace _1001AlbumHelper.Tests;
 
 /// <summary>
-/// The bookkeeping the favourites backfill decides from. The Apple Music round trip itself can only
+/// The bookkeeping the favorites backfill decides from. The Apple Music round trip itself can only
 /// be exercised on a Mac with the Music app running (that's what <c>favtest</c> is for) — what's
 /// worth pinning here is the arithmetic the card and the log report, since a wrong count is the
 /// difference between "press to write 412 changes" and "press to write 4".
@@ -19,11 +19,11 @@ public class FavoritesBackfillTests
     [Fact]
     public void Counts_the_two_halves_independently()
     {
-        // The middle album is the case the whole design turns on: already favourited, but missing
-        // from the playlist that's meant to duplicate the favourites.
+        // The middle album is the case the whole design turns on: already favorited, but missing
+        // from the playlist that's meant to duplicate the favorites.
         var plan = Plan(
             Item("Both missing", favorite: true, playlist: true),
-            Item("Favourited already", favorite: false, playlist: true),
+            Item("Favorited already", favorite: false, playlist: true),
             Item("In the playlist already", favorite: true, playlist: false),
             Item("Nothing to do", favorite: false, playlist: false));
 
@@ -61,8 +61,8 @@ public class FavoritesBackfillTests
     }
 
     [Theory]
-    [InlineData(true, true, "favourite + playlist")]
-    [InlineData(true, false, "favourite")]
+    [InlineData(true, true, "favorite + playlist")]
+    [InlineData(true, false, "favorite")]
     [InlineData(false, true, "playlist")]
     [InlineData(false, false, "nothing to do")]
     public void Says_what_it_would_do_to_each_album(bool favorite, bool playlist, string expected)
@@ -84,7 +84,7 @@ public class FavoritesBackfillTests
     /// <summary>
     /// The two lists are matched against Apple Music the loose way, because Apple Music names an
     /// album by whichever edition it stocks. Pinned here because it is what decides whether an
-    /// already-favourited album gets counted as needing a heart all over again.
+    /// already-favorited album gets counted as needing a heart all over again.
     /// </summary>
     [Fact]
     public void An_album_matches_the_edition_apple_music_stocks()

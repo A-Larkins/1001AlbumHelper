@@ -59,7 +59,7 @@
           <DataTemplate x:DataType="local:ViewRow">
             <!-- The rating and year columns are fixed widths, not Auto: an unrated album has nothing
                  in the one and plenty of the 1001 have no year in the other, and an Auto column
-                 would collapse and shunt that row's title left of its neighbours'. -->
+                 would collapse and shunt that row's title left of its neighbors'. -->
             <Grid ColumnDefinitions="30,22,*,38,Auto" Margin="0,11">
               <TextBlock Grid.Column="0" Classes="rowIndex" Text="{Binding Number}"
                          VerticalAlignment="Center" />

@@ -3,7 +3,7 @@ using _1001AlbumHelper;
 namespace _1001AlbumHelper.Tests;
 
 /// <summary>
-/// The catalogue lookup turns an album into the Apple Music store id a playlist is built from, so
+/// The catalog lookup turns an album into the Apple Music store id a playlist is built from, so
 /// these guard the two pure steps: reading the iTunes Search response, and choosing the right row.
 /// </summary>
 public class AppleMusicCatalogTests
