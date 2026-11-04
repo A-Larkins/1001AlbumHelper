@@ -70,7 +70,7 @@
     </Grid>
 
     <!-- Column headings -->
-    <Grid Grid.Row="2" ColumnDefinitions="*,240,58,112,74,90" Margin="12,0,16,6">
+    <Grid Grid.Row="2" ColumnDefinitions="*,240,58,112,74,90,124" Margin="12,0,16,6">
       <TextBlock Grid.Column="0" Text="ALBUM" FontSize="10.5" FontWeight="Bold" Foreground="#6f6053" />
       <TextBlock Grid.Column="1" Text="ARTIST" FontSize="10.5" FontWeight="Bold" Foreground="#6f6053" />
       <TextBlock Grid.Column="2" Text="YEAR" FontSize="10.5" FontWeight="Bold" Foreground="#6f6053" />
@@ -81,7 +81,7 @@
         <ListBox x:Name="RowsList" Background="Transparent" BorderThickness="0" Padding="4">
           <ListBox.ItemTemplate>
             <DataTemplate x:DataType="local:PlaylistEntry">
-              <Grid ColumnDefinitions="*,240,58,112,74,90" Margin="8,6">
+              <Grid ColumnDefinitions="*,240,58,112,74,90,124" Margin="8,6">
                 <!-- A DockPanel, not a horizontal StackPanel: a StackPanel gives the title unlimited
                      width, so it never trims and runs on under the artist column. -->
                 <DockPanel Grid.Column="0" Margin="0,0,14,0">
@@ -112,9 +112,15 @@
                         IsVisible="{Binding $parent[local:PlaylistsPage].IsRecommendations}"
                         HorizontalAlignment="Right" Padding="8,4" FontSize="11"
                         ToolTip.Tip="Put this on the replacements list now, and mark it kept on the shortlist." />
+                <!-- Two removals on Playlist 2: sometimes it's just leaving the queue, sometimes
+                     it's a verdict on the album as a replacement too. -->
                 <Button Grid.Column="5" Classes="ghost" Content="✕  Remove" Click="OnRemove"
                         HorizontalAlignment="Right" Padding="8,4" FontSize="11"
-                        ToolTip.Tip="Take this off the list and out of the Apple Music playlist (your library keeps it). On Playlist 2 it's also dropped from the recommendations." />
+                        ToolTip.Tip="Take this off the list and out of the Apple Music playlist (your library keeps it). The shortlist is left alone." />
+                <Button Grid.Column="6" Classes="ghost" Content="✕  Remove + drop" Click="OnRemoveAndDrop"
+                        IsVisible="{Binding $parent[local:PlaylistsPage].IsRecommendations}"
+                        HorizontalAlignment="Right" Padding="8,4" FontSize="11"
+                        ToolTip.Tip="Take this out of the playlist, and drop it from the shortlist too, so it isn't offered again. An album you've kept stays kept." />
               </Grid>
             </DataTemplate>
           </ListBox.ItemTemplate>

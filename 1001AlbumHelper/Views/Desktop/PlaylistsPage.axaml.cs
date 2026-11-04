@@ -133,15 +133,29 @@ public partial class PlaylistsPage : UserControl, IPage
     /// <summary>
     /// Takes an album off the working list — and, on the Mac, out of the Music playlist too (the
     /// playlist only; the library keeps it). Where Music can't remove it, it goes on the
-    /// "delete these" checklist as before. On Playlist 2 a removal is also a verdict: the
-    /// recommendation was listened to and turned down, so the shortlist marks it dropped (see
-    /// <see cref="Operations.DropFromShortlistAsync"/>) and it isn't offered again.
+    /// "delete these" checklist as before. The shortlist is left alone: taking a recommendation out
+    /// of the listening queue isn't necessarily a verdict on it.
     /// </summary>
-    private async void OnRemove(object? sender, RoutedEventArgs e)
+    private void OnRemove(object? sender, RoutedEventArgs e)
     {
-        if (_store is null || _busy || sender is not Button { DataContext: PlaylistEntry entry }) return;
+        if (sender is Button { DataContext: PlaylistEntry entry }) _ = RemoveAsync(entry, dropFromShortlist: false);
+    }
 
-        bool recommendation = _current == 2;
+    /// <summary>
+    /// Playlist 2 only: removes the album as <see cref="OnRemove"/> does, and also turns the
+    /// recommendation down — the shortlist marks it dropped (see
+    /// <see cref="Operations.DropFromShortlistAsync"/>) so it isn't offered again.
+    /// </summary>
+    private void OnRemoveAndDrop(object? sender, RoutedEventArgs e)
+    {
+        if (sender is Button { DataContext: PlaylistEntry entry } && _current == 2)
+            _ = RemoveAsync(entry, dropFromShortlist: true);
+    }
+
+    private async Task RemoveAsync(PlaylistEntry entry, bool dropFromShortlist)
+    {
+        if (_store is null || _busy) return;
+
         SetBusy(true, $"Removing {entry.Title}…");
         var notes = new List<string>();
         try
@@ -160,7 +174,7 @@ public partial class PlaylistsPage : UserControl, IPage
                 notes.Add(entry.InAppleMusic ? $"{entry.Title} needs deleting in Apple Music by hand (below)." : $"Removed {entry.Title}.");
             }
 
-            if (recommendation) notes.Add(await Operations.DropFromShortlistAsync(entry));
+            if (dropFromShortlist) notes.Add(await Operations.DropFromShortlistAsync(entry));
         }
         catch (Exception ex) { notes.Add($"Couldn't remove {entry.Title} — {ex.Message}"); }
         finally
