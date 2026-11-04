@@ -6,11 +6,11 @@ namespace _1001AlbumHelper;
 /// Lets <see cref="MainWindow"/> show the Insights page without the shared library taking a
 /// direct dependency on it.
 /// <para>
-/// The Insights page needs a charting package (LiveCharts), which lives only in the Desktop
-/// head's <c>.csproj</c> — not the shared library, which the iOS head also builds against. Adding
-/// a chart-rendering package to the shared library risks the same trim/AOT crash class that made
-/// Google.Apis unusable on iOS (see <c>PROJECT.md</c> §7). The Desktop head sets <see cref="Factory"/>
-/// at startup; on any other head it stays null and the Insights section is simply absent.
+/// The page lives in the Desktop head because it used to need a charting package (LiveCharts) the
+/// iOS head mustn't link. Since 2026-11-04 it draws its charts with plain Avalonia shapes and no
+/// package at all, so it could move into the shared library and this indirection go. Until then
+/// the Desktop head sets <see cref="Factory"/> at startup; on any other head it stays null and the
+/// Insights section is simply absent.
 /// </para>
 /// </summary>
 public static class InsightsPageHost

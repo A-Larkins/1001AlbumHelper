@@ -94,8 +94,8 @@ internal static class Program
             App.PreviewMobile = true;
         }
 
-        // The Insights page needs LiveCharts, which only this head references (see
-        // InsightsPageHost) — wire the factory so MainWindow can show it.
+        // The Insights page lives in this head (see InsightsPageHost) — wire the factory so
+        // MainWindow can show it.
         InsightsPageHost.Factory = () => new InsightsPage();
 
         // Apple Music, the Mac way: the iPhone's MediaPlayer framework doesn't exist here, so the
