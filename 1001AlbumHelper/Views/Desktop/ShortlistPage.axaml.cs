@@ -31,8 +31,11 @@ public partial class ShortlistPage : UserControl, IPage
     /// <summary>The last album dropped, so a mis-click is one button away from being undone.</summary>
     private CandidateAlbum? _lastDropped;
 
-    /// <summary>Which column the list is sorted by, or null for the file's own order.</summary>
-    private CandidateSortColumn? _sortColumn;
+    /// <summary>
+    /// Which column the list is sorted by, or null for the file's own order. Opens on year, oldest
+    /// first — the order the replacements list itself runs in.
+    /// </summary>
+    private CandidateSortColumn? _sortColumn = CandidateSortColumn.Year;
     private bool _sortDescending;
 
     // Null when no Discogs token is configured: years then have to be typed in by hand.
@@ -60,6 +63,7 @@ public partial class ShortlistPage : UserControl, IPage
         InitializeComponent();
         RowsList.ItemsSource = _shown;
         SearchBox.TextChanged += (_, _) => ApplyFilter();
+        UpdateSortIndicators();
     }
 
     private bool _loaded;
@@ -75,7 +79,7 @@ public partial class ShortlistPage : UserControl, IPage
         Load();
         await Dispatcher.UIThread.InvokeAsync(() => { }, DispatcherPriority.Background);
         await SyncFromSheetsAsync();
-        await PrefetchYearsAsync();
+        await PrefetchDetailsAsync();
     }
 
     // ---------- Loading ----------
@@ -120,7 +124,7 @@ public partial class ShortlistPage : UserControl, IPage
 
     private void OnAlbumChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName == nameof(CandidateAlbum.Year)) Persist();
+        if (e.PropertyName is nameof(CandidateAlbum.Year) or nameof(CandidateAlbum.Genre)) Persist();
     }
 
     // ---------- Filtering ----------
@@ -220,14 +224,20 @@ public partial class ShortlistPage : UserControl, IPage
     /// shortlist file, so this is a one-time cost rather than something paid on every open.
     /// </para>
     /// </summary>
-    private async Task PrefetchYearsAsync()
+    /// <summary>
+    /// Fills in what the shortlist is missing for the albums still to be decided: years from Discogs,
+    /// and genres from the best source that has one (see <see cref="AlbumGenres"/>). One Discogs
+    /// call answers both where it can.
+    /// </summary>
+    private async Task PrefetchDetailsAsync()
     {
         // A reload during a prefetch would otherwise start a second loop and double the request
         // rate, which is exactly what the spacing exists to avoid.
-        if (_discogs is null || _prefetching) return;
+        if (_prefetching) return;
 
         var missing = _all
-            .Where(a => a.Status == CandidateStatus.Pending && a.Year.Trim().Length == 0)
+            .Where(a => a.Status == CandidateStatus.Pending
+                        && ((_discogs is not null && a.Year.Trim().Length == 0) || a.Genre.Trim().Length == 0))
             .ToList();
 
         // Nothing to do is the normal case once the years have been cached — claim the flag and
@@ -246,16 +256,31 @@ public partial class ShortlistPage : UserControl, IPage
             {
                 if (token.IsCancellationRequested) break;
 
-                // The user may have typed one in while this was working down the list.
-                if (album.Year.Trim().Length > 0) { done++; continue; }
+                bool needYear = _discogs is not null && album.Year.Trim().Length == 0;
+                bool needGenre = album.Genre.Trim().Length == 0;
+                // The user may have typed them in while this was working down the list.
+                if (!needYear && !needGenre) { done++; continue; }
 
-                LookupText.Text = $"Looking up years… {done + 1}/{missing.Count}";
+                LookupText.Text = $"Looking up years and genres… {done + 1}/{missing.Count}";
 
-                var year = await LookUpYearAsync(album, token);
-                // Setting the year is what saves it — see Watch. A year costs a second of someone
+                AlbumSuggestion? suggestion = null;
+                if (_discogs is not null)
+                {
+                    try { suggestion = await _discogs.FindAlbumAsync(album.Title, album.Artist, token); }
+                    catch (OperationCanceledException) { throw; }
+                    catch { /* one album failing to resolve isn't a reason to stop the rest */ }
+                }
+
+                // Setting either is what saves it — see Watch. Each costs a second of someone
                 // else's rate limit to fetch and nothing to keep, so quitting mid-run loses none
                 // of what's already resolved.
-                if (year is not null) { album.Year = year; found++; }
+                if (needYear && !string.IsNullOrWhiteSpace(suggestion?.Year)) { album.Year = suggestion.Year; found++; }
+                if (needGenre)
+                {
+                    var genre = await AlbumGenres.FindAsync(album.Title, album.Artist, null, KnownGenres(),
+                                                            discogsGenre: suggestion?.Genre, ct: token);
+                    if (genre is { } g) { album.Genre = g.Genre; found++; }
+                }
 
                 done++;
 
@@ -283,6 +308,10 @@ public partial class ShortlistPage : UserControl, IPage
     }
 
     /// <summary>The album's release year according to Discogs, or null if it couldn't be found.</summary>
+    /// <summary>Genres already on the shortlist, by artist, for <see cref="AlbumGenres"/>' last resort.</summary>
+    private IEnumerable<(string Artist, string Genre)> KnownGenres() =>
+        _all.Where(a => a.Genre.Trim().Length > 0).Select(a => (a.Artist, a.Genre)).ToList();
+
     private async Task<string?> LookUpYearAsync(CandidateAlbum album, CancellationToken token)
     {
         try
@@ -453,7 +482,7 @@ public partial class ShortlistPage : UserControl, IPage
               + (album.Year.Length > 0 ? $" ({album.Year})." : " — its year will be looked up.");
 
         // A new row with no year is exactly what the prefetch exists for.
-        await PrefetchYearsAsync();
+        await PrefetchDetailsAsync();
     }
 
     private void OnUndo(object? sender, RoutedEventArgs e)
@@ -569,6 +598,6 @@ public partial class ShortlistPage : UserControl, IPage
         StatusText.Text = "Reloaded from disk.";
 
         // Picks up years for anything newly added to the file by hand.
-        await PrefetchYearsAsync();
+        await PrefetchDetailsAsync();
     }
 }

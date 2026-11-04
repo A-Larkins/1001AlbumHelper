@@ -27,7 +27,13 @@ public sealed class CandidateAlbum : INotifyPropertyChanged
 
     public string Title { get; set; } = "";
     public string Artist { get; set; } = "";
-    public string Genre { get; set; } = "";
+    /// <summary>Change-notifying, like the year, because a lookup can fill it in while it's on screen.</summary>
+    public string Genre
+    {
+        get => _genre;
+        set => Set(ref _genre, value ?? "");
+    }
+    private string _genre = "";
     public CandidateStatus Status { get; set; } = CandidateStatus.Pending;
 
     /// <summary>Blank until looked up on Discogs or typed in — the seed list has no years.</summary>

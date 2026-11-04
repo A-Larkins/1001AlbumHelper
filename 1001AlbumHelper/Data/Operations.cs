@@ -373,12 +373,14 @@ public static class Operations
 
     /// <summary>
     /// Fills in column F (Genre) on the master list for every rated album that doesn't have one
-    /// yet, via Discogs lookups. Resumable — already-filled rows are skipped by default, so
-    /// re-running only costs a request per still-blank row (e.g. newly rated albums since the
+    /// yet — from Discogs, then Apple Music, then the artist's other albums (see
+    /// <see cref="AlbumGenres"/>). Resumable — already-filled rows are skipped by default, so
+    /// re-running only costs a lookup per still-blank row (e.g. newly rated albums since the
     /// last run). Pass <paramref name="force"/> to re-fetch every rated row regardless — e.g.
-    /// after a change to what <see cref="DiscogsApiClient"/> extracts as "genre".
+    /// after a change to what <see cref="DiscogsApiClient"/> extracts as "genre". Pass
+    /// <paramref name="dryRun"/> to print what would be filled in without writing it.
     /// </summary>
-    public static async Task BackfillGenresAsync(bool force = false)
+    public static async Task BackfillGenresAsync(bool force = false, bool dryRun = false)
     {
         var cfg = LoadSheetsConfig();
         var writer = await CreateWriterAsync(cfg);
@@ -402,6 +404,7 @@ public static class Operations
             ? $"{targets.Count} rated album(s) — re-fetching all (--force).\n"
             : $"{targets.Count} rated album(s) still need a genre.\n");
 
+        var known = session.AllAlbums.Where(a => a.Genre.Length > 0).Select(a => (a.Artist, a.Genre)).ToList();
         int found = 0, missed = 0;
         for (int i = 0; i < targets.Count; i++)
         {
@@ -432,15 +435,23 @@ public static class Operations
                 }
             }
 
-            if (suggestion is not null && suggestion.Genre.Length > 0)
+            var genre = await AlbumGenres.FindAsync(album.Title, album.Artist, null, known,
+                                                    discogsGenre: suggestion?.Genre);
+            if (genre is { } g)
             {
-                await writer.UpdateCellAsync(cfg.AlbumsTab, $"F{album.SheetRow}", suggestion.Genre);
-                Console.WriteLine(suggestion.Genre);
+                if (!dryRun) await writer.UpdateCellAsync(cfg.AlbumsTab, $"F{album.SheetRow}", g.Genre);
+                string from = g.From switch
+                {
+                    AlbumGenres.Source.Discogs => "Discogs",
+                    AlbumGenres.Source.AppleMusic => "Apple Music",
+                    _ => "the artist's other albums",
+                };
+                Console.WriteLine($"{g.Genre}  (from {from}{(dryRun ? ", not written" : "")})");
                 found++;
             }
             else
             {
-                Console.WriteLine("not found — skipped");
+                Console.WriteLine("no source knows it — left blank");
                 missed++;
             }
 
@@ -449,7 +460,9 @@ public static class Operations
             if (i < targets.Count - 1) await Task.Delay(TimeSpan.FromMilliseconds(1500));
         }
 
-        Console.WriteLine($"\n✓ Done. {found} filled in, {missed} not found on Discogs.");
+        Console.WriteLine(dryRun
+            ? $"\n✓ Dry run: {found} would be filled in, {missed} still unknown. Nothing was written."
+            : $"\n✓ Done. {found} filled in, {missed} still unknown.");
     }
 
     /// <summary>What a sync would have to fix. All counts come from a read-only pass.</summary>

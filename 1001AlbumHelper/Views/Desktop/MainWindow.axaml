@@ -330,7 +330,18 @@
     </Grid>
 
     <StackPanel Grid.Row="1" Spacing="10">
-      <TextBlock Classes="sectionLabel" Text="APPLE MUSIC" />
+      <TextBlock Classes="sectionLabel" Text="THE 1001 LIST" />
+      <Button x:Name="GenresButton" Classes="card" Tag="backfill-genres" Click="OnRun">
+        <Grid ColumnDefinitions="Auto,*">
+          <Border Grid.Column="0" Classes="badge"><TextBlock Text="🏷" /></Border>
+          <StackPanel Grid.Column="1" Margin="16,0,0,0" VerticalAlignment="Center">
+            <TextBlock Classes="title" Text="Fill in missing genres" />
+            <TextBlock Classes="desc" Text="Gives every rated album without a genre one — from Discogs, then Apple Music, then the artist's other albums — and writes it into the Genre column. Insights uses these." />
+          </StackPanel>
+        </Grid>
+      </Button>
+
+      <TextBlock Classes="sectionLabel" Text="APPLE MUSIC" Margin="2,10,0,0" />
         <!-- Two presses, deliberately: the first only looks, the second writes to the real library.
              The card's own text is the confirmation step — see OnRun's "favorites-*" cases. -->
         <Button x:Name="FavoritesButton" Classes="card" Tag="favorites-check" Click="OnRun">

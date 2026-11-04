@@ -47,6 +47,20 @@ public partial class RatePage : UserControl, IPage
         SetMode(initialMode, rebuild: false);
         Focusable = true;
         KeyDown += OnKeyDown;
+        AlbumCard.SizeChanged += (_, e) => SizeArt(e.NewSize);
+    }
+
+    /// <summary>
+    /// Sizes the sleeve to the card: whatever height the title, artist and year leave free, kept
+    /// square, between 170 (the old fixed size) and 440 — big enough to look at, not so big it
+    /// pushes the text off a small window.
+    /// </summary>
+    private void SizeArt(Avalonia.Size card)
+    {
+        double room = Math.Min(card.Height - 230, card.Width - 80);
+        double side = Math.Clamp(room, 170, 440);
+        ArtFrame.Width = side;
+        ArtFrame.Height = side;
     }
 
     private bool _loaded;

@@ -22,13 +22,13 @@ namespace _1001AlbumHelper;
 public static class AlbumArtwork
 {
     /// <summary>Art is fetched at this size — big enough for a retina rating card, small enough to cache.</summary>
-    private const int Pixels = 600;
+    private const int Pixels = 1000;
 
     /// <summary>
-    /// How many decoded bitmaps to hold at once. Each 600px cover is ~1.4 MB in memory, so this is
+    /// How many decoded bitmaps to hold at once. Each 1000px cover is ~4 MB in memory, so this is
     /// a deliberate ceiling rather than a target — the disk cache makes re-decoding cheap.
     /// </summary>
-    private const int MaxCachedImages = 40;
+    private const int MaxCachedImages = 20;
 
     private static readonly HttpClient Http = new() { Timeout = TimeSpan.FromSeconds(15) };
     private static readonly ConcurrentDictionary<string, Task<Fetched>> Cache = new();
@@ -111,7 +111,9 @@ public static class AlbumArtwork
     /// <summary>Where a given album's cover is cached, named by a hash so any title is a safe file name.</summary>
     private static string CacheFile(string artist, string title)
     {
-        byte[] hash = SHA256.HashData(Encoding.UTF8.GetBytes($"{artist}|{title}".ToLowerInvariant()));
+        // The size is part of the key, so raising Pixels fetches sharper copies instead of
+        // stretching the smaller ones already on disk.
+        byte[] hash = SHA256.HashData(Encoding.UTF8.GetBytes($"{artist}|{title}|{Pixels}".ToLowerInvariant()));
         return Path.Combine(PlaylistStore.DataDir, "artwork", $"{Convert.ToHexString(hash)[..32]}.jpg");
     }
 

@@ -44,7 +44,7 @@ public partial class InsightsPage : UserControl, IPage
 
         SummaryText.Text = $"{rated.Count} rated album(s) — {withGenre} have a genre" +
             (withGenre < rated.Count
-                ? $" ({rated.Count - withGenre} still need `dotnet run -- backfill-genres`)."
+                ? $" ({rated.Count - withGenre} still need one — Tools ▸ Fill in missing genres)."
                 : ".");
 
         var summary = AlbumAnalytics.Summarize(session.AllAlbums);

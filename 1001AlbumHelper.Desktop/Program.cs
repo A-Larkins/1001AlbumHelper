@@ -83,7 +83,8 @@ internal static class Program
         // missing one, via Discogs lookups. Resumable — safe to re-run.
         if (args.Contains("backfill-genres"))
         {
-            Operations.BackfillGenresAsync(force: args.Contains("--force")).GetAwaiter().GetResult();
+            Operations.BackfillGenresAsync(force: args.Contains("--force"), dryRun: args.Contains("--dry-run"))
+                .GetAwaiter().GetResult();
             return;
         }
 

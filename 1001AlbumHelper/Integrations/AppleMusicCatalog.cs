@@ -11,6 +11,7 @@ namespace _1001AlbumHelper;
 /// </param>
 /// <param name="ViewUrl">The album's music.apple.com page, as iTunes reports it. Blank if absent.</param>
 /// <param name="Cleaned">True for a radio edit of an explicit album — the version with words bleeped.</param>
+/// <param name="Genre">Apple Music's primary genre for it ("Rock", "Hip-Hop/Rap"), or blank.</param>
 public sealed record AppleMusicAlbum(
     long CollectionId,
     string CollectionName,
@@ -18,7 +19,8 @@ public sealed record AppleMusicAlbum(
     int TrackCount,
     string ArtworkUrl = "",
     string ViewUrl = "",
-    bool Cleaned = false);
+    bool Cleaned = false,
+    string Genre = "");
 
 /// <summary>What kind of release a catalog listing is, judged from the furniture on its name.</summary>
 public enum AlbumEdition
@@ -130,7 +132,8 @@ public static class AppleMusicCatalog
                     trackCount,
                     r.TryGetProperty("artworkUrl100", out var art) ? art.GetString() ?? "" : "",
                     r.TryGetProperty("collectionViewUrl", out var view) ? view.GetString() ?? "" : "",
-                    r.TryGetProperty("collectionExplicitness", out var ex) && ex.GetString() == "cleaned"));
+                    r.TryGetProperty("collectionExplicitness", out var ex) && ex.GetString() == "cleaned",
+                    r.TryGetProperty("primaryGenreName", out var pg) ? pg.GetString() ?? "" : ""));
             }
         }
         return albums;

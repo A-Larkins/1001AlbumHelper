@@ -263,6 +263,7 @@ public partial class MainWindow : Window
                     case "sync-check": await Operations.ListSheetTabsAsync(); break;
                     case "favorites-check": plan = await PreviewFavoritesAsync(); break;
                     case "favorites-backfill": await Operations.BackfillAppleMusicFavoritesAsync(); break;
+                    case "backfill-genres": await Operations.BackfillGenresAsync(); break;
                 }
                 ok = true;
             }
@@ -311,6 +312,7 @@ public partial class MainWindow : Window
         StatusText.Text = on ? "Running…" : "Idle";
         StatusDot.Fill = on ? RunningDot : IdleDot;
         CheckButton.IsEnabled = !on;
+        GenresButton.IsEnabled = !on;
         SyncButton.IsEnabled = !on;
         ExportButton.IsEnabled = !on;
     }
