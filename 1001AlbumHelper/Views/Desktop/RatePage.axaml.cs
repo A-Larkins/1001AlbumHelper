@@ -51,16 +51,41 @@ public partial class RatePage : UserControl, IPage
     }
 
     /// <summary>
-    /// Sizes the sleeve to the card: whatever height the title, artist and year leave free, kept
-    /// square, between 170 and 520 — the cover is the point of the screen, but not so big it
-    /// pushes the text off a small window.
+    /// Lays the album out to fill the card. Wide cards — the usual case, since the window is wider
+    /// than it is tall — put the cover on the left at nearly the card's full height and the words
+    /// beside it, large and left-aligned. Tall, narrow cards stack them, centered, with the cover
+    /// taking whatever height the words leave. Either way the cover is the point of the screen,
+    /// capped at 640 so it stays a cover rather than a poster.
     /// </summary>
     private void SizeArt(Avalonia.Size card)
     {
-        double room = Math.Min(card.Height - 215, card.Width - 120);
-        double side = Math.Clamp(room, 170, 520);
+        const double padding = 40; // the card's inner margin, both sides
+        bool wide = card.Width >= card.Height * 1.4;
+
+        double side = wide
+            ? Math.Min(card.Height - padding - 30, (card.Width - padding) * 0.5)
+            : Math.Min(card.Height - padding - 230, card.Width - padding - 60);
+        side = Math.Clamp(side, 170, 640);
         ArtFrame.Width = side;
         ArtFrame.Height = side;
+
+        Grid.SetRow(InfoPanel, wide ? 0 : 1);
+        Grid.SetColumn(InfoPanel, wide ? 1 : 0);
+        InfoPanel.Margin = wide ? new Avalonia.Thickness(48, 0, 0, 0) : new Avalonia.Thickness(0, 22, 0, 0);
+        InfoPanel.MaxWidth = wide ? Math.Max(260, card.Width - padding - side - 48 - 20) : card.Width - padding;
+
+        var align = wide ? Avalonia.Media.TextAlignment.Left : Avalonia.Media.TextAlignment.Center;
+        foreach (var text in new[] { PositionText, TitleText, ArtistText, YearText, CurrentRatingText })
+        {
+            text.TextAlignment = align;
+            text.HorizontalAlignment = wide ? Avalonia.Layout.HorizontalAlignment.Left : Avalonia.Layout.HorizontalAlignment.Center;
+        }
+
+        // Bigger cards earn bigger words — scaled with the cover, within reason.
+        double scale = Math.Clamp(side / 360, 0.85, 1.4);
+        TitleText.FontSize = Math.Round(40 * scale);
+        ArtistText.FontSize = Math.Round(24 * scale);
+        YearText.FontSize = Math.Round(18 * scale);
     }
 
     private bool _loaded;

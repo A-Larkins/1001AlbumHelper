@@ -123,6 +123,9 @@ if [ "$INSTALL" -eq 1 ]; then
   # linger inside the bundle.
   rm -rf "$DEST"
   cp -R "$APP" "$DEST"
+  # Only one copy should exist: a second one in dist/ is what a Dock icon or Spotlight ends up
+  # launching, long after it's gone stale.
+  rm -rf "$APP"
   echo "✓ Installed: $DEST"
   echo "  Open it from Launchpad or run:  open -a \"$APP_NAME\""
 else
