@@ -266,6 +266,25 @@ public class AlbumAnalyticsTests
         Assert.Equal("1970s", AlbumAnalytics.Summarize(albums).FavoriteDecade?.Label);
     }
 
+    [Theory]
+    [InlineData(243.0 / 775, 0, "31%")]
+    [InlineData(1.0 / 775, 0, "0.1%")]     // the bug: one ❌ out of 775 read "0%"
+    [InlineData(5.0 / 1089, 0, "0.5%")]
+    [InlineData(1.0 / 775, 1, "0.1%")]
+    [InlineData(415.0 / 775, 1, "53.5%")]
+    [InlineData(0.0, 0, "0%")]
+    [InlineData(1.0, 0, "100%")]
+    [InlineData(0.996, 0, "99.6%")]       // one short of everything isn't "100%"
+    [InlineData(1.0 / 5000, 0, "<0.1%")]
+    [InlineData(0.9999, 0, ">99.9%")]
+    public void Prints_percentages_without_a_rounding_that_lies(double share, int decimals, string expected)
+    {
+        var culture = System.Globalization.CultureInfo.CurrentCulture;
+        System.Globalization.CultureInfo.CurrentCulture = System.Globalization.CultureInfo.GetCultureInfo("en-US");
+        try { Assert.Equal(expected, AlbumAnalytics.Percent(share, decimals)); }
+        finally { System.Globalization.CultureInfo.CurrentCulture = culture; }
+    }
+
     private static NumberedList.Row Added(string artist, string year, string title = "Title") =>
         new(1, "1", title, artist, year);
 

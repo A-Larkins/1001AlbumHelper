@@ -323,8 +323,8 @@ public partial class MainWindow : Window
             if (action == "favorites-check") ArmFavorites(plan);
             else if (action == "favorites-backfill") ArmFavorites(null);
 
-            // Reveal the finished PDF rather than making them hunt for it.
-            if (exportedPdf is not null) { RevealInFinder(exportedPdf); ShowLastExport(exportedPdf); }
+            // Open the finished PDF in a browser tab rather than making them hunt for it.
+            if (exportedPdf is not null) { ShowLastExport(exportedPdf); _ = ExportedFile.OpenAsync(exportedPdf); }
 
             // A sync changes what's on the finished list.
             if (action == "sync-all" && _current == Section.Export) _ = RefreshExportCountsAsync();
@@ -353,7 +353,7 @@ public partial class MainWindow : Window
 
     // ---------- Export ----------
 
-    /// <summary>The PDF the last export wrote, for "Show in Finder".</summary>
+    /// <summary>The PDF the last export wrote, for "Open again" and "Show in Finder".</summary>
     private string? _lastExport;
 
     /// <summary>
@@ -385,22 +385,14 @@ public partial class MainWindow : Window
         LastExportRow.IsVisible = true;
     }
 
-    private void OnRevealExport(object? sender, RoutedEventArgs e)
+    private void OnOpenExport(object? sender, RoutedEventArgs e)
     {
-        if (_lastExport is not null) RevealInFinder(_lastExport);
+        if (_lastExport is not null) _ = ExportedFile.OpenAsync(_lastExport);
     }
 
-    /// <summary>Opens a Finder window with the file selected.</summary>
-    private static void RevealInFinder(string path)
+    private void OnRevealExport(object? sender, RoutedEventArgs e)
     {
-        try
-        {
-            if (OperatingSystem.IsMacOS()) Process.Start("open", $"-R \"{path}\"");
-            else if (OperatingSystem.IsWindows())
-                Process.Start(new ProcessStartInfo("explorer.exe")
-                { Arguments = $"/select,\"{path}\"", UseShellExecute = true });
-        }
-        catch { /* non-fatal: the log already shows where the file went */ }
+        if (_lastExport is not null) ExportedFile.Reveal(_lastExport);
     }
 
     /// <summary>Turns Console output into one UI-thread callback per line.</summary>

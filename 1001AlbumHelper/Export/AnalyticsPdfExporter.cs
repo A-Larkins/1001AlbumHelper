@@ -85,7 +85,7 @@ public static class AnalyticsPdfExporter
         col.Item().Element(c => Tiles(c,
             ($"{taste.HeardAlbums} / {taste.TotalAlbums}", "HEARD",
                 $"{Pct(taste.HeardAlbums, taste.TotalAlbums)} of the list"),
-            (mix.Heard > 0 ? mix.StarShare.ToString("P0") : "—", "⭐ RATE",
+            (mix.Heard > 0 ? AlbumAnalytics.Percent(mix.StarShare) : "—", "⭐ RATE",
                 $"{mix.Starred} of {mix.Heard} heard got a ⭐"),
             (taste.FavoriteGenre?.Label ?? "—", "FAVORITE GENRE", Detail(taste.FavoriteGenre)),
             (taste.FavoriteDecade?.Label ?? "—", "BEST DECADE", Detail(taste.FavoriteDecade))));
@@ -125,7 +125,7 @@ public static class AnalyticsPdfExporter
         var a = report.Additions;
         col.Item().Element(c => Tiles(c,
             (a.Count.ToString(), "ALBUMS ADDED", $"beside {report.MustHearCount} kept from the 1001"),
-            (a.ShareSince2000.ToString("P0"), "FROM 2000 ON", $"against {a.The1001ShareSince2000:P0} of the 1001"),
+            (AlbumAnalytics.Percent(a.ShareSince2000), "FROM 2000 ON", $"against {AlbumAnalytics.Percent(a.The1001ShareSince2000)} of the 1001"),
             (a.TopArtist?.Artist ?? "—", "MOST ADDED ARTIST", a.TopArtist is { } t ? $"{t.Albums} albums" : ""),
             ($"{a.NewArtists} / {a.Artists}", "NEW ARTISTS", "with nothing on the 1001")));
 
@@ -178,8 +178,8 @@ public static class AnalyticsPdfExporter
                     r.ConstantItem(70).AlignRight().Text(t =>
                     {
                         t.DefaultTextStyle(s => s.FontSize(8.5f).FontColor(Muted));
-                        t.Span($"{d.AddedShare:P0}").FontColor(Ink);
-                        t.Span($"  vs {d.The1001Share:P0}");
+                        t.Span($"{AlbumAnalytics.Percent(d.AddedShare)}").FontColor(Ink);
+                        t.Span($"  vs {AlbumAnalytics.Percent(d.The1001Share)}");
                     });
                 });
             }
@@ -227,9 +227,9 @@ public static class AnalyticsPdfExporter
     }
 
     private static string Detail(AlbumAnalytics.Bucket? b) =>
-        b is null ? $"needs {AlbumAnalytics.MinAlbums}+ albums heard" : $"{b.Mix.Starred} of {b.Count} heard got a ⭐ ({b.Mix.StarShare:P0})";
+        b is null ? $"needs {AlbumAnalytics.MinAlbums}+ albums heard" : $"{b.Mix.Starred} of {b.Count} heard got a ⭐ ({AlbumAnalytics.Percent(b.Mix.StarShare)})";
 
-    private static string Pct(int part, int whole) => whole == 0 ? "0%" : ((double)part / whole).ToString("P0");
+    private static string Pct(int part, int whole) => AlbumAnalytics.Percent(whole == 0 ? 0 : (double)part / whole);
 
     private static void MixBar(IContainer container, AlbumAnalytics.RatingMix mix)
     {
@@ -256,7 +256,7 @@ public static class AnalyticsPdfExporter
                         t.Span("■ ").FontColor(MarkInk[mark]);
                         t.Span($"{AlbumAnalytics.Marks[mark]} {MarkLabels[mark]}\n");
                         t.Span($"{n}").FontSize(10).Bold().FontColor(Ink);
-                        t.Span($"  {(double)n / mix.Heard:P0}");
+                        t.Span($"  {AlbumAnalytics.Percent((double)n / mix.Heard, 1)}");
                     });
                 }
             });
@@ -314,7 +314,7 @@ public static class AnalyticsPdfExporter
                         if (fraction < 1f) bar.RelativeItem(1f - fraction);
                     });
                     r.ConstantItem(66).AlignRight()
-                        .Text(b.Mix.Heard > 0 ? $"{b.Count} · {b.Mix.StarShare:P0} ⭐" : b.Count.ToString())
+                        .Text(b.Mix.Heard > 0 ? $"{b.Count} · {AlbumAnalytics.Percent(b.Mix.StarShare)} ⭐" : b.Count.ToString())
                         .FontSize(8.5f).FontColor(Muted);
                 });
             }

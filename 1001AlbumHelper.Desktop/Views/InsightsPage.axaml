@@ -90,8 +90,9 @@
         </StackPanel>
         <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
           <Button x:Name="ReloadButton" Classes="ghost" Content="Reload" Click="OnReload" />
+          <Button x:Name="RevealButton" Classes="ghost" Content="Show in Finder" Click="OnRevealExport" IsVisible="False" />
           <Button x:Name="ExportPdfButton" Classes="ghost" Content="Export as PDF" Click="OnExportPdf"
-                  ToolTip.Tip="These insights on their own. The Export page's PDF carries them too, after the list." />
+                  ToolTip.Tip="These insights on their own, opened in a browser tab. The Export page's PDF carries them too, after the list." />
         </StackPanel>
       </Grid>
       <TextBlock x:Name="StatusText" Text="" FontSize="11.5" Foreground="#a99884" IsVisible="False"

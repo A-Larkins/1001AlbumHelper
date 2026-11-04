@@ -102,8 +102,8 @@ public partial class InsightsPage : UserControl, IPage
         double done = taste.TotalAlbums == 0 ? 0 : (double)taste.HeardAlbums / taste.TotalAlbums;
         The1001Tiles.Content = TileRow(
             Tile("HEARD", taste.HeardAlbums.ToString(), $"/ {taste.TotalAlbums}",
-                $"{done:P0} of the list · {taste.TotalAlbums - taste.HeardAlbums} to go", progress: done),
-            Tile("⭐ RATE", mix.Heard > 0 ? mix.StarShare.ToString("P0") : "—", null,
+                $"{AlbumAnalytics.Percent(done)} of the list · {taste.TotalAlbums - taste.HeardAlbums} to go", progress: done),
+            Tile("⭐ RATE", mix.Heard > 0 ? AlbumAnalytics.Percent(mix.StarShare) : "—", null,
                 mix.Heard > 0 ? $"{mix.Starred} of {mix.Heard} heard got a ⭐" : ""),
             Tile("FAVORITE GENRE", taste.FavoriteGenre?.Label ?? "—", null, Describe(taste.FavoriteGenre),
                 tip: taste.FavoriteGenre is { } g ? Tip(g) : null),
@@ -130,7 +130,7 @@ public partial class InsightsPage : UserControl, IPage
     private static string Describe(AlbumAnalytics.Bucket? b) =>
         b is null
             ? $"Needs {AlbumAnalytics.MinAlbums}+ albums heard"
-            : $"{b.Mix.Starred} of {b.Count} heard got a ⭐ ({b.Mix.StarShare:P0})";
+            : $"{b.Mix.Starred} of {b.Count} heard got a ⭐ ({AlbumAnalytics.Percent(b.Mix.StarShare)})";
 
     // ---------- The albums you added ----------
 
@@ -141,8 +141,8 @@ public partial class InsightsPage : UserControl, IPage
 
         AdditionsTiles.Content = TileRow(
             Tile("ALBUMS ADDED", a.Count.ToString(), null, $"beside {report.MustHearCount} kept from the 1001"),
-            Tile("FROM 2000 ON", a.Count > 0 ? a.ShareSince2000.ToString("P0") : "—", null,
-                $"of your additions · {a.The1001ShareSince2000:P0} of the 1001"),
+            Tile("FROM 2000 ON", a.Count > 0 ? AlbumAnalytics.Percent(a.ShareSince2000) : "—", null,
+                $"of your additions · {AlbumAnalytics.Percent(a.The1001ShareSince2000)} of the 1001"),
             Tile("MOST ADDED ARTIST", a.TopArtist?.Artist ?? "—", null,
                 a.TopArtist is { } t ? $"{t.Albums} albums" + (t.OnThe1001 ? " · also on the 1001" : "") : "No artist twice yet",
                 tip: a.TopArtist?.Artist),
@@ -294,7 +294,7 @@ public partial class InsightsPage : UserControl, IPage
             figure.Children.Add(new TextBlock { Text = n.ToString(), FontSize = 18, FontWeight = FontWeight.Bold, Foreground = Ink });
             figure.Children.Add(new TextBlock
             {
-                Text = $"{(double)n / mix.Heard:P0}", FontSize = 11.5, Foreground = Muted,
+                Text = AlbumAnalytics.Percent((double)n / mix.Heard, 1), FontSize = 11.5, Foreground = Muted,
                 VerticalAlignment = VerticalAlignment.Bottom, Margin = new Thickness(0, 0, 0, 3),
             });
             cell.Children.Add(figure);
@@ -409,11 +409,11 @@ public partial class InsightsPage : UserControl, IPage
         {
             var d = decades[i];
             var pair = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 3, HorizontalAlignment = HorizontalAlignment.Center };
-            pair.Children.Add(ShareColumn(d.AddedShare / max, Yours, d.Added > 0 ? $"{d.AddedShare:P0}" : ""));
+            pair.Children.Add(ShareColumn(d.AddedShare / max, Yours, d.Added > 0 ? $"{AlbumAnalytics.Percent(d.AddedShare)}" : ""));
             pair.Children.Add(ShareColumn(d.The1001Share / max, The1001, ""));
 
             AddColumn(frame, i, d.Label, pair,
-                $"{d.Label}\nYour additions: {d.Added} ({d.AddedShare:P0})\nThe 1001: {d.InThe1001} ({d.The1001Share:P0})");
+                $"{d.Label}\nYour additions: {d.Added} ({AlbumAnalytics.Percent(d.AddedShare)})\nThe 1001: {d.InThe1001} ({AlbumAnalytics.Percent(d.The1001Share)})");
         }
         return frame;
     }
@@ -472,12 +472,12 @@ public partial class InsightsPage : UserControl, IPage
             if (ranked)
             {
                 Add(new TextBlock { Text = $"{b.Count} heard", Classes = { "rowMuted" } });
-                Add(new TextBlock { Text = b.Mix.StarShare.ToString("P0"), Classes = { "rowValue" } });
+                Add(new TextBlock { Text = AlbumAnalytics.Percent(b.Mix.StarShare), Classes = { "rowValue" } });
             }
             else
             {
                 Add(new TextBlock { Text = b.Count.ToString(), Classes = { "rowValue" } });
-                if (rated) Add(new TextBlock { Text = b.Mix.StarShare.ToString("P0"), Classes = { "rowMuted" } });
+                if (rated) Add(new TextBlock { Text = AlbumAnalytics.Percent(b.Mix.StarShare), Classes = { "rowMuted" } });
             }
 
             ToolTip.SetTip(row, Tip(b));
@@ -534,7 +534,7 @@ public partial class InsightsPage : UserControl, IPage
         var m = b.Mix;
         return $"{b.Label} — {albums} heard\n" +
                $"⭐ {m.Starred}   👍 {m.Liked}   👎 {m.Disliked}   ❌ {m.Trash}   ✓ {m.Listened}\n" +
-               $"{m.StarShare:P0} got a ⭐" +
+               $"{AlbumAnalytics.Percent(m.StarShare)} got a ⭐" +
                (m.Scored > 0 ? $" · average {m.AverageScore:0.00} across the {m.Scored} scored" : "");
     }
 
@@ -548,6 +548,9 @@ public partial class InsightsPage : UserControl, IPage
 
     private async void OnReload(object? sender, RoutedEventArgs e) => await LoadAsync();
 
+    /// <summary>The PDF the last export wrote, for "Show in Finder".</summary>
+    private string? _lastExport;
+
     private async void OnExportPdf(object? sender, RoutedEventArgs e)
     {
         ExportPdfButton.IsEnabled = false;
@@ -555,10 +558,12 @@ public partial class InsightsPage : UserControl, IPage
         try
         {
             var path = await Operations.ExportAnalyticsPdfAsync();
+            _lastExport = path;
+            RevealButton.IsVisible = path is not null;
             SetStatus(path is not null
-                ? $"Saved to {path}"
+                ? $"Saved to {path} — opening it in your browser."
                 : "Couldn't write the PDF — Tools ▸ Activity log says what went wrong.");
-            if (path is not null) RevealInFinder(path);
+            if (path is not null) await ExportedFile.OpenAsync(path);
         }
         finally
         {
@@ -566,10 +571,8 @@ public partial class InsightsPage : UserControl, IPage
         }
     }
 
-    /// <summary>Opens a Finder window with the file selected.</summary>
-    private static void RevealInFinder(string path)
+    private void OnRevealExport(object? sender, RoutedEventArgs e)
     {
-        try { System.Diagnostics.Process.Start("open", $"-R \"{path}\""); }
-        catch { /* non-fatal: the status line already shows where the file went */ }
+        if (_lastExport is not null) ExportedFile.Reveal(_lastExport);
     }
 }

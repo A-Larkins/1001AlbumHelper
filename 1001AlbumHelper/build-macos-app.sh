@@ -119,10 +119,16 @@ echo "✓ Built: $APP"
 if [ "$INSTALL" -eq 1 ]; then
   DEST="$INSTALL_DIR/$APP_NAME.app"
   echo "▶ Installing to ${DEST}…"
-  # Replace rather than merge: leftovers from an older publish would otherwise
-  # linger inside the bundle.
-  rm -rf "$DEST"
-  cp -R "$APP" "$DEST"
+  # Refill the installed bundle rather than deleting and re-copying it: a fresh folder is a new
+  # file to macOS, so the Dock stops recognizing its pinned icon as the app and lists the
+  # running copy a second time under recent apps. Emptying it first still clears out leftovers
+  # from an older publish. ditto, not rsync: the signatures of the bundle's non-Mach-O files
+  # live in extended attributes, which macOS's rsync drops.
+  mkdir -p "$DEST"
+  find "$DEST" -mindepth 1 -maxdepth 1 -exec rm -rf {} +
+  ditto "$APP" "$DEST"
+  codesign --verify --deep --strict "$DEST"
+  /System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -f "$DEST" >/dev/null 2>&1 || true
   # Only one copy should exist: a second one in dist/ is what a Dock icon or Spotlight ends up
   # launching, long after it's gone stale.
   rm -rf "$APP"

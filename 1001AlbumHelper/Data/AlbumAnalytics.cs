@@ -101,6 +101,24 @@ public static class AlbumAnalytics
         public RatingMix Mix { get; init; } = RatingMix.None;
     }
 
+    /// <summary>
+    /// A share (0–1) as a percentage, for every figure the page and the PDFs print. Whole numbers
+    /// by default, with <paramref name="decimals"/> places on request — but never a rounding that
+    /// lies: a share that isn't zero never reads "0%" (1 of 775 is "0.1%"), and one short of
+    /// everything never reads "100%" ("99.6%"). Past one decimal place it's "&lt;0.1%".
+    /// </summary>
+    public static string Percent(double share, int decimals = 0)
+    {
+        double pct = share * 100;
+        bool misleading(int d) => (share > 0 && Math.Round(pct, d) == 0) || (share < 1 && Math.Round(pct, d) >= 100);
+        if (decimals == 0 && misleading(0)) decimals = 1;
+        if (share > 0 && Math.Round(pct, decimals) == 0)
+            return $"<{Math.Pow(10, -decimals).ToString(System.Globalization.CultureInfo.CurrentCulture)}%";
+        if (share < 1 && Math.Round(pct, decimals) >= 100)
+            return $">{(100 - Math.Pow(10, -decimals)).ToString(System.Globalization.CultureInfo.CurrentCulture)}%";
+        return pct.ToString(decimals == 0 ? "0" : "0." + new string('0', decimals), System.Globalization.CultureInfo.CurrentCulture) + "%";
+    }
+
     /// <summary>Whether the album has been listened to: one of the four scores, or ✓.</summary>
     public static bool IsHeard(AlbumEntry album) =>
         RatingMix.None.With(album.Rating) != RatingMix.None;
