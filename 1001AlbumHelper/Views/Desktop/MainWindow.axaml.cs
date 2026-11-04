@@ -54,6 +54,7 @@ public partial class MainWindow : Window
         _pages[Section.Tools] = ToolsPage;
         Opened += async (_, _) =>
         {
+            FitToScreen();
             // Dev aid, like the mobile preview's ALBUMHELPER_PREVIEW_TAB: open straight onto one
             // section (Rate, Browse, Shortlist, Playlists, More) to look at it without clicking.
             Navigate(Enum.TryParse<Section>(Environment.GetEnvironmentVariable("ALBUMHELPER_START_SECTION"),
@@ -65,6 +66,29 @@ public partial class MainWindow : Window
         AddHandler(KeyDownEvent, OnWindowKeyDown, Avalonia.Interactivity.RoutingStrategies.Tunnel);
 
         NavInsights.IsVisible = InsightsPageHost.Factory is not null;
+    }
+
+    /// <summary>
+    /// Shrinks the window to the screen it opened on if the default size doesn't fit. Otherwise
+    /// macOS keeps the title bar below the menu bar and the top of the content — the sidebar's name,
+    /// the Rate page's mode buttons — slides up under it.
+    /// </summary>
+    private void FitToScreen()
+    {
+        if (Screens.ScreenFromWindow(this) is not { } screen) return;
+        var area = screen.WorkingArea;
+        double scale = screen.Scaling;
+        double maxW = area.Width / scale - 20, maxH = area.Height / scale - 40;
+
+        if (MinHeight > maxH) MinHeight = Math.Max(480, maxH);
+        if (MinWidth > maxW) MinWidth = Math.Max(800, maxW);
+        if (Height <= maxH && Width <= maxW) return;
+
+        Width = Math.Min(Width, maxW);
+        Height = Math.Min(Height, maxH);
+        Position = new Avalonia.PixelPoint(
+            area.X + (int)((area.Width - Width * scale) / 2),
+            area.Y + (int)(10 * scale));
     }
 
     /// <summary>The window's background, shared with <see cref="PageWindow"/> so a page looks the same in either.</summary>

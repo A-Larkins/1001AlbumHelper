@@ -52,13 +52,13 @@ public partial class RatePage : UserControl, IPage
 
     /// <summary>
     /// Sizes the sleeve to the card: whatever height the title, artist and year leave free, kept
-    /// square, between 170 (the old fixed size) and 440 — big enough to look at, not so big it
+    /// square, between 170 and 520 — the cover is the point of the screen, but not so big it
     /// pushes the text off a small window.
     /// </summary>
     private void SizeArt(Avalonia.Size card)
     {
-        double room = Math.Min(card.Height - 230, card.Width - 80);
-        double side = Math.Clamp(room, 170, 440);
+        double room = Math.Min(card.Height - 215, card.Width - 120);
+        double side = Math.Clamp(room, 170, 520);
         ArtFrame.Width = side;
         ArtFrame.Height = side;
     }
@@ -280,6 +280,8 @@ public partial class RatePage : UserControl, IPage
         ArtImage.Source = null;
         ArtImage.IsVisible = false;
         ArtPlaceholder.IsVisible = true;
+        Backdrop.Source = null;
+        Backdrop.IsVisible = false;
 
         var art = await AlbumArtwork.LoadAsync(album.Artist, album.Title, token);
 
@@ -292,6 +294,8 @@ public partial class RatePage : UserControl, IPage
             ArtImage.Source = art;
             ArtImage.IsVisible = true;
             ArtPlaceholder.IsVisible = false;
+            Backdrop.Source = art;
+            Backdrop.IsVisible = true;
         }
 
         if (_session?.Next is { } next) AlbumArtwork.Prefetch(next.Artist, next.Title);
