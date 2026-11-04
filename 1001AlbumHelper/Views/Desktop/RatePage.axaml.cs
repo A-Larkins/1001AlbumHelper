@@ -51,41 +51,22 @@ public partial class RatePage : UserControl, IPage
     }
 
     /// <summary>
-    /// Lays the album out to fill the card. Wide cards — the usual case, since the window is wider
-    /// than it is tall — put the cover on the left at nearly the card's full height and the words
-    /// beside it, large and left-aligned. Tall, narrow cards stack them, centered, with the cover
-    /// taking whatever height the words leave. Either way the cover is the point of the screen,
-    /// capped at 640 so it stays a cover rather than a poster.
+    /// Sizes the sleeve to fill the card: stacked and centered, the cover takes whatever height the
+    /// words under it leave — measured, so a title that wraps to two lines takes its room from the
+    /// cover rather than pushing the year off the card — capped at 560.
     /// </summary>
     private void SizeArt(Avalonia.Size card)
     {
-        const double padding = 40; // the card's inner margin, both sides
-        bool wide = card.Width >= card.Height * 1.4;
+        const double margins = 32;   // the card's inner margin, top and bottom
+        const double gap = 18;       // between the cover and the words
+        InfoPanel.MaxWidth = Math.Max(200, card.Width - 80);
+        InfoPanel.Measure(new Avalonia.Size(InfoPanel.MaxWidth, double.PositiveInfinity));
+        double words = InfoPanel.DesiredSize.Height;
 
-        double side = wide
-            ? Math.Min(card.Height - padding - 30, (card.Width - padding) * 0.5)
-            : Math.Min(card.Height - padding - 230, card.Width - padding - 60);
-        side = Math.Clamp(side, 170, 640);
+        double side = Math.Min(card.Height - margins - gap - words, card.Width - 80);
+        side = Math.Clamp(side, 160, 560);
         ArtFrame.Width = side;
         ArtFrame.Height = side;
-
-        Grid.SetRow(InfoPanel, wide ? 0 : 1);
-        Grid.SetColumn(InfoPanel, wide ? 1 : 0);
-        InfoPanel.Margin = wide ? new Avalonia.Thickness(48, 0, 0, 0) : new Avalonia.Thickness(0, 22, 0, 0);
-        InfoPanel.MaxWidth = wide ? Math.Max(260, card.Width - padding - side - 48 - 20) : card.Width - padding;
-
-        var align = wide ? Avalonia.Media.TextAlignment.Left : Avalonia.Media.TextAlignment.Center;
-        foreach (var text in new[] { PositionText, TitleText, ArtistText, YearText, CurrentRatingText })
-        {
-            text.TextAlignment = align;
-            text.HorizontalAlignment = wide ? Avalonia.Layout.HorizontalAlignment.Left : Avalonia.Layout.HorizontalAlignment.Center;
-        }
-
-        // Bigger cards earn bigger words — scaled with the cover, within reason.
-        double scale = Math.Clamp(side / 360, 0.85, 1.4);
-        TitleText.FontSize = Math.Round(40 * scale);
-        ArtistText.FontSize = Math.Round(24 * scale);
-        YearText.FontSize = Math.Round(18 * scale);
     }
 
     private bool _loaded;
@@ -288,6 +269,7 @@ public partial class RatePage : UserControl, IPage
         TitleText.Text = album.Title;
         ArtistText.Text = album.Artist;
         YearText.Text = album.Year;
+        SizeArt(AlbumCard.Bounds.Size); // a title that wraps differently changes the room left
         _ = ShowArtAsync(album);
     }
 
