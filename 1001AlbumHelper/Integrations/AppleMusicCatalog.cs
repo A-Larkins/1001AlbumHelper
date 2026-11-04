@@ -55,7 +55,8 @@ public static class AppleMusicCatalog
         var json = await Http.GetStringAsync(url, ct).ConfigureAwait(false);
         var candidates = ParseSearchResults(json);
         var match = FindBestMatch(candidates, artist, title);
-        if (match is not null && IsSameTitle(match, title) && EditionOf(match.CollectionName) <= AlbumEdition.Remaster)
+        if (match is not null && IsSameTitle(match, title) && EditionOf(match.CollectionName) <= AlbumEdition.Remaster
+            && NumberedList.Matches(match.ArtistName, artist))
             return match;
 
         // Apple's /search relevance ranking can bury even famous, definitely-in-the-catalog albums —
@@ -64,7 +65,9 @@ public static class AppleMusicCatalog
         // releases, singles, and tribute covers. /lookup by the artist's own id isn't a relevance
         // search — it just lists their catalog — so it finds albums /search can't. Asked too when
         // /search only turned up a deluxe edition or a subtitled near-miss, since the plain album
-        // may be the one it buried: /search has no "Tical" at all, only "Tical 2000".
+        // may be the one it buried: /search has no "Tical" at all, only "Tical 2000". And asked when
+        // the hit is only credited to a name that shares a word with ours ("Midnight in America"
+        // for America), since the artist's own copy may be the one buried.
         try
         {
             candidates.AddRange(await ArtistCatalogAsync(artist, ct).ConfigureAwait(false));
@@ -172,7 +175,13 @@ public static class AppleMusicCatalog
             ? sameTitle
             : albums.Where(c => DiscogsApiClient.SameTitle(MainTitle(c.CollectionName), wanted)).ToList();
 
-        var byArtist = pool.Where(c => ArtistMatches(c.ArtistName, artist)).ToList();
+        // The artist's own name beats a credit that merely shares a word with it: for America's
+        // "Homecoming", "Midnight in America" shares "america" and has a "The Homecoming" of its
+        // own — with fewer tracks, so the tie-breaks below would otherwise hand it the win.
+        var exactArtist = pool.Where(c => NumberedList.Matches(c.ArtistName, artist)).ToList();
+        var byArtist = exactArtist.Count > 0
+            ? exactArtist
+            : pool.Where(c => ArtistMatches(c.ArtistName, artist)).ToList();
         if (byArtist.Count > 0) pool = byArtist;
 
         return pool

@@ -300,7 +300,7 @@
           <Border Grid.Column="0" Classes="badge"><TextBlock Text="📄" /></Border>
           <StackPanel Grid.Column="1" Margin="16,0,0,0" VerticalAlignment="Center">
             <TextBlock Classes="title" Text="Export as PDF" />
-            <TextBlock Classes="desc" Text="Both lists, numbered straight through, in two sections. It opens in Finder when it's done." />
+            <TextBlock Classes="desc" Text="Both lists, numbered straight through, in two sections, then the Insights pages. It opens in Finder when it's done." />
           </StackPanel>
         </Grid>
       </Button>

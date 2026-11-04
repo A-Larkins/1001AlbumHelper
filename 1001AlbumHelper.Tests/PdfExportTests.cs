@@ -49,4 +49,52 @@ public class PdfExportTests
         Assert.True(empty.Length < withAlbums.Length,
                     $"Empty export ({empty.Length}) should be smaller than one with albums ({withAlbums.Length}).");
     }
+
+    private static AlbumAnalytics.Report SampleReport()
+    {
+        string[] marks = { RatingSession.Starred, RatingSession.Liked, RatingSession.Disliked, RatingSession.Trash, RatingSession.Listened, "" };
+        string[] genres = { "Hard Rock, Rock", "Folk, World, & Country", "Synth-pop, Electronic", "Boom Bap, Hip Hop", "" };
+        var master = Enumerable.Range(1, 400)
+            .Select(n => new AlbumEntry(n, n.ToString(), marks[n % marks.Length], $"Album {n}", $"Artist {n % 90}",
+                (1955 + n % 60).ToString(), genres[n % genres.Length]))
+            .ToList();
+        var additions = Enumerable.Range(1, 120).Select(n => Row(n) with { Artist = $"Artist {n % 40}" }).ToList();
+        var candidates = Enumerable.Range(1, 30)
+            .Select(n => new CandidateAlbum { Title = $"C{n}", Artist = "A", Year = (1970 + n).ToString(), Genre = n % 2 == 0 ? "Metal" : "Alternative" })
+            .ToList();
+        return AlbumAnalytics.BuildReport(master, 100, additions, candidates);
+    }
+
+    [Fact]
+    public void Renders_the_insights_pages_on_their_own()
+    {
+        var path = Path.Combine(Path.GetTempPath(), $"1001-insights-{Guid.NewGuid():N}.pdf");
+        try
+        {
+            AnalyticsPdfExporter.Write(path, SampleReport());
+            var pdf = File.ReadAllBytes(path);
+            Assert.StartsWith("%PDF", System.Text.Encoding.ASCII.GetString(pdf, 0, 4));
+        }
+        finally { File.Delete(path); }
+    }
+
+    [Fact]
+    public void Carries_the_insights_pages_after_the_list()
+    {
+        var path = Path.Combine(Path.GetTempPath(), $"1001-export-insights-{Guid.NewGuid():N}.pdf");
+        try
+        {
+            var report = SampleReport();
+            PdfExporter.Write(path,
+                Enumerable.Range(1, 60).Select(Row).ToList(),
+                Enumerable.Range(61, 40).Select(Row).ToList(),
+                "Albums Larkins Thinks You Must Hear",
+                doc => AnalyticsPdfExporter.AddPages(doc, report));
+            var withInsights = new FileInfo(path).Length;
+
+            Assert.True(withInsights > Render(mustHear: 60, replacements: 40).Length,
+                "The insights pages should make the export bigger than the list alone.");
+        }
+        finally { File.Delete(path); }
+    }
 }

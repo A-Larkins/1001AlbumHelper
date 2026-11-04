@@ -7,7 +7,8 @@ namespace _1001AlbumHelper;
 /// <summary>
 /// Renders the finished list — the ⭐ picks kept from the 1001, plus the albums added to replace
 /// the rest — as a single numbered PDF: an opening page about where the list comes from and what
-/// the rules for it are, then the albums themselves in two numbered sections.
+/// the rules for it are, then the albums themselves in two numbered sections, then (when the
+/// caller passes them) the Insights pages.
 /// </summary>
 public static class PdfExporter
 {
@@ -75,8 +76,11 @@ public static class PdfExporter
     /// Builds the document and writes it to <paramref name="path"/>.
     /// Numbering runs continuously across both sections, so the whole thing reads as one list.
     /// </summary>
+    /// <param name="appendix">Pages to add after the list — the Insights pages, when there are any
+    /// (see <see cref="AnalyticsPdfExporter.AddPages"/>).</param>
     public static void Write(string path, IReadOnlyList<NumberedList.Row> mustHear,
-                             IReadOnlyList<NumberedList.Row> replacements, string title)
+                             IReadOnlyList<NumberedList.Row> replacements, string title,
+                             Action<IDocumentContainer>? appendix = null)
     {
         QuestPDF.Settings.License = LicenseType.Community;
 
@@ -122,6 +126,7 @@ public static class PdfExporter
                     t.TotalPages();
                 });
             });
+            if (total > 0) appendix?.Invoke(doc);
         }).GeneratePdf(path);
     }
 

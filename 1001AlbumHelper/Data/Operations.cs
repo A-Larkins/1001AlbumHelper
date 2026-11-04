@@ -553,10 +553,12 @@ public static class Operations
 
     /// <summary>
     /// Reconciles both derived lists with the master list: adds ⭐ albums missing from Must Hear,
-    /// places any unnumbered replacement rows by year, and renumbers both lists.
+    /// removes Must Hear rows whose ⭐ is gone and Replacements rows the 1001 list already covers,
+    /// places any unnumbered rows by year, and renumbers both lists.
     /// <para>
-    /// Deliberately additive — an album on Must Hear whose ⭐ was removed upstream is reported but
-    /// left in place, since deleting someone's row on a guess is not a repair.
+    /// Removing a no-longer-starred row matches what rating does: dropping a ⭐ on the Rate page
+    /// takes the album off Must Hear straight away (see <c>RatingSession.RemoveFromMustHearAsync</c>).
+    /// Sync only catches the cases that bypassed the app, such as a rating edited in the sheet by hand.
     /// </para>
     /// </summary>
     public static async Task SyncAllAsync()
@@ -702,7 +704,8 @@ public static class Operations
 
     /// <summary>
     /// Exports the combined list — ⭐ picks kept from the 1001, then the replacements — as a
-    /// numbered PDF. Returns the file path, or null if it couldn't be produced.
+    /// numbered PDF, with the Insights pages at the end. Returns the file path, or null if it
+    /// couldn't be produced.
     /// </summary>
     public static async Task<string?> ExportPdfAsync(string? destination = null)
     {
@@ -723,9 +726,17 @@ public static class Operations
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);
 
         Console.WriteLine($"Must Hear: {lists.MustHear.Count} · replacements: {lists.Replacements.Count}");
+
+        // The Insights pages ride along at the end. They're a bonus: if they can't be built, the
+        // list still exports without them.
+        AlbumAnalytics.Report? insights = null;
+        try { insights = await BuildInsightsReportAsync(lists); }
+        catch (Exception ex) { Console.WriteLine($"⚠️  Leaving the Insights pages out: {ex.Message}"); }
+
         try
         {
-            PdfExporter.Write(path, lists.MustHear, lists.Replacements, cfg.StarredTab);
+            PdfExporter.Write(path, lists.MustHear, lists.Replacements, cfg.StarredTab,
+                insights is null ? null : doc => AnalyticsPdfExporter.AddPages(doc, insights));
             Console.WriteLine($"✓ Wrote {lists.MustHear.Count + lists.Replacements.Count} albums to:");
             Console.WriteLine($"   {path}");
             return path;
@@ -738,28 +749,40 @@ public static class Operations
     }
 
     /// <summary>
-    /// Renders the same breakdowns the Analytics window charts — ratings and shortlist alike —
-    /// as a PDF snapshot. Returns the file path, or null if it couldn't be produced.
+    /// Everything the Insights page shows, built from <paramref name="lists"/> plus the shortlist.
+    /// The shortlist is pulled from Sheets first when that's configured, so edits made on another
+    /// device show; if the pull fails the local copy is still a fine answer.
     /// </summary>
-    public static async Task<string?> ExportAnalyticsPdfAsync(string? destination = null)
+    public static async Task<AlbumAnalytics.Report> BuildInsightsReportAsync(AllLists lists)
     {
-        Console.WriteLine("\n=== Export Analytics to PDF ===\n");
-
-        var session = await OpenRatingSessionAsync();
-        if (session is null) return null;
-
-        var rated = session.AllAlbums.Where(a => AlbumAnalytics.ScoreFor(a.Rating) is not null).ToList();
-        var summary = AlbumAnalytics.Summarize(session.AllAlbums);
-
-        var repo = CandidateRepository.Create();
         try
         {
-            var remote = await repo.PullAsync();
+            var remote = await CandidateRepository.Create().PullAsync();
             if (remote is { Count: > 0 }) ReplacementCandidates.Save(remote);
         }
         catch { /* local cache is still a fine fallback */ }
-        var candidates = ReplacementCandidates.Load();
-        int pending = candidates.Count(c => c.Status == CandidateStatus.Pending);
+
+        return AlbumAnalytics.BuildReport(
+            lists.Master, lists.MustHear.Count, lists.Replacements, ReplacementCandidates.Load());
+    }
+
+    /// <summary>
+    /// The Insights page as a PDF of its own — the 1001, your additions and the shortlist.
+    /// Returns the file path, or null if it couldn't be produced.
+    /// </summary>
+    public static async Task<string?> ExportAnalyticsPdfAsync(string? destination = null)
+    {
+        Console.WriteLine("\n=== Export Insights to PDF ===\n");
+
+        var lists = await LoadAllListsAsync();
+        if (lists.Error is not null)
+        {
+            Console.WriteLine($"✗ {lists.Error}");
+            return null;
+        }
+        if (lists.CachedAt is { } cachedAt)
+            Console.WriteLine($"⚠️  Couldn't reach the sheet — using the lists as they were at {cachedAt:MMM d, h:mm tt}.");
+        var report = await BuildInsightsReportAsync(lists);
 
         string path = destination ?? Path.Combine(
             OutputDir, $"Taste Patterns Report - {DateTime.Now:yyyy-MM-dd}.pdf");
@@ -767,15 +790,7 @@ public static class Operations
 
         try
         {
-            AnalyticsPdfExporter.Write(
-                path, summary,
-                AlbumAnalytics.DecadeBreakdown(rated),
-                AlbumAnalytics.GenreBreakdown(rated),
-                AlbumAnalytics.RatingDistribution(rated),
-                AlbumAnalytics.BestGenres(rated),
-                pending,
-                AlbumAnalytics.CandidateDecadeBreakdown(candidates),
-                AlbumAnalytics.CandidateGenreBreakdown(candidates));
+            AnalyticsPdfExporter.Write(path, report);
             Console.WriteLine($"✓ Wrote the taste patterns report to:\n   {path}");
             return path;
         }

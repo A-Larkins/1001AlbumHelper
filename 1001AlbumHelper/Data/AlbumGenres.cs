@@ -74,8 +74,8 @@ public static class AlbumGenres
 
     /// <summary>
     /// The genre the artist's other albums on the lists most often lead with, or null if none of
-    /// theirs has one. Only the first-listed tag counts — it's the primary one (see
-    /// <see cref="AlbumAnalytics.BestGenres"/>) — and only an exact artist match, since borrowing a
+    /// theirs has one. Only the first-listed tag counts — a Discogs string leads with its most
+    /// specific style (see <see cref="AlbumAnalytics.GenresOf"/>) — and only an exact artist match, since borrowing a
     /// genre from the wrong act is worse than leaving it blank.
     /// </summary>
     public static string? FromArtist(IEnumerable<(string Artist, string Genre)> known, string artist) =>

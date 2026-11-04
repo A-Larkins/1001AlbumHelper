@@ -311,6 +311,35 @@ public class AppleMusicCatalogTests
         Assert.Null(AppleMusicCatalog.FindBestMatch(albums, "Method Man", "Tical"));
     }
 
+    /// <summary>
+    /// iTunes's /search for "America Homecoming" returns America's own record first and "The
+    /// Homecoming" by Midnight in America second. The two credits share "america", and the other
+    /// one has fewer tracks — so without preferring the exact name, it won.
+    /// </summary>
+    [Fact]
+    public void The_artists_own_name_beats_a_credit_that_shares_a_word_with_it()
+    {
+        var albums = new List<AppleMusicAlbum>
+        {
+            Album(1, "Homecoming", 10, "America"),
+            Album(2, "The Homecoming", 7, "Midnight in America"),
+        };
+
+        Assert.Equal(1, AppleMusicCatalog.FindBestMatch(albums, "America", "Homecoming")!.CollectionId);
+    }
+
+    [Fact]
+    public void A_shared_word_still_counts_when_no_credit_matches_exactly()
+    {
+        var albums = new List<AppleMusicAlbum>
+        {
+            Album(1, "King of America", 15, "The Costello Show"),
+            Album(2, "King of America", 12, "Someone Else Entirely"),
+        };
+
+        Assert.Equal(1, AppleMusicCatalog.FindBestMatch(albums, "Elvis Costello", "King of America")!.CollectionId);
+    }
+
     [Fact]
     public void A_subtitle_after_a_colon_can_stand_in_when_nothing_else_matches()
     {
