@@ -3,20 +3,20 @@ using Microsoft.Extensions.Configuration;
 namespace _1001AlbumHelper;
 
 /// <summary>
-/// Reads config/secret files the same way everywhere: the copy next to the executable, then the
-/// live copy in the data folder (so editing it takes effect without a rebuild), then — for mobile,
-/// which has neither a data folder nor a writable bundle — the copy baked into the assembly as an
-/// embedded resource (see the shared project's .csproj).
+/// Reads config/secret files the same way everywhere. The copy baked into the assembly at build
+/// time (see the shared project's .csproj) is the base — it's what makes the installed app work with
+/// nothing on disk — and a copy in the data folder, if there is one, overrides it, so a setting can
+/// be changed without a rebuild.
 /// </summary>
 public static class EmbeddedConfig
 {
     /// <summary>Layered JSON config (e.g. "appsettings.json").</summary>
     public static IConfigurationRoot Load(string fileName)
     {
-        var builder = new ConfigurationBuilder()
-            .AddJsonFile(Path.Combine(AppContext.BaseDirectory, fileName), optional: true)
-            .AddJsonFile(Path.Combine(Operations.ProjectDir, fileName), optional: true);
+        // Later sources win: built-in first, then the data folder's copy.
+        var builder = new ConfigurationBuilder();
         if (ReadEmbeddedStream(fileName) is { } stream) builder.AddJsonStream(stream);
+        builder.AddJsonFile(Path.Combine(Operations.ProjectDir, fileName), optional: true);
         return builder.Build();
     }
 

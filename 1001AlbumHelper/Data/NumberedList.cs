@@ -87,7 +87,7 @@ public static class NumberedList
         var contents = await ReadAsync(writer, tab);
         var (newSheetRow, position) = PlaceByYear(contents, year);
 
-        // Copy formatting from a neighbouring *data* row so the new row matches the list. Prefer
+        // Copy formatting from a neighboring *data* row so the new row matches the list. Prefer
         // the row above, unless we're inserting at the very top — in which case the row above is
         // the header, and we take the row below (which the insert shifts down by one) instead.
         int? formatSource = newSheetRow > contents.HeaderRow + 1

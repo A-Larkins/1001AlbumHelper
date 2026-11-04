@@ -9,43 +9,28 @@ namespace _1001AlbumHelper;
 /// </summary>
 public static class Operations
 {
-    // The folder that holds input/ and output/. Resolved so it works both when run via
-    // `dotnet run` (bin/<config>/<tfm>/ -> project dir) and from a packaged .app bundle.
+    /// <summary>
+    /// Where the app keeps its own data: the shortlist's local copy, the playlists, cover art, and
+    /// any settings that override the ones built in. It's the standard per-user folder —
+    /// ~/Library/Application Support/1001AlbumHelper on the Mac — so the installed app needs nothing
+    /// from the source checkout it was built from. (It used to be the project folder itself, found by
+    /// walking up from the executable, which meant moving or cleaning the checkout broke the app.)
+    /// <c>ALBUMHELPER_DATA_DIR</c> overrides it, for tests and diagnostics.
+    /// </summary>
     public static string ProjectDir { get; } = ResolveDataDir();
 
     public static string InputDir => Path.Combine(ProjectDir, "input");
-    public static string OutputDir => Path.Combine(ProjectDir, "output");
+
+    /// <summary>Where exports land: a folder in Documents, so the finished PDF is somewhere you'd look.</summary>
+    public static string OutputDir => Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "1001 Albums Helper");
 
     private static string ResolveDataDir()
     {
-        // Explicit override wins (the .app launcher sets this).
         var env = Environment.GetEnvironmentVariable("ALBUMHELPER_DATA_DIR");
         if (!string.IsNullOrWhiteSpace(env) && Directory.Exists(env))
             return Path.GetFullPath(env);
-
-        // Otherwise walk up from the executable looking for the project/data folder.
-        // Markers: the .csproj (dev runs) or an existing input/ folder (a packaged app with
-        // data placed beside it). We deliberately do NOT key on output/, since the app
-        // creates that itself and it would make resolution circular.
-        var dir = AppContext.BaseDirectory;
-        for (int i = 0; i < 8 && !string.IsNullOrEmpty(dir); i++)
-        {
-            try
-            {
-                if (Directory.Exists(Path.Combine(dir, "input"))
-                    || Directory.EnumerateFiles(dir, "*.csproj").Any())
-                    return dir;
-            }
-            // On a sandboxed platform (iOS) enumerating a parent directory is "Operation not
-            // permitted" — stop walking rather than letting it kill this whole type initializer,
-            // which any code that touches Operations would then trip over.
-            catch (IOException) { break; }
-            catch (UnauthorizedAccessException) { break; }
-
-            dir = Path.GetDirectoryName(dir.TrimEnd(Path.DirectorySeparatorChar));
-        }
-
-        return AppContext.BaseDirectory;
+        return PlaylistStore.DataDir;
     }
 
     public const string RatedListFile = "1001 Albums You Must Hear Before You Die - 1001 albums.csv";
@@ -268,7 +253,7 @@ public static class Operations
         }
         catch (Google.GoogleApiException ex) when (ex.HttpStatusCode == System.Net.HttpStatusCode.Forbidden)
         {
-            Console.WriteLine("✗ The signed-in Google account can't read this sheet. Check that it owns or is shared on it.");
+            Console.WriteLine("✗ The service account can't read this sheet — share the spreadsheet with its email as Editor.");
         }
         catch (Google.GoogleApiException ex) when (ex.HttpStatusCode == System.Net.HttpStatusCode.NotFound)
         {
@@ -276,36 +261,37 @@ public static class Operations
         }
     }
 
-    private static async Task<GoogleSheetsWriter?> CreateWriterAsync(GoogleSheetsConfig cfg)
+    private static Task<GoogleSheetsWriter?> CreateWriterAsync(GoogleSheetsConfig cfg)
+    {
+        var (writer, problem) = CreateWriter(cfg);
+        if (problem is not null) Console.WriteLine(problem);
+        return Task.FromResult(writer);
+    }
+
+    /// <summary>Connects without the console output, for the startup check and the playlist page.</summary>
+    private static Task<GoogleSheetsWriter?> CreateWriterQuietlyAsync(GoogleSheetsConfig cfg) =>
+        Task.FromResult(CreateWriter(cfg).Writer);
+
+    /// <summary>
+    /// A Sheets client signed in as the service account, or why there isn't one. The key comes from
+    /// the data folder if a copy is there, else the one built into the app.
+    /// </summary>
+    private static (GoogleSheetsWriter? Writer, string? Problem) CreateWriter(GoogleSheetsConfig cfg)
     {
         if (string.IsNullOrWhiteSpace(cfg.SpreadsheetId) || cfg.SpreadsheetId.StartsWith("PUT_"))
-        {
-            Console.WriteLine("⚠️  Google Sheets isn't configured yet.");
-            Console.WriteLine("   Set \"GoogleSheets:SpreadsheetId\" in appsettings.json to your test sheet's ID.");
-            return null;
-        }
+            return (null, "⚠️  Google Sheets isn't configured: set \"GoogleSheets:SpreadsheetId\" in appsettings.json.");
 
-        string credPath = Path.Combine(ProjectDir, cfg.CredentialsFile);
-        if (!File.Exists(credPath))
-        {
-            Console.WriteLine("⚠️  Google OAuth credentials were not found at:");
-            Console.WriteLine($"     {credPath}");
-            Console.WriteLine("   Download an OAuth 'Desktop app' credentials.json from Google Cloud and place it there.");
-            return null;
-        }
-
-        Console.WriteLine("Authenticating with Google… (a browser window opens the first time — sign in and approve).");
+        string? key = EmbeddedConfig.ReadFileOrEmbedded(cfg.ServiceAccountKeyFile);
+        if (string.IsNullOrWhiteSpace(key))
+            return (null, $"⚠️  No service-account key ({cfg.ServiceAccountKeyFile}) — it's built into the app "
+                          + $"from the project folder, or can be put in {ProjectDir}.");
         try
         {
-            var writer = await GoogleSheetsWriter.CreateAsync(
-                cfg.SpreadsheetId, credPath, Path.Combine(ProjectDir, ".google-sheets-token"));
-            Console.WriteLine("✓ Authenticated with Google.");
-            return writer;
+            return (GoogleSheetsWriter.CreateWithServiceAccount(cfg.SpreadsheetId, key), null);
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"✗ Google authentication failed: {ex.Message}");
-            return null;
+            return (null, $"✗ Couldn't connect to Google Sheets: {ex.Message}");
         }
     }
 
@@ -327,8 +313,8 @@ public static class Operations
         }
         catch (Google.GoogleApiException ex) when (ex.HttpStatusCode == System.Net.HttpStatusCode.Forbidden)
         {
-            Console.WriteLine("✗ The signed-in Google account doesn't have permission to edit this sheet.");
-            Console.WriteLine("   Share the sheet as Editor with the account you approved, or use a sheet that account owns.");
+            Console.WriteLine("✗ The service account doesn't have permission to edit this sheet.");
+            Console.WriteLine("   Share the spreadsheet with its email (in service-account.json) as Editor.");
         }
         catch (Google.GoogleApiException ex) when (ex.HttpStatusCode == System.Net.HttpStatusCode.NotFound)
         {
@@ -340,22 +326,20 @@ public static class Operations
         }
     }
 
+    /// <summary>
+    /// The sheet's settings: the copy built into the app, overridden by an appsettings.json in the
+    /// data folder if there is one (see <see cref="EmbeddedConfig"/>).
+    /// </summary>
     private static GoogleSheetsConfig LoadSheetsConfig()
     {
-        // Read the copy next to the executable first, then let the live copy in the data
-        // folder override it — so editing appsettings.json takes effect without a rebuild
-        // (matters for the packaged .app, whose baked-in copy would otherwise be stale).
-        var config = new ConfigurationBuilder()
-            .AddJsonFile(Path.Combine(AppContext.BaseDirectory, "appsettings.json"), optional: true)
-            .AddJsonFile(Path.Combine(ProjectDir, "appsettings.json"), optional: true)
-            .Build();
+        var config = EmbeddedConfig.Load("appsettings.json");
 
         return new GoogleSheetsConfig(
             SpreadsheetId: config["GoogleSheets:SpreadsheetId"] ?? "",
             StarredTab: config["GoogleSheets:StarredTab"] ?? "Must Hear",
             ReplacementsTab: config["GoogleSheets:ReplacementsTab"] ?? "Replacements",
             AlbumsTab: config["GoogleSheets:AlbumsTab"] ?? "1001 albums",
-            CredentialsFile: config["GoogleSheets:CredentialsFile"] ?? "credentials.json");
+            ServiceAccountKeyFile: config["GoogleSheets:ServiceAccountKeyFile"] ?? "service-account.json");
     }
 
     /// <summary>
@@ -389,12 +373,14 @@ public static class Operations
 
     /// <summary>
     /// Fills in column F (Genre) on the master list for every rated album that doesn't have one
-    /// yet, via Discogs lookups. Resumable — already-filled rows are skipped by default, so
-    /// re-running only costs a request per still-blank row (e.g. newly rated albums since the
+    /// yet — from Discogs, then Apple Music, then the artist's other albums (see
+    /// <see cref="AlbumGenres"/>). Resumable — already-filled rows are skipped by default, so
+    /// re-running only costs a lookup per still-blank row (e.g. newly rated albums since the
     /// last run). Pass <paramref name="force"/> to re-fetch every rated row regardless — e.g.
-    /// after a change to what <see cref="DiscogsApiClient"/> extracts as "genre".
+    /// after a change to what <see cref="DiscogsApiClient"/> extracts as "genre". Pass
+    /// <paramref name="dryRun"/> to print what would be filled in without writing it.
     /// </summary>
-    public static async Task BackfillGenresAsync(bool force = false)
+    public static async Task BackfillGenresAsync(bool force = false, bool dryRun = false)
     {
         var cfg = LoadSheetsConfig();
         var writer = await CreateWriterAsync(cfg);
@@ -418,6 +404,7 @@ public static class Operations
             ? $"{targets.Count} rated album(s) — re-fetching all (--force).\n"
             : $"{targets.Count} rated album(s) still need a genre.\n");
 
+        var known = session.AllAlbums.Where(a => a.Genre.Length > 0).Select(a => (a.Artist, a.Genre)).ToList();
         int found = 0, missed = 0;
         for (int i = 0; i < targets.Count; i++)
         {
@@ -448,15 +435,23 @@ public static class Operations
                 }
             }
 
-            if (suggestion is not null && suggestion.Genre.Length > 0)
+            var genre = await AlbumGenres.FindAsync(album.Title, album.Artist, null, known,
+                                                    discogsGenre: suggestion?.Genre);
+            if (genre is { } g)
             {
-                await writer.UpdateCellAsync(cfg.AlbumsTab, $"F{album.SheetRow}", suggestion.Genre);
-                Console.WriteLine(suggestion.Genre);
+                if (!dryRun) await writer.UpdateCellAsync(cfg.AlbumsTab, $"F{album.SheetRow}", g.Genre);
+                string from = g.From switch
+                {
+                    AlbumGenres.Source.Discogs => "Discogs",
+                    AlbumGenres.Source.AppleMusic => "Apple Music",
+                    _ => "the artist's other albums",
+                };
+                Console.WriteLine($"{g.Genre}  (from {from}{(dryRun ? ", not written" : "")})");
                 found++;
             }
             else
             {
-                Console.WriteLine("not found — skipped");
+                Console.WriteLine("no source knows it — left blank");
                 missed++;
             }
 
@@ -465,7 +460,9 @@ public static class Operations
             if (i < targets.Count - 1) await Task.Delay(TimeSpan.FromMilliseconds(1500));
         }
 
-        Console.WriteLine($"\n✓ Done. {found} filled in, {missed} not found on Discogs.");
+        Console.WriteLine(dryRun
+            ? $"\n✓ Dry run: {found} would be filled in, {missed} still unknown. Nothing was written."
+            : $"\n✓ Done. {found} filled in, {missed} still unknown.");
     }
 
     /// <summary>What a sync would have to fix. All counts come from a read-only pass.</summary>
@@ -632,11 +629,16 @@ public static class Operations
     }
 
     /// <summary>All three lists as read from the sheet, for read-only consumers.</summary>
+    /// <param name="CachedAt">
+    /// Set when these are the saved copy from an earlier read — the sheet couldn't be reached — so
+    /// callers can say the lists may be out of date. Null for a live read.
+    /// </param>
     public sealed record AllLists(
         IReadOnlyList<AlbumEntry> Master,
         IReadOnlyList<NumberedList.Row> MustHear,
         IReadOnlyList<NumberedList.Row> Replacements,
-        string? Error = null);
+        string? Error = null,
+        DateTime? CachedAt = null);
 
     /// <summary>Reads every list in one pass. Read-only — nothing is written.</summary>
     public static async Task<AllLists> LoadAllListsAsync()
@@ -662,12 +664,40 @@ public static class Operations
             var master = await RatingSession.LoadAsync(writer, cfg.AlbumsTab, cfg.StarredTab);
             var mustHear = await NumberedList.ReadAsync(writer, cfg.StarredTab);
             var replacements = await NumberedList.ReadAsync(writer, cfg.ReplacementsTab);
-            return new AllLists(master.AllAlbums, mustHear.Rows, replacements.Rows);
+            var lists = new AllLists(master.AllAlbums, mustHear.Rows, replacements.Rows);
+            SaveListsSnapshot(lists);
+            return lists;
         }
         catch (Exception ex)
         {
-            return new AllLists(noAlbums, noRows, noRows, $"Couldn't read the lists: {ex.Message}");
+            // Offline, or the sheet didn't answer: the last good read, marked as such, beats nothing.
+            return LoadListsSnapshot() is { } cached
+                ? cached
+                : new AllLists(noAlbums, noRows, noRows, $"Couldn't read the lists: {ex.Message}");
         }
+    }
+
+    /// <summary>The last good read of the lists, kept so Browse and Export still work offline.</summary>
+    private static string ListsSnapshotPath => Path.Combine(ProjectDir, "lists-snapshot.json");
+
+    private static void SaveListsSnapshot(AllLists lists)
+    {
+        try
+        {
+            File.WriteAllText(ListsSnapshotPath, System.Text.Json.JsonSerializer.Serialize(lists with { CachedAt = DateTime.Now }));
+        }
+        catch { /* a cache that can't be written just means no offline fallback */ }
+    }
+
+    private static AllLists? LoadListsSnapshot()
+    {
+        try
+        {
+            return File.Exists(ListsSnapshotPath)
+                ? System.Text.Json.JsonSerializer.Deserialize<AllLists>(File.ReadAllText(ListsSnapshotPath))
+                : null;
+        }
+        catch { return null; }
     }
 
     /// <summary>
@@ -679,6 +709,8 @@ public static class Operations
         Console.WriteLine("\n=== Export to PDF ===\n");
 
         var lists = await LoadAllListsAsync();
+        if (lists.CachedAt is { } cachedAt)
+            Console.WriteLine($"⚠️  Couldn't reach the sheet — exporting the lists as they were at {cachedAt:MMM d, h:mm tt}.");
         if (lists.Error is not null)
         {
             Console.WriteLine($"✗ {lists.Error}");
@@ -849,7 +881,7 @@ public static class Operations
     }
 
     /// <summary>
-    /// The desktop's way in: builds its own OAuth writer and reads the tab names from appsettings,
+    /// The desktop's way in: builds its own Sheets client and reads the tab names from appsettings,
     /// so the Mac's playlist window can call this with just the album.
     /// </summary>
     public static async Task<PlaylistKeepResult> KeepFromPlaylistAsync(
@@ -876,7 +908,7 @@ public static class Operations
     /// </para>
     /// <para>
     /// This is not cosmetic — it is what makes the backfill converge. Without it an album the
-    /// backfill had just favourited read as still missing on the next run, so every run redid the
+    /// backfill had just favorited read as still missing on the next run, so every run redid the
     /// same work and pushed the same albums into the playlist again; Apple Music has no remove, so
     /// those duplicate tracks stay. It is the same blind spot the Music-app search had, at the other
     /// end of the same round trip (see MusicAppPlaylistWriter.SearchTerms).
@@ -1017,7 +1049,7 @@ public static class Operations
             : $"⚠ Couldn't drop “{title}” from the shortlist — {problem}";
     }
 
-    // ---------- Apple Music favourites ----------
+    // ---------- Apple Music favorites ----------
 
     /// <summary>One album off the lists, with what Apple Music is missing for it.</summary>
     public sealed record FavoritesBackfillItem(PlaylistEntry Album, bool NeedsFavorite, bool NeedsPlaylist)
@@ -1026,8 +1058,8 @@ public static class Operations
 
         /// <summary>What the backfill would do to this album, for a log line.</summary>
         public string Intent => NeedsNothing ? "nothing to do"
-            : NeedsFavorite && NeedsPlaylist ? "favourite + playlist"
-            : NeedsFavorite ? "favourite"
+            : NeedsFavorite && NeedsPlaylist ? "favorite + playlist"
+            : NeedsFavorite ? "favorite"
             : "playlist";
     }
 
@@ -1036,8 +1068,8 @@ public static class Operations
     /// Read-only — <see cref="PlanFavoritesBackfillAsync"/> produces it, the backfill acts on it, and
     /// the <c>favtest</c> rehearsal prints it and stops.
     /// </summary>
-    /// <param name="FavoritedInLibrary">How many favourited albums Apple Music holds in total.</param>
-    /// <param name="InPlaylist">How many albums the favourites playlist holds.</param>
+    /// <param name="FavoritedInLibrary">How many favorited albums Apple Music holds in total.</param>
+    /// <param name="InPlaylist">How many albums the favorites playlist holds.</param>
     public sealed record FavoritesBackfillPlan(
         IReadOnlyList<FavoritesBackfillItem> Items,
         int FavoritedInLibrary,
@@ -1057,17 +1089,17 @@ public static class Operations
             Items.Where(i => !i.NeedsNothing).ToList();
 
         public string Summary =>
-            $"{Considered} albums on the lists · {AlreadyFavorited} already favourited · "
-            + $"{ToFavorite} to favourite · {ToAddToPlaylist} to add to “{AppleMusic.FavoritesPlaylistName}”";
+            $"{Considered} albums on the lists · {AlreadyFavorited} already favorited · "
+            + $"{ToFavorite} to favorite · {ToAddToPlaylist} to add to “{AppleMusic.FavoritesPlaylistName}”";
     }
 
     /// <summary>
-    /// Works out what the favourites backfill would have to do, writing nothing. Reads the two lists
-    /// off Google Sheets, reads every favourited album and the favourites playlist out of Apple
+    /// Works out what the favorites backfill would have to do, writing nothing. Reads the two lists
+    /// off Google Sheets, reads every favorited album and the favorites playlist out of Apple
     /// Music, and pairs them up.
     /// <para>
     /// The two halves are checked separately and independently. An album can perfectly well be
-    /// favourited but missing from the playlist — that is what a hand-kept duplicate list drifts
+    /// favorited but missing from the playlist — that is what a hand-kept duplicate list drifts
     /// into — and each gap is decided on its own.
     /// </para>
     /// </summary>
@@ -1075,7 +1107,7 @@ public static class Operations
     {
         if (!AppleMusic.CanFavorite)
             return FavoritesBackfillPlan.Failed(AppleMusic.IsAvailable
-                ? "This platform can add to a playlist but can't set favourites — see PROJECT.md §5."
+                ? "This platform can add to a playlist but can't set favorites — see PROJECT.md §5."
                 : "The Music app isn't available on this platform.");
         var writer = AppleMusic.Writer!;
 
@@ -1111,31 +1143,31 @@ public static class Operations
         return new FavoritesBackfillPlan(items, favorited.Count, inPlaylist.Count);
     }
 
-    /// <summary>What one run of the favourites backfill actually did.</summary>
-    /// <param name="Favorited">Albums this run marked as favourites.</param>
-    /// <param name="AddedToPlaylist">Albums this run put in the favourites playlist.</param>
+    /// <summary>What one run of the favorites backfill actually did.</summary>
+    /// <param name="Favorited">Albums this run marked as favorites.</param>
+    /// <param name="AddedToPlaylist">Albums this run put in the favorites playlist.</param>
     /// <param name="Failures">One line per album that couldn't be marked or added, and why.</param>
     public sealed record FavoritesBackfillResult(
         FavoritesBackfillPlan Plan, int Favorited, int AddedToPlaylist, IReadOnlyList<string> Failures)
     {
         public string Summary =>
-            $"{Plan.Considered} albums on the lists · {Plan.AlreadyFavorited} already favourited · "
-            + $"{Favorited} newly favourited · {AddedToPlaylist} added to “{AppleMusic.FavoritesPlaylistName}”"
+            $"{Plan.Considered} albums on the lists · {Plan.AlreadyFavorited} already favorited · "
+            + $"{Favorited} newly favorited · {AddedToPlaylist} added to “{AppleMusic.FavoritesPlaylistName}”"
             + (Failures.Count > 0 ? $" · {Failures.Count} couldn't be done" : "");
     }
 
     /// <summary>
     /// Puts a heart on every album of the finished list — the ⭐ picks kept from the 1001 plus the
     /// replacements — that Apple Music doesn't already have one on, and mirrors the same albums into
-    /// the favourites playlist. A backfill: it works over a list that mostly already agrees with
+    /// the favorites playlist. A backfill: it works over a list that mostly already agrees with
     /// Apple Music, and touches only where the two differ.
     /// <para>
     /// Mac only. Apple's MediaPlayer framework on the phone can read a playlist and add to it but
-    /// exposes no favourite at all — the same Swift-only MusicKit wall the missing remove API runs
+    /// exposes no favorite at all — the same Swift-only MusicKit wall the missing remove API runs
     /// into (PROJECT.md §5) — so the phone says so rather than half-doing it.
     /// </para>
     /// <para>
-    /// Idempotent, and safe to interrupt: it only ever sets a favourite on, never off, and it works
+    /// Idempotent, and safe to interrupt: it only ever sets a favorite on, never off, and it works
     /// from a plan read fresh from Apple Music each run, so a second run after an interrupted one
     /// carries on from where the first stopped.
     /// </para>
@@ -1149,13 +1181,13 @@ public static class Operations
     {
         void Say(string line) { Console.WriteLine(line); progress?.Invoke(line); }
 
-        Console.WriteLine("\n=== Backfill Apple Music favourites ===\n");
+        Console.WriteLine("\n=== Backfill Apple Music favorites ===\n");
         Say("Reading the lists, and what Apple Music already has…");
 
         var plan = await PlanFavoritesBackfillAsync();
         if (plan.Error is not null) { Say($"✗ {plan.Error}"); return null; }
 
-        Say($"Apple Music holds {plan.FavoritedInLibrary} favourited albums and {plan.InPlaylist} "
+        Say($"Apple Music holds {plan.FavoritedInLibrary} favorited albums and {plan.InPlaylist} "
             + $"in “{AppleMusic.FavoritesPlaylistName}”. {plan.Summary}");
 
         var work = plan.Work;
@@ -1173,7 +1205,7 @@ public static class Operations
             var (album, needsFavorite, needsPlaylist) = work[i];
             Say($"[{i + 1}/{work.Count}] {album.Title} — {album.Artist} · {work[i].Intent}");
 
-            // Favourite first: it also warms the writer's one-deep search memo, so the playlist add
+            // Favorite first: it also warms the writer's one-deep search memo, so the playlist add
             // that follows doesn't search the library for the same album all over again.
             if (needsFavorite)
             {
@@ -1194,18 +1226,6 @@ public static class Operations
         Say($"✓ {summary.Summary}");
         foreach (var failure in failures) Say($"   ✗ {failure}");
         return summary;
-    }
-
-    /// <summary>Authenticates without the chatty console output, for the startup check.</summary>
-    private static async Task<GoogleSheetsWriter?> CreateWriterQuietlyAsync(GoogleSheetsConfig cfg)
-    {
-        if (string.IsNullOrWhiteSpace(cfg.SpreadsheetId) || cfg.SpreadsheetId.StartsWith("PUT_"))
-            return null;
-        string credPath = Path.Combine(ProjectDir, cfg.CredentialsFile);
-        if (!File.Exists(credPath)) return null;
-
-        return await GoogleSheetsWriter.CreateAsync(
-            cfg.SpreadsheetId, credPath, Path.Combine(ProjectDir, ".google-sheets-token"));
     }
 
     /// <summary>How an attempt to add a replacement album turned out.</summary>
@@ -1247,7 +1267,7 @@ public static class Operations
     /// <inheritdoc cref="AddReplacementAlbumAsync(string, string, int)"/>
     /// <para>
     /// Takes the client and tab names outright so the phone can call it too: mobile reaches the same
-    /// spreadsheet over REST (<see cref="RestSheetsClient"/>) rather than the desktop's OAuth writer,
+    /// spreadsheet over REST (<see cref="RestSheetsClient"/>) rather than the desktop's Google.Apis client,
     /// and reads its config from the embedded copy — see <see cref="EmbeddedConfig"/>.
     /// </para>
     /// </summary>
@@ -1347,5 +1367,5 @@ public static class Operations
     }
 
     private sealed record GoogleSheetsConfig(
-        string SpreadsheetId, string StarredTab, string ReplacementsTab, string AlbumsTab, string CredentialsFile);
+        string SpreadsheetId, string StarredTab, string ReplacementsTab, string AlbumsTab, string ServiceAccountKeyFile);
 }

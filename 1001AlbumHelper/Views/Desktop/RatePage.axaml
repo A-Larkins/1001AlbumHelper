@@ -29,8 +29,8 @@
     <Style Selector="Button.rate">
       <Setter Property="HorizontalAlignment" Value="Stretch" />
       <Setter Property="HorizontalContentAlignment" Value="Center" />
-      <Setter Property="Padding" Value="8,14" />
-      <Setter Property="CornerRadius" Value="12" />
+      <Setter Property="Padding" Value="8,12" />
+      <Setter Property="CornerRadius" Value="14" />
       <Setter Property="Background" Value="#241d18" />
       <Setter Property="BorderBrush" Value="#3a2e25" />
       <Setter Property="BorderThickness" Value="1" />
@@ -44,18 +44,18 @@
       <Setter Property="Opacity" Value="0.4" />
     </Style>
     <Style Selector="Button.rate TextBlock.sym">
-      <Setter Property="FontSize" Value="26" />
+      <Setter Property="FontSize" Value="30" />
       <Setter Property="HorizontalAlignment" Value="Center" />
     </Style>
     <Style Selector="Button.rate TextBlock.lbl">
-      <Setter Property="FontSize" Value="11" />
+      <Setter Property="FontSize" Value="13" />
       <Setter Property="Foreground" Value="#c0ad97" />
       <Setter Property="TextAlignment" Value="Center" />
       <Setter Property="TextWrapping" Value="Wrap" />
       <Setter Property="Margin" Value="0,6,0,0" />
     </Style>
     <Style Selector="Button.rate TextBlock.key">
-      <Setter Property="FontSize" Value="10" />
+      <Setter Property="FontSize" Value="11" />
       <Setter Property="Foreground" Value="#6d5f53" />
       <Setter Property="HorizontalAlignment" Value="Center" />
       <Setter Property="Margin" Value="0,5,0,0" />
@@ -115,40 +115,63 @@
     <Border Grid.Row="2" Height="1" Margin="0,0,0,16" Background="#3a2e25" />
 
     <!-- The album -->
-    <Border Grid.Row="3" CornerRadius="14" Background="#141010" BorderBrush="#2a211b" BorderThickness="1"
-            Padding="20">
+    <Border Grid.Row="3" x:Name="AlbumCard" CornerRadius="16" Background="#141010" BorderBrush="#2a211b" BorderThickness="1"
+            ClipToBounds="True">
       <Panel>
-        <!-- Album card -->
-        <StackPanel x:Name="AlbumPanel" VerticalAlignment="Center" Spacing="0">
-          <TextBlock x:Name="PositionText" Text="" FontSize="12" Foreground="#8a7a6c"
-                     HorizontalAlignment="Center" />
+        <!-- The cover again, blurred and dimmed right down, as the card's backdrop — the album's own
+             colors behind it rather than a flat panel. Hidden until there's art. -->
+        <Image x:Name="Backdrop" Stretch="UniformToFill" Opacity="0.32" IsVisible="False" IsHitTestVisible="False">
+          <Image.Effect><BlurEffect Radius="70" /></Image.Effect>
+        </Image>
+        <Border IsHitTestVisible="False">
+          <Border.Background>
+            <LinearGradientBrush StartPoint="50%,0%" EndPoint="50%,100%">
+              <GradientStop Color="#55141010" Offset="0" />
+              <GradientStop Color="#CC141010" Offset="1" />
+            </LinearGradientBrush>
+          </Border.Background>
+        </Border>
+
+      <Panel Margin="16">
+        <!-- Album card: the cover, then the words under it, centered. The cover's size is set in
+             code to fill the card (see SizeArt). -->
+        <StackPanel x:Name="AlbumPanel" HorizontalAlignment="Center" VerticalAlignment="Center">
 
           <!-- Cover art. The sleeve placeholder shows while the lookup runs and stays put when an
                album has no art, so the card never jumps between two heights. -->
-          <Border Width="170" Height="170" CornerRadius="10" ClipToBounds="True"
-                  Background="#1b1512" BorderBrush="#33281f" BorderThickness="1"
-                  HorizontalAlignment="Center" Margin="0,14,0,0">
+          <Border x:Name="ArtFrame" Width="170" Height="170"
+                  CornerRadius="18" ClipToBounds="True"
+                  Background="#1b1512" BorderBrush="#40332a" BorderThickness="1"
+                  BoxShadow="0 20 60 0 #C0000000"
+                  HorizontalAlignment="Center">
             <Panel>
-              <TextBlock x:Name="ArtPlaceholder" Text="♫" FontSize="46" Foreground="#40342a"
+              <TextBlock x:Name="ArtPlaceholder" Text="♫" FontSize="80" Foreground="#40342a"
                          HorizontalAlignment="Center" VerticalAlignment="Center" />
               <Image x:Name="ArtImage" Stretch="UniformToFill" IsVisible="False" />
             </Panel>
           </Border>
-          <TextBlock x:Name="TitleText" Text="" FontSize="27" FontWeight="Bold" Foreground="#f3e9df"
-                     TextWrapping="Wrap" TextAlignment="Center" Margin="0,12,0,0" />
-          <TextBlock x:Name="ArtistText" Text="" FontSize="17" Foreground="#e0b479"
-                     TextWrapping="Wrap" TextAlignment="Center" Margin="0,8,0,0" />
-          <TextBlock x:Name="YearText" Text="" FontSize="14" Foreground="#9c8b7c"
-                     HorizontalAlignment="Center" Margin="0,8,0,0" />
-          <!-- Only shown for an album that already has a rating — otherwise there's nothing to say. -->
-          <TextBlock x:Name="CurrentRatingText" Text="" FontSize="13" Foreground="#e0b479"
-                     HorizontalAlignment="Center" Margin="0,8,0,0" IsVisible="False" />
+
+          <StackPanel x:Name="InfoPanel" Margin="0,18,0,0" HorizontalAlignment="Center">
+            <TextBlock x:Name="TitleText" Text="" FontSize="40" FontWeight="Bold" Foreground="#f3e9df"
+                       TextWrapping="Wrap" TextAlignment="Center" HorizontalAlignment="Center" />
+            <TextBlock x:Name="ArtistText" Text="" FontSize="24" Foreground="#e0b479"
+                       TextWrapping="Wrap" TextAlignment="Center" HorizontalAlignment="Center" Margin="0,4,0,0" />
+            <TextBlock x:Name="YearText" Text="" FontSize="18" Foreground="#9c8b7c"
+                       HorizontalAlignment="Center" Margin="0,4,0,0" />
+            <TextBlock x:Name="PositionText" Text="" FontSize="13" Foreground="#8a7a6c"
+                       HorizontalAlignment="Center" Margin="0,6,0,0" />
+            <!-- Only shown for an album that already has a rating — otherwise there's nothing to say. -->
+            <TextBlock x:Name="CurrentRatingText" Text="" FontSize="14" Foreground="#e0b479"
+                       TextWrapping="Wrap" TextAlignment="Center" HorizontalAlignment="Center"
+                       Margin="0,8,0,0" IsVisible="False" />
+          </StackPanel>
         </StackPanel>
 
         <!-- Shown while loading, and when a queue runs out -->
         <TextBlock x:Name="MessageText" Text="Loading…" FontSize="15" Foreground="#b3a394"
                    TextWrapping="Wrap" TextAlignment="Center"
                    HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="False" />
+      </Panel>
       </Panel>
     </Border>
 

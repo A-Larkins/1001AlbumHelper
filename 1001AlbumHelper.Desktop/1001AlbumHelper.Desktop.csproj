@@ -19,7 +19,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Avalonia.Desktop" Version="11.3.0" />
+    <PackageReference Include="Avalonia.Desktop" Version="11.3.22" />
     <!--
       Charting for the Analytics window. Lives here (not the shared library) so the iOS head,
       which also builds against the shared library, never has to link SkiaSharp-native charting —

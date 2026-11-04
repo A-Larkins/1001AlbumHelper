@@ -182,7 +182,7 @@ public class DiscogsApiClient
     /// <para>
     /// Loosening a search is only safe if the answer is checked, so every rung verifies what came
     /// back — see <see cref="TitlesLineUp"/> — and the last, which searches on title alone, also
-    /// requires the artist to be recognisable. Without that it would happily date your album from
+    /// requires the artist to be recognizable. Without that it would happily date your album from
     /// an unrelated record that happens to share its name.
     /// </para>
     /// </summary>
@@ -222,7 +222,7 @@ public class DiscogsApiClient
             ($"&q={t}", ByBoth),
         };
 
-        // A playlist names the pressing it holds; Discogs catalogues the album. When the two
+        // A playlist names the pressing it holds; Discogs catalogs the album. When the two
         // differ it's usually edition furniture, so ask again without it.
         string bare = BareTitle(title);
         if (!string.Equals(bare, title, StringComparison.Ordinal))
@@ -273,7 +273,7 @@ public class DiscogsApiClient
 
     /// <summary>
     /// Whether two titles are the same once case, punctuation and the "and"/"the" that come and go
-    /// between catalogues are set aside — no prefix allowance, unlike <see cref="TitlesLineUp"/>.
+    /// between catalogs are set aside — no prefix allowance, unlike <see cref="TitlesLineUp"/>.
     /// </summary>
     public static bool SameTitle(string a, string b)
     {
@@ -284,8 +284,8 @@ public class DiscogsApiClient
     /// <summary>
     /// A title reduced to the words that identify it.
     /// <para>
-    /// "and" and "the" come and go between catalogues — Discogs presses "Kirk Franklin &amp; The
-    /// Family" where a playlist writes "Kirk Franklin and the Family" — and normalising drops the
+    /// "and" and "the" come and go between catalogs — Discogs presses "Kirk Franklin &amp; The
+    /// Family" where a playlist writes "Kirk Franklin and the Family" — and normalizing drops the
     /// ampersand entirely, leaving a stray "and" to knock every later word out of step. Since they
     /// carry no identity, they go.
     /// </para>

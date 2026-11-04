@@ -53,12 +53,12 @@
               Content="💿  Playlist 1 · from the 1001" Click="OnPickPlaylist1" Margin="0,0,8,0" />
       <Button Grid.Column="1" x:Name="Playlist2Button" Classes="seg"
               Content="✨  Playlist 2 · recommended" Click="OnPickPlaylist2" />
-      <Button Grid.Column="3" x:Name="ImportButton" Classes="ghost" Content="Get from Music"
+      <Button Grid.Column="3" x:Name="ImportButton" Classes="ghost" Content="Get from Apple Music"
               Click="OnImportFromAppleMusic" Margin="0,0,8,0" VerticalAlignment="Center"
-              ToolTip.Tip="Make this list match the Music app playlist exactly. Anything here that isn't in that playlist is dropped." />
-      <Button Grid.Column="4" x:Name="PushButton" Classes="ghost" Content="Send new to Music"
+              ToolTip.Tip="Make this list match your Apple Music playlist exactly. Anything here that isn't in that playlist is dropped." />
+      <Button Grid.Column="4" x:Name="PushButton" Classes="ghost" Content="Send new to Apple Music"
               Click="OnPushToAppleMusic" VerticalAlignment="Center"
-              ToolTip.Tip="Add the albums marked “not sent yet” to the Music app playlist — the whole album, original release, never a deluxe edition." />
+              ToolTip.Tip="Add the albums marked “not sent yet” to your Apple Music playlist — the whole album, original release, never a deluxe edition." />
     </Grid>
 
     <!-- Status -->
@@ -89,7 +89,7 @@
                   <TextBlock DockPanel.Dock="Right" Text="{Binding PartialWarning}" FontSize="11"
                              Foreground="#d08a4a" Margin="7,0,0,0"
                              VerticalAlignment="Center" IsVisible="{Binding IsPartial}" />
-                  <!-- What "Send new to Music" will send. -->
+                  <!-- What "Send new to Apple Music" will send. -->
                   <TextBlock DockPanel.Dock="Right" Text="not sent yet" FontSize="11"
                              Foreground="#c9a35a" Margin="7,0,0,0"
                              VerticalAlignment="Center" IsVisible="{Binding !InAppleMusic}" />
@@ -114,7 +114,7 @@
                         ToolTip.Tip="Put this on the replacements list now, and mark it kept on the shortlist." />
                 <Button Grid.Column="5" Classes="ghost" Content="✕  Remove" Click="OnRemove"
                         HorizontalAlignment="Right" Padding="8,4" FontSize="11"
-                        ToolTip.Tip="Take this off the list and out of the Music playlist (your library keeps it). On Playlist 2 it's also dropped from the recommendations." />
+                        ToolTip.Tip="Take this off the list and out of the Apple Music playlist (your library keeps it). On Playlist 2 it's also dropped from the recommendations." />
               </Grid>
             </DataTemplate>
           </ListBox.ItemTemplate>
@@ -123,7 +123,7 @@
         <TextBlock x:Name="EmptyText" FontSize="14" Foreground="#a99884"
                    HorizontalAlignment="Center" VerticalAlignment="Center" TextWrapping="Wrap"
                    TextAlignment="Center" Margin="40" IsHitTestVisible="False" IsVisible="False"
-                   Text="Nothing queued here yet — add albums from Browse or Potential replacements, or bring in what the Music app playlist already has with “Get from Music”." />
+                   Text="Nothing queued here yet — add albums from Browse or Potential replacements, or bring in what the Music app playlist already has with “Get from Apple Music”." />
       </Panel>
     </Border>
 
@@ -136,7 +136,7 @@
                    Foreground="#e2a75f" />
         <TextBlock DockPanel.Dock="Top" FontSize="11" Foreground="#8b7969" TextWrapping="Wrap"
                    Margin="0,3,0,7"
-                   Text="You took these off the list, but the Music playlist still has them. “Remove from Music” takes each one out of the playlist (your library keeps it); if you've already deleted it by hand, it just clears the row." />
+                   Text="You took these off the list, but your Apple Music playlist still has them. “Remove from Apple Music” takes each one out of the playlist (your library keeps it); if you've already deleted it by hand, it just clears the row." />
         <ScrollViewer VerticalScrollBarVisibility="Auto">
           <ItemsControl x:Name="ToRemoveRows">
             <ItemsControl.ItemTemplate>
@@ -144,7 +144,7 @@
                 <Grid ColumnDefinitions="*,Auto" Margin="0,3">
                   <TextBlock Grid.Column="0" Text="{Binding Display}" FontSize="12"
                              Foreground="#a99884" VerticalAlignment="Center" TextWrapping="Wrap" />
-                  <Button Grid.Column="1" Classes="ghost" Content="Remove from Music" Click="OnConfirmRemoved"
+                  <Button Grid.Column="1" Classes="ghost" Content="Remove from Apple Music" Click="OnConfirmRemoved"
                           Margin="10,0,0,0" Padding="8,4" FontSize="11" VerticalAlignment="Center" />
                 </Grid>
               </DataTemplate>

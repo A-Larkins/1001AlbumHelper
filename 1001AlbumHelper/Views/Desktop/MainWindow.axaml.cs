@@ -17,7 +17,7 @@ namespace _1001AlbumHelper;
 /// The app's one window: a sidebar of sections — Rate, Browse, Shortlist, Playlists, Export,
 /// Insights, and Tools apart at the bottom — each shown in place rather than in a window of its own.
 /// Rate is the home page. Export is the finished list and what the app is ultimately for; Tools holds
-/// what's done now and then (the favourites backfill, the connection check) and the activity log.
+/// what's done now and then (the favorites backfill, the connection check) and the activity log.
 /// </summary>
 public partial class MainWindow : Window
 {
@@ -54,6 +54,7 @@ public partial class MainWindow : Window
         _pages[Section.Tools] = ToolsPage;
         Opened += async (_, _) =>
         {
+            FitToScreen();
             // Dev aid, like the mobile preview's ALBUMHELPER_PREVIEW_TAB: open straight onto one
             // section (Rate, Browse, Shortlist, Playlists, More) to look at it without clicking.
             Navigate(Enum.TryParse<Section>(Environment.GetEnvironmentVariable("ALBUMHELPER_START_SECTION"),
@@ -65,6 +66,29 @@ public partial class MainWindow : Window
         AddHandler(KeyDownEvent, OnWindowKeyDown, Avalonia.Interactivity.RoutingStrategies.Tunnel);
 
         NavInsights.IsVisible = InsightsPageHost.Factory is not null;
+    }
+
+    /// <summary>
+    /// Shrinks the window to the screen it opened on if the default size doesn't fit. Otherwise
+    /// macOS keeps the title bar below the menu bar and the top of the content — the sidebar's name,
+    /// the Rate page's mode buttons — slides up under it.
+    /// </summary>
+    private void FitToScreen()
+    {
+        if (Screens.ScreenFromWindow(this) is not { } screen) return;
+        var area = screen.WorkingArea;
+        double scale = screen.Scaling;
+        double maxW = area.Width / scale - 20, maxH = area.Height / scale - 40;
+
+        if (MinHeight > maxH) MinHeight = Math.Max(480, maxH);
+        if (MinWidth > maxW) MinWidth = Math.Max(800, maxW);
+        if (Height <= maxH && Width <= maxW) return;
+
+        Width = Math.Min(Width, maxW);
+        Height = Math.Min(Height, maxH);
+        Position = new Avalonia.PixelPoint(
+            area.X + (int)((area.Width - Width * scale) / 2),
+            area.Y + (int)(10 * scale));
     }
 
     /// <summary>The window's background, shared with <see cref="PageWindow"/> so a page looks the same in either.</summary>
@@ -173,22 +197,22 @@ public partial class MainWindow : Window
         }
     }
 
-    // ---------- Apple Music favourites ----------
+    // ---------- Apple Music favorites ----------
 
     /// <summary>
-    /// The read-only half of the favourites card: works out what a backfill would do and prints it,
+    /// The read-only half of the favorites card: works out what a backfill would do and prints it,
     /// writing nothing. Deliberately terse next to the <c>favtest</c> command line, which names
     /// every album — this is a card on a home screen, and the counts are what decides whether to
     /// press it again.
     /// </summary>
     private static async Task<Operations.FavoritesBackfillPlan> PreviewFavoritesAsync()
     {
-        Console.WriteLine("\n=== What a favourites backfill would do ===\n");
+        Console.WriteLine("\n=== What a favorites backfill would do ===\n");
 
         var plan = await Operations.PlanFavoritesBackfillAsync();
         if (plan.Error is not null) { Console.WriteLine($"✗ {plan.Error}"); return plan; }
 
-        Console.WriteLine($"Apple Music holds {plan.FavoritedInLibrary} favourited albums and "
+        Console.WriteLine($"Apple Music holds {plan.FavoritedInLibrary} favorited albums and "
                           + $"{plan.InPlaylist} in “{AppleMusic.FavoritesPlaylistName}”.");
         Console.WriteLine(plan.Summary);
         Console.WriteLine();
@@ -199,12 +223,12 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
-    /// Turns the favourites card into the "yes, do it" button once a preview has said what "it" is,
+    /// Turns the favorites card into the "yes, do it" button once a preview has said what "it" is,
     /// and back again afterwards. The card is the confirmation: the backfill writes hundreds of
     /// changes into the real Apple Music library, and unlike everything else on this screen those
     /// can't be taken back from here — Apple's API has no remove (PROJECT.md §5).
     /// </summary>
-    private void ArmFavourites(Operations.FavoritesBackfillPlan? plan)
+    private void ArmFavorites(Operations.FavoritesBackfillPlan? plan)
     {
         bool armed = plan is { Error: null, Work.Count: > 0 };
 
@@ -216,16 +240,16 @@ public partial class MainWindow : Window
             FavoritesBadgeText.Text = "READY";
             FavoritesTitleText.Text = $"Backfill {plan!.Work.Count} albums now";
             FavoritesDescText.Text =
-                $"{plan.ToFavorite} to favourite, {plan.ToAddToPlaylist} to add to "
+                $"{plan.ToFavorite} to favorite, {plan.ToAddToPlaylist} to add to "
                 + $"“{AppleMusic.FavoritesPlaylistName}” — the log below lists them. Press to write it "
                 + "to Apple Music. Expect a second or two per album, and note that the app can't undo "
                 + "a playlist add afterwards.";
             return;
         }
 
-        FavoritesTitleText.Text = "Backfill favourites";
+        FavoritesTitleText.Text = "Backfill favorites";
         FavoritesDescText.Text = plan is { Error: null }
-            ? "Apple Music already agrees with the lists — every album on them is favourited and in "
+            ? "Apple Music already agrees with the lists — every album on them is favorited and in "
               + "“Almost forgot to listen to these today”. Press to check again."
             : "Put a heart on every album of the finished list that Apple Music hasn't already got "
               + "one on, and mirror the same albums into “Almost forgot to listen to these today”. "
@@ -263,6 +287,7 @@ public partial class MainWindow : Window
                     case "sync-check": await Operations.ListSheetTabsAsync(); break;
                     case "favorites-check": plan = await PreviewFavoritesAsync(); break;
                     case "favorites-backfill": await Operations.BackfillAppleMusicFavoritesAsync(); break;
+                    case "backfill-genres": await Operations.BackfillGenresAsync(); break;
                 }
                 ok = true;
             }
@@ -294,9 +319,9 @@ public partial class MainWindow : Window
             // A sync changes exactly what the badge reports, so re-check once it's done.
             if (action == "sync-all") _ = RefreshSyncStatusAsync();
 
-            // The favourites card is its own confirmation step — see ArmFavourites.
-            if (action == "favorites-check") ArmFavourites(plan);
-            else if (action == "favorites-backfill") ArmFavourites(null);
+            // The favorites card is its own confirmation step — see ArmFavorites.
+            if (action == "favorites-check") ArmFavorites(plan);
+            else if (action == "favorites-backfill") ArmFavorites(null);
 
             // Reveal the finished PDF rather than making them hunt for it.
             if (exportedPdf is not null) { RevealInFinder(exportedPdf); ShowLastExport(exportedPdf); }
@@ -311,6 +336,7 @@ public partial class MainWindow : Window
         StatusText.Text = on ? "Running…" : "Idle";
         StatusDot.Fill = on ? RunningDot : IdleDot;
         CheckButton.IsEnabled = !on;
+        GenresButton.IsEnabled = !on;
         SyncButton.IsEnabled = !on;
         ExportButton.IsEnabled = !on;
     }
@@ -343,7 +369,10 @@ public partial class MainWindow : Window
             ExportNoteText.IsVisible = true;
             return;
         }
-        ExportNoteText.IsVisible = false;
+        ExportNoteText.Text = lists.CachedAt is { } since
+            ? $"⚠️ Offline — these are the lists as they were at {since:MMM d, h:mm tt}. An export now would use that copy."
+            : "";
+        ExportNoteText.IsVisible = lists.CachedAt is not null;
         MustHearCountText.Text = lists.MustHear.Count.ToString();
         ReplacementsCountText.Text = lists.Replacements.Count.ToString();
         TotalCountText.Text = (lists.MustHear.Count + lists.Replacements.Count).ToString();

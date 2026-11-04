@@ -2,13 +2,14 @@ using Google.Apis.Auth.OAuth2;
 using Google.Apis.Services;
 using Google.Apis.Sheets.v4;
 using Google.Apis.Sheets.v4.Data;
-using Google.Apis.Util.Store;
 
 namespace _1001AlbumHelper;
 
 /// <summary>
-/// Writes generated album lists into a Google Sheet. Authenticates with OAuth as the
-/// signed-in user (a browser opens the first time; the token is then cached and reused).
+/// Reads and writes the album lists in the Google Sheet. Authenticates as the app's service
+/// account — the same one the shortlist has always used — so there's no browser sign-in and no
+/// cached token to go stale. (It used to sign in with OAuth as the user, which needed a browser the
+/// first time and a refresh token that a Google project in "testing" expires after a week.)
 /// </summary>
 public sealed class GoogleSheetsWriter : ISheetsClient
 {
@@ -21,20 +22,13 @@ public sealed class GoogleSheetsWriter : ISheetsClient
         _spreadsheetId = spreadsheetId;
     }
 
-    public static async Task<GoogleSheetsWriter> CreateAsync(
-        string spreadsheetId, string credentialsPath, string tokenStorePath)
+    /// <param name="serviceAccountKeyJson">The service account's JSON key. The account needs edit
+    /// access to the spreadsheet — it already has it, since it writes the Potentials tab.</param>
+    public static GoogleSheetsWriter CreateWithServiceAccount(string spreadsheetId, string serviceAccountKeyJson)
     {
-        UserCredential credential;
-        await using (var stream = new FileStream(credentialsPath, FileMode.Open, FileAccess.Read))
-        {
-            var secrets = (await GoogleClientSecrets.FromStreamAsync(stream)).Secrets;
-            credential = await GoogleWebAuthorizationBroker.AuthorizeAsync(
-                secrets,
-                new[] { SheetsService.Scope.Spreadsheets },
-                "user",
-                CancellationToken.None,
-                new FileDataStore(tokenStorePath, fullPath: true));
-        }
+        var credential = CredentialFactory.FromJson<ServiceAccountCredential>(serviceAccountKeyJson)
+            .ToGoogleCredential()
+            .CreateScoped(SheetsService.Scope.Spreadsheets);
 
         var service = new SheetsService(new BaseClientService.Initializer
         {
@@ -165,7 +159,7 @@ public sealed class GoogleSheetsWriter : ISheetsClient
     /// insert) whose formatting the new row should copy. Row inheritance alone isn't enough: a row
     /// inserted directly under the header would inherit the header's bold, and one appended at the
     /// end inherits whatever the final row happened to look like. Copying from a known-good
-    /// neighbour makes the new row match the list instead.
+    /// neighbor makes the new row match the list instead.
     /// </para>
     /// </summary>
     public async Task InsertRowAsync(

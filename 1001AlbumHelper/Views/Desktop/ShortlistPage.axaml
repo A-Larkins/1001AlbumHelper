@@ -131,7 +131,7 @@
       <Setter Property="MinHeight" Value="0" />
     </Style>
 
-    <!-- Spinner: a three-quarter ring turning about its own centre. -->
+    <!-- Spinner: a three-quarter ring turning about its own center. -->
     <Style Selector="Arc.spinner">
       <Setter Property="Width" Value="14" />
       <Setter Property="Height" Value="14" />

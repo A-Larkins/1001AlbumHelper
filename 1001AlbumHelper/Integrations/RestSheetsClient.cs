@@ -75,7 +75,7 @@ public sealed class RestSheetsClient : ISheetsClient
 
     /// <summary>
     /// Inserts a blank row via <c>batchUpdate</c> (insertDimension, plus copyPaste to carry over a
-    /// neighbour's formatting), then fills it in with a plain values.update — the REST equivalent of
+    /// neighbor's formatting), then fills it in with a plain values.update — the REST equivalent of
     /// <see cref="GoogleSheetsWriter.InsertRowAsync"/>.
     /// </summary>
     public async Task InsertRowAsync(string tabName, int rowNumber, IList<object> values, int? formatSourceRow = null)

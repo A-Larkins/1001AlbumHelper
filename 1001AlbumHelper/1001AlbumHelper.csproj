@@ -17,9 +17,9 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Avalonia" Version="11.3.0" />
-    <PackageReference Include="Avalonia.Themes.Fluent" Version="11.3.0" />
-    <PackageReference Include="Avalonia.Fonts.Inter" Version="11.3.0" />
+    <PackageReference Include="Avalonia" Version="11.3.22" />
+    <PackageReference Include="Avalonia.Themes.Fluent" Version="11.3.22" />
+    <PackageReference Include="Avalonia.Fonts.Inter" Version="11.3.22" />
 
     <PackageReference Include="DocumentFormat.OpenXml" Version="3.4.1" />
 
@@ -37,17 +37,17 @@
   </ItemGroup>
 
   <!--
-    Data snapshots embedded into the assembly so the mobile app has the lists offline
-    (the desktop app still reads the live copies from its data folder). LogicalName
-    gives each a clean resource name for MobileData to load by.
+    Data snapshots embedded into the assembly so the (retired) mobile app has the lists offline;
+    the desktop app reads the live sheet. Conditional, because the shortlist's local copy is no
+    longer kept in the project — it lives in the user's data folder, and the sheet is the record.
   -->
   <ItemGroup>
     <None Remove="input\**\*.csv" />
     <None Remove="replacement-candidates.json" />
-    <EmbeddedResource Include="input\1001 Albums You Must Hear Before You Die - 1001 albums.csv">
+    <EmbeddedResource Include="input\1001 Albums You Must Hear Before You Die - 1001 albums.csv" Condition="Exists('input\1001 Albums You Must Hear Before You Die - 1001 albums.csv')">
       <LogicalName>albums-1001.csv</LogicalName>
     </EmbeddedResource>
-    <EmbeddedResource Include="replacement-candidates.json">
+    <EmbeddedResource Include="replacement-candidates.json" Condition="Exists('replacement-candidates.json')">
       <LogicalName>candidates.json</LogicalName>
     </EmbeddedResource>
 

@@ -51,7 +51,7 @@ public static class PlaylistTracks
     /// <para>
     /// Apple Music stocks the same album more than once, and the copies are not always equally
     /// alive: Method Man's <em>Tical 2000: Judgement Day</em> is there twice, and on one of them
-    /// five tracks are "no longer available" — greyed out, unplayable — while the other has those
+    /// five tracks are "no longer available" — grayed out, unplayable — while the other has those
     /// same five. Nothing separates the two: same album name, same artist, same track numbers, same
     /// release date, only the durations differ by a few hundredths of a second. So there is no
     /// "pick the good edition" to be had; the choice has to be made a song at a time, which lands
@@ -95,7 +95,7 @@ public static class PlaylistTracks
     }
 
     /// <summary>
-    /// Collapses tracks to albums in first-seen order, matching on the same normalised title+artist
+    /// Collapses tracks to albums in first-seen order, matching on the same normalized title+artist
     /// the rest of the app compares by, so "The Beatles" and "Beatles" don't split into two albums.
     /// Tracks with no album title are skipped — they can't be matched to anything in our lists.
     /// </summary>

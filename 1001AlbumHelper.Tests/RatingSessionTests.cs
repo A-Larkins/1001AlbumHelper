@@ -358,4 +358,45 @@ public class RatingSessionTests : IDisposable
         Assert.Equal(2, session.Search("pearl jam").Count);
         Assert.Empty(session.Search("   ")); // a blank query is not "everything"
     }
+
+    // ---------- The sheet's layout ----------
+    // Ratings are written into column B by position, so a column inserted in the browser would send
+    // every rating to the wrong cell. The check reads the shape of the data, not the headings.
+
+    private static AlbumEntry Entry(int row, string rating = "", string year = "1994", string title = "T", string artist = "A") =>
+        new(row, row.ToString(), rating, title, artist, year);
+
+    [Fact]
+    public void A_list_in_the_expected_shape_passes()
+    {
+        var albums = Enumerable.Range(1, 40).Select(i => Entry(i, i % 3 == 0 ? "👍" : i % 5 == 0 ? "✓" : "")).ToList();
+
+        Assert.Null(RatingSession.LayoutProblem(albums));
+    }
+
+    [Fact]
+    public void A_column_inserted_before_the_years_is_caught()
+    {
+        // An inserted column pushes the artist into E, where the year should be.
+        var albums = Enumerable.Range(1, 40).Select(i => Entry(i, year: "Some Artist")).ToList();
+
+        Assert.Contains("year", RatingSession.LayoutProblem(albums));
+    }
+
+    [Fact]
+    public void A_column_inserted_before_the_ratings_is_caught()
+    {
+        // …and pushes the title into B, where the rating should be.
+        var albums = Enumerable.Range(1, 40).Select(i => Entry(i, rating: $"Album {i}")).ToList();
+
+        Assert.Contains("rating", RatingSession.LayoutProblem(albums));
+    }
+
+    [Fact]
+    public void A_few_odd_rows_are_tolerated()
+    {
+        var albums = Enumerable.Range(1, 40).Select(i => Entry(i, year: i <= 2 ? "" : "1994")).ToList();
+
+        Assert.Null(RatingSession.LayoutProblem(albums));
+    }
 }

@@ -70,7 +70,7 @@ public sealed record ShortlistIntakeResult(
     /// <summary>
     /// The albums by name, but only the first few — a pull can bring in a dozen at once, and a
     /// status line listing all of them fills the phone's screen. The count above already says how
-    /// many; the names are there so the user recognises what arrived.
+    /// many; the names are there so the user recognizes what arrived.
     /// </summary>
     private static string Names(IReadOnlyList<CandidateAlbum> albums)
     {
@@ -139,7 +139,7 @@ public static class ShortlistIntake
                 // preference a pull-down already shows when it keeps our name over the catalog's —
                 // this is just what that means when we have no name of our own yet. Dropping the
                 // suffix costs nothing on the way back either: the next pull matches on a
-                // whole-word prefix, so the shortened title still recognises the album.
+                // whole-word prefix, so the shortened title still recognizes the album.
                 var candidate = new CandidateAlbum
                 {
                     Title = DiscogsApiClient.BareTitle(album.Title),

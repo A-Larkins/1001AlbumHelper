@@ -47,6 +47,26 @@ public partial class RatePage : UserControl, IPage
         SetMode(initialMode, rebuild: false);
         Focusable = true;
         KeyDown += OnKeyDown;
+        AlbumCard.SizeChanged += (_, e) => SizeArt(e.NewSize);
+    }
+
+    /// <summary>
+    /// Sizes the sleeve to fill the card: stacked and centered, the cover takes whatever height the
+    /// words under it leave — measured, so a title that wraps to two lines takes its room from the
+    /// cover rather than pushing the year off the card — capped at 560.
+    /// </summary>
+    private void SizeArt(Avalonia.Size card)
+    {
+        const double margins = 32;   // the card's inner margin, top and bottom
+        const double gap = 18;       // between the cover and the words
+        InfoPanel.MaxWidth = Math.Max(200, card.Width - 80);
+        InfoPanel.Measure(new Avalonia.Size(InfoPanel.MaxWidth, double.PositiveInfinity));
+        double words = InfoPanel.DesiredSize.Height;
+
+        double side = Math.Min(card.Height - margins - gap - words, card.Width - 80);
+        side = Math.Clamp(side, 160, 560);
+        ArtFrame.Width = side;
+        ArtFrame.Height = side;
     }
 
     private bool _loaded;
@@ -249,6 +269,7 @@ public partial class RatePage : UserControl, IPage
         TitleText.Text = album.Title;
         ArtistText.Text = album.Artist;
         YearText.Text = album.Year;
+        SizeArt(AlbumCard.Bounds.Size); // a title that wraps differently changes the room left
         _ = ShowArtAsync(album);
     }
 
@@ -266,10 +287,12 @@ public partial class RatePage : UserControl, IPage
         ArtImage.Source = null;
         ArtImage.IsVisible = false;
         ArtPlaceholder.IsVisible = true;
+        Backdrop.Source = null;
+        Backdrop.IsVisible = false;
 
         var art = await AlbumArtwork.LoadAsync(album.Artist, album.Title, token);
 
-        // The queue may have moved on while this was in flight — a cancelled lookup returns null,
+        // The queue may have moved on while this was in flight — a canceled lookup returns null,
         // but a finished one still has to prove it's for the album currently on screen.
         if (token.IsCancellationRequested || _session?.Current != album) return;
 
@@ -278,6 +301,8 @@ public partial class RatePage : UserControl, IPage
             ArtImage.Source = art;
             ArtImage.IsVisible = true;
             ArtPlaceholder.IsVisible = false;
+            Backdrop.Source = art;
+            Backdrop.IsVisible = true;
         }
 
         if (_session?.Next is { } next) AlbumArtwork.Prefetch(next.Artist, next.Title);
