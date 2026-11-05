@@ -230,18 +230,15 @@ public partial class ShortlistPage : UserControl, IPage
     // ---------- Year lookup ----------
 
     /// <summary>
-    /// Fills in the missing years from Discogs in the background, top down, saving as it goes.
+    /// Fills in what the shortlist is missing for the albums still to be decided, in the background,
+    /// top down, saving as it goes: years from Discogs, and genres from the best source that has one
+    /// (see <see cref="AlbumGenres"/>). One Discogs call answers both where it can.
     /// <para>
     /// Runs on the UI thread — every await here is network or a timer, so nothing is blocked — and
     /// works in list order because that's the order they'll be decided in: by the time the first
-    /// few rows have been ruled on, the ones below have their years. The results are written to the
-    /// shortlist file, so this is a one-time cost rather than something paid on every open.
+    /// few rows have been ruled on, the ones below have their details. The results are written to
+    /// the shortlist file, so this is a one-time cost rather than something paid on every open.
     /// </para>
-    /// </summary>
-    /// <summary>
-    /// Fills in what the shortlist is missing for the albums still to be decided: years from Discogs,
-    /// and genres from the best source that has one (see <see cref="AlbumGenres"/>). One Discogs
-    /// call answers both where it can.
     /// </summary>
     private async Task PrefetchDetailsAsync()
     {

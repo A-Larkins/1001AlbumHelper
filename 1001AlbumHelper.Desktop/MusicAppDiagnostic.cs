@@ -156,7 +156,6 @@ public static class MusicAppDiagnostic
 
     private static void Report(string what, bool ok) => Console.WriteLine($"   {(ok ? "✓" : "✗")} {what}");
 
-    /// <summary>Creates or deletes the scratch playlist. Kept here, not in the writer, which has no business making playlists.</summary>
     /// <summary>How many library tracks Music files under this album and artist.</summary>
     private static async Task<int> LibraryTrackCountAsync(string album, string artist)
     {
@@ -181,6 +180,7 @@ public static class MusicAppDiagnostic
         return int.TryParse(output.Trim(), out int n) ? n : 0;
     }
 
+    /// <summary>Creates or deletes the scratch playlist. Kept here, not in the writer, which has no business making playlists.</summary>
     private static async Task<bool> ScratchAsync(bool create)
     {
         // $$ so AppleScript's own braces in `with properties {name:…}` stay literal.

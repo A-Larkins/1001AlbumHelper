@@ -992,20 +992,12 @@ public static class Operations
     private static async Task<string?> RecordKeptOnShortlistAsync(
         string title, string artist, int year, bool cacheLocally)
     {
-        var repo = CandidateRepository.Create();
-        if (!repo.SyncEnabled && !cacheLocally)
-            return $"Sheets sync {repo.Status}, and this device has no local copy.";
+        var (edit, problem) = await FindOnShortlistAsync(title, artist, cacheLocally);
+        if (edit is null) return problem;
 
-        List<CandidateAlbum> shortlist;
-        try { shortlist = await ShortlistIntake.LoadAsync(repo, cacheLocally); }
-        catch (Exception ex) { return $"couldn't read it ({ex.Message})."; }
-
-        var (_, match) = ReplacementCandidates.Classify(shortlist, c =>
-            AppleMusicCatalog.SameRelease(c.Title, title) && NumberedList.Matches(c.Artist, artist));
-
-        if (match is null)
+        if (edit.Match is null)
         {
-            shortlist.Add(new CandidateAlbum
+            edit.Shortlist.Add(new CandidateAlbum
             {
                 Title = title,
                 Artist = artist,
@@ -1015,11 +1007,42 @@ public static class Operations
         }
         else
         {
-            match.Status = CandidateStatus.Added;
-            if (match.Year.Trim().Length == 0) match.Year = year.ToString();
+            edit.Match.Status = CandidateStatus.Added;
+            if (edit.Match.Year.Trim().Length == 0) edit.Match.Year = year.ToString();
         }
 
-        return await SaveShortlistAsync(repo, shortlist, cacheLocally);
+        return await SaveShortlistAsync(edit.Repo, edit.Shortlist, cacheLocally);
+    }
+
+    /// <summary>The shortlist as loaded for one decision, and the row it already holds for the album, if any.</summary>
+    private sealed record ShortlistEdit(
+        CandidateRepository Repo, List<CandidateAlbum> Shortlist, CandidateAlbum? Match);
+
+    /// <summary>
+    /// Loads the shortlist and finds the album on it, for Keep and drop alike. Returns the edit, or
+    /// null and why the shortlist couldn't be read.
+    /// <para>
+    /// Matched loosely, the way an intake matches: <see cref="AppleMusicCatalog.SameRelease"/> on the
+    /// title, so Apple Music's "(Remastered)" is the same row and "Tical 2000" is not "Tical", and an
+    /// artist that only has to overlap, since the list and Apple Music name acts differently.
+    /// </para>
+    /// </summary>
+    private static async Task<(ShortlistEdit? Edit, string? Problem)> FindOnShortlistAsync(
+        string title, string artist, bool cacheLocally)
+    {
+        var repo = CandidateRepository.Create();
+        if (!repo.SyncEnabled && !cacheLocally)
+            return (null, $"Sheets sync {repo.Status}, and this device has no local copy.");
+
+        List<CandidateAlbum> shortlist;
+        try { shortlist = await ShortlistIntake.LoadAsync(repo, cacheLocally); }
+        catch (Exception ex) { return (null, $"couldn't read it ({ex.Message})."); }
+
+        var (_, match) = ReplacementCandidates.Classify(shortlist, c =>
+            AppleMusicCatalog.SameRelease(c.Title, title)
+            && (NumberedList.Matches(c.Artist, artist) || DiscogsApiClient.ArtistsOverlap(c.Artist, artist)));
+
+        return (new ShortlistEdit(repo, shortlist, match), null);
     }
 
     /// <summary>Writes the shortlist back wherever it lives — local JSON and/or the Potentials sheet.</summary>
@@ -1051,30 +1074,21 @@ public static class Operations
     public static async Task<string> DropFromShortlistAsync(PlaylistEntry album, bool cacheLocally = true)
     {
         string title = DiscogsApiClient.BareTitle(album.Title);
-        var repo = CandidateRepository.Create();
-        if (!repo.SyncEnabled && !cacheLocally)
-            return $"⚠ The shortlist wasn't updated — Sheets sync {repo.Status}.";
+        var (edit, readProblem) = await FindOnShortlistAsync(album.Title, album.Artist, cacheLocally);
+        if (edit is null) return $"⚠ The shortlist wasn't updated — {readProblem}";
 
-        List<CandidateAlbum> shortlist;
-        try { shortlist = await ShortlistIntake.LoadAsync(repo, cacheLocally); }
-        catch (Exception ex) { return $"⚠ The shortlist wasn't updated — couldn't read it ({ex.Message})."; }
+        if (edit.Match is { Status: CandidateStatus.Added }) return $"“{title}” stays kept.";
+        if (edit.Match is { Status: CandidateStatus.Declined }) return $"“{title}” was already dropped from the shortlist.";
 
-        var (_, match) = ReplacementCandidates.Classify(shortlist, c =>
-            DiscogsApiClient.SameTitle(DiscogsApiClient.BareTitle(c.Title), title)
-            && (NumberedList.Matches(c.Artist, album.Artist) || DiscogsApiClient.ArtistsOverlap(c.Artist, album.Artist)));
-
-        if (match is { Status: CandidateStatus.Added }) return $"“{title}” stays kept.";
-        if (match is { Status: CandidateStatus.Declined }) return $"“{title}” was already dropped from the shortlist.";
-
-        if (match is null)
-            shortlist.Add(new CandidateAlbum
+        if (edit.Match is null)
+            edit.Shortlist.Add(new CandidateAlbum
             {
                 Title = title, Artist = album.Artist, Year = album.Year, Status = CandidateStatus.Declined,
             });
         else
-            match.Status = CandidateStatus.Declined;
+            edit.Match.Status = CandidateStatus.Declined;
 
-        string? problem = await SaveShortlistAsync(repo, shortlist, cacheLocally);
+        string? problem = await SaveShortlistAsync(edit.Repo, edit.Shortlist, cacheLocally);
         return problem is null
             ? $"Dropped “{title}” from the recommendations."
             : $"⚠ Couldn't drop “{title}” from the shortlist — {problem}";

@@ -56,7 +56,7 @@ public partial class MainWindow : Window
         {
             FitToScreen();
             // Dev aid, like the mobile preview's ALBUMHELPER_PREVIEW_TAB: open straight onto one
-            // section (Rate, Browse, Shortlist, Playlists, More) to look at it without clicking.
+            // section (Rate, Browse, Shortlist, Playlists, Export, Insights, Tools) to look at it without clicking.
             Navigate(Enum.TryParse<Section>(Environment.GetEnvironmentVariable("ALBUMHELPER_START_SECTION"),
                                             ignoreCase: true, out var start) ? start : Section.Rate);
             await RefreshSyncStatusAsync();
@@ -263,7 +263,7 @@ public partial class MainWindow : Window
         if (!_gate.Wait(0)) return;
 
         SetRunning(true);
-        LogBox.Text = "";
+        ClearLog("");
         _startedAt = DateTime.Now;
         _timer.Start();
 
@@ -341,13 +341,42 @@ public partial class MainWindow : Window
         ExportButton.IsEnabled = !on;
     }
 
+    /// <summary>
+    /// How many lines the activity log keeps. Everything the app prints lands here for as long as it
+    /// runs, so without a cap the log only grows; the oldest lines go first.
+    /// </summary>
+    private const int MaxLogLines = 2000;
+
+    private readonly Queue<string> _logLines = new();
+    private bool _logRedrawQueued;
+
+    /// <summary>
+    /// Adds a line to the activity log. The box is redrawn once per burst rather than per line — a
+    /// sync prints hundreds in a row, and each redraw rebuilds the whole text.
+    /// </summary>
     private void AppendLine(string line)
     {
-        LogBox.Text = LogBox.Text?.Length > 0 ? LogBox.Text + "\n" + line : line;
-        LogBox.CaretIndex = LogBox.Text?.Length ?? 0;
+        _logLines.Enqueue(line);
+        while (_logLines.Count > MaxLogLines) _logLines.Dequeue();
+
+        if (_logRedrawQueued) return;
+        _logRedrawQueued = true;
+        Dispatcher.UIThread.Post(() =>
+        {
+            _logRedrawQueued = false;
+            if (_logLines.Count == 0) return;   // cleared since this was queued
+            LogBox.Text = string.Join("\n", _logLines);
+            LogBox.CaretIndex = LogBox.Text.Length;
+        }, DispatcherPriority.Background);
     }
 
-    private void OnClearLog(object? sender, RoutedEventArgs e) => LogBox.Text = LogPlaceholder;
+    private void ClearLog(string text)
+    {
+        _logLines.Clear();
+        LogBox.Text = text;
+    }
+
+    private void OnClearLog(object? sender, RoutedEventArgs e) => ClearLog(LogPlaceholder);
 
     // ---------- Tools ----------
 
