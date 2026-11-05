@@ -349,7 +349,7 @@ public partial class MainWindow : Window
 
     private void OnClearLog(object? sender, RoutedEventArgs e) => LogBox.Text = LogPlaceholder;
 
-    // ---------- Tools under More ----------
+    // ---------- Tools ----------
 
     // ---------- Export ----------
 

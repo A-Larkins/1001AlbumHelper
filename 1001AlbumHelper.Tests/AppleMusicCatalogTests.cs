@@ -349,4 +349,14 @@ public class AppleMusicCatalogTests
         var onlySubtitled = new List<AppleMusicAlbum> { Album(3, "Tago Mago: 40th", 7, "Can") };
         Assert.Equal(3, AppleMusicCatalog.FindBestMatch(onlySubtitled, "Can", "Tago Mago")!.CollectionId);
     }
+
+    [Fact]
+    public void Brackets_that_name_different_albums_keep_them_apart()
+    {
+        Assert.False(AppleMusicCatalog.SameRelease("Weezer (Blue Album)", "Weezer (Green Album)"));
+        Assert.True(AppleMusicCatalog.SameRelease("Weezer (Blue Album)", "Weezer"));
+        Assert.True(AppleMusicCatalog.SameRelease("Metallica (Black Album)", "Metallica (Remastered)"));
+        Assert.True(AppleMusicCatalog.SameRelease("Led Zeppelin (self titled)", "Led Zeppelin (Remastered)"));
+        Assert.True(AppleMusicCatalog.SameRelease("Weezer (self titled)", "Weezer (Blue Album)"));
+    }
 }

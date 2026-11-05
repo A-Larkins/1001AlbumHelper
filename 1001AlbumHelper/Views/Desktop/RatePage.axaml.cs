@@ -98,7 +98,7 @@ public partial class RatePage : UserControl, IPage
 
         if (session is null)
         {
-            ShowMessage("Couldn't open the album list — see the activity log under More for details.");
+            ShowMessage("Couldn't open the album list — see the activity log under Tools for details.");
             return;
         }
 
@@ -212,6 +212,10 @@ public partial class RatePage : UserControl, IPage
         // Bare keys only. ⌘2 is "go to Browse" (see MainWindow) — reading it as a "2" would
         // write a 👍 to the sheet on the way past, so any modifier means the key isn't ours.
         if (e.KeyModifiers != KeyModifiers.None) return;
+
+        // A page switched away from is hidden, not removed, and can keep keyboard focus (⌘2 moves
+        // to Browse without clicking anything) — a "1" pressed there must not rate the album here.
+        if (!IsEffectivelyVisible) return;
 
         string? rating = e.Key switch
         {

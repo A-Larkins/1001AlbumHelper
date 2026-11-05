@@ -49,4 +49,12 @@ public class AlbumGenresTests
 
         Assert.Null(AlbumGenres.FromArtist(known, "Neil Young & Crazy Horse"));
     }
+
+    [Fact]
+    public void A_genre_with_commas_in_its_name_is_borrowed_whole()
+    {
+        var known = new[] { ("Joan Baez", "Folk, World, & Country") };
+
+        Assert.Equal("Folk, World, & Country", AlbumGenres.FromArtist(known, "Joan Baez"));
+    }
 }

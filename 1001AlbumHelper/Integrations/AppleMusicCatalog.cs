@@ -202,8 +202,24 @@ public static class AppleMusicCatalog
     /// Judgement Day". The rule for deciding two playlist rows are one album, or what a removal takes.
     /// </summary>
     public static bool SameRelease(string a, string b) =>
-        DiscogsApiClient.SameTitle(SplitEdition(a).Bare, SplitEdition(b).Bare)
-        || DiscogsApiClient.SameTitle(MainTitle(a), MainTitle(b));
+        !NamesDifferentAlbums(a, b)
+        && (DiscogsApiClient.SameTitle(SplitEdition(a).Bare, SplitEdition(b).Bare)
+            || DiscogsApiClient.SameTitle(MainTitle(a), MainTitle(b)));
+
+    /// <summary>
+    /// Whether the brackets on two otherwise-equal names tell two albums apart rather than two
+    /// editions: "Weezer (Blue Album)" and "Weezer (Green Album)" both carry a tag that isn't edition
+    /// wording, and the tags differ. A tag on one side only, or edition wording on either
+    /// ("(Remastered)", "(Deluxe)"), or the list's own "(self titled)", is still the same album.
+    /// </summary>
+    private static bool NamesDifferentAlbums(string a, string b)
+    {
+        static string Tag(string name) => NumberedList.Normalize(SplitEdition(name).Tags);
+        string ta = Tag(a), tb = Tag(b);
+        return ta.Length > 0 && tb.Length > 0 && ta != tb
+               && EditionOf(a) == AlbumEdition.Other && EditionOf(b) == AlbumEdition.Other
+               && ta != "self titled" && tb != "self titled";
+    }
 
     /// <summary>A catalog name with edition tags and any ": subtitle" taken off.</summary>
     private static string MainTitle(string name)

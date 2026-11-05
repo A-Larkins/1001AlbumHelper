@@ -81,7 +81,9 @@ public static class AlbumGenres
     public static string? FromArtist(IEnumerable<(string Artist, string Genre)> known, string artist) =>
         known
             .Where(k => k.Genre.Trim().Length > 0 && NumberedList.Matches(k.Artist, artist))
-            .Select(k => k.Genre.Split(',')[0].Trim())
+            // SplitTags, not a bare split: "Folk, World, & Country" is one genre, not "Folk".
+            .Select(k => AlbumAnalytics.SplitTags(k.Genre).FirstOrDefault() ?? "")
+            .Where(g => g.Length > 0)
             .GroupBy(g => g, StringComparer.OrdinalIgnoreCase)
             .OrderByDescending(g => g.Count())
             .Select(g => g.Key)

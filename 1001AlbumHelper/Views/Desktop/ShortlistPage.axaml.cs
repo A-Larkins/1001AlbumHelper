@@ -52,6 +52,20 @@ public partial class ShortlistPage : UserControl, IPage
     private bool _prefetching;
 
     /// <summary>
+    /// Set while the prefetch fills in one album, so its year and genre save together — one write
+    /// to the sheet per album, not one per field.
+    /// </summary>
+    private bool _holdPersist;
+
+    /// <summary>
+    /// Albums whose genre has already been asked for this session (title|artist), so one no source
+    /// knows isn't looked up again on every reload or add — each ask costs Discogs and iTunes calls.
+    /// </summary>
+    private readonly HashSet<string> _genreAsked = new(StringComparer.OrdinalIgnoreCase);
+
+    private static string GenreKey(CandidateAlbum a) => $"{a.Title.Trim()}|{a.Artist.Trim()}";
+
+    /// <summary>
     /// Discogs allows 60 requests a minute against a token, so the sustained ceiling is one a
     /// second however the work is arranged. Spacing them a shade wider than that keeps the
     /// prefetch clear of a 429, which would otherwise read as "no year found" and stick.
@@ -124,7 +138,7 @@ public partial class ShortlistPage : UserControl, IPage
 
     private void OnAlbumChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName is nameof(CandidateAlbum.Year) or nameof(CandidateAlbum.Genre)) Persist();
+        if (!_holdPersist && e.PropertyName is nameof(CandidateAlbum.Year) or nameof(CandidateAlbum.Genre)) Persist();
     }
 
     // ---------- Filtering ----------
@@ -237,7 +251,8 @@ public partial class ShortlistPage : UserControl, IPage
 
         var missing = _all
             .Where(a => a.Status == CandidateStatus.Pending
-                        && ((_discogs is not null && a.Year.Trim().Length == 0) || a.Genre.Trim().Length == 0))
+                        && ((_discogs is not null && a.Year.Trim().Length == 0)
+                            || (a.Genre.Trim().Length == 0 && !_genreAsked.Contains(GenreKey(a)))))
             .ToList();
 
         // Nothing to do is the normal case once the years have been cached — claim the flag and
@@ -257,7 +272,7 @@ public partial class ShortlistPage : UserControl, IPage
                 if (token.IsCancellationRequested) break;
 
                 bool needYear = _discogs is not null && album.Year.Trim().Length == 0;
-                bool needGenre = album.Genre.Trim().Length == 0;
+                bool needGenre = album.Genre.Trim().Length == 0 && !_genreAsked.Contains(GenreKey(album));
                 // The user may have typed them in while this was working down the list.
                 if (!needYear && !needGenre) { done++; continue; }
 
@@ -271,16 +286,29 @@ public partial class ShortlistPage : UserControl, IPage
                     catch { /* one album failing to resolve isn't a reason to stop the rest */ }
                 }
 
-                // Setting either is what saves it — see Watch. Each costs a second of someone
+                // Each album is saved as soon as it's resolved. Each costs a second of someone
                 // else's rate limit to fetch and nothing to keep, so quitting mid-run loses none
                 // of what's already resolved.
-                if (needYear && !string.IsNullOrWhiteSpace(suggestion?.Year)) { album.Year = suggestion.Year; found++; }
+                (string Genre, AlbumGenres.Source From)? genre = null;
                 if (needGenre)
                 {
-                    var genre = await AlbumGenres.FindAsync(album.Title, album.Artist, null, KnownGenres(),
-                                                            discogsGenre: suggestion?.Genre, ct: token);
-                    if (genre is { } g) { album.Genre = g.Genre; found++; }
+                    _genreAsked.Add(GenreKey(album));
+                    genre = await AlbumGenres.FindAsync(album.Title, album.Artist, null, KnownGenres(),
+                                                        discogsGenre: suggestion?.Genre, ct: token);
                 }
+
+                // Both fields set together, with no await between, so they save as one write —
+                // and nothing the user edits meanwhile is held back.
+                bool changed = false;
+                _holdPersist = true;
+                try
+                {
+                    if (needYear && album.Year.Trim().Length == 0 && !string.IsNullOrWhiteSpace(suggestion?.Year))
+                    { album.Year = suggestion.Year; changed = true; }
+                    if (genre is { } g && album.Genre.Trim().Length == 0) { album.Genre = g.Genre; changed = true; }
+                }
+                finally { _holdPersist = false; }
+                if (changed) { found++; Persist(); }
 
                 done++;
 

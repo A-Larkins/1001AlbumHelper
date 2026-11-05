@@ -673,10 +673,26 @@ public static class Operations
         catch (Exception ex)
         {
             // Offline, or the sheet didn't answer: the last good read, marked as such, beats nothing.
-            return LoadListsSnapshot() is { } cached
+            // Anything else — a shifted column, lost access, a renamed tab — is said as it is, not
+            // passed off as "offline" with a stale copy that hides it.
+            return IsUnreachable(ex) && LoadListsSnapshot() is { } cached
                 ? cached
                 : new AllLists(noAlbums, noRows, noRows, $"Couldn't read the lists: {ex.Message}");
         }
+    }
+
+    /// <summary>Whether a failed read means the sheet couldn't be reached, rather than that it answered no.</summary>
+    private static bool IsUnreachable(Exception ex)
+    {
+        for (var e = ex; e is not null; e = e.InnerException)
+        {
+            if (e is HttpRequestException or TimeoutException or TaskCanceledException
+                  or IOException or System.Net.Sockets.SocketException)
+                return true;
+            if (e is Google.GoogleApiException api)
+                return (int)api.HttpStatusCode >= 500 || (int)api.HttpStatusCode == 429;
+        }
+        return false;
     }
 
     /// <summary>The last good read of the lists, kept so Browse and Export still work offline.</summary>
@@ -985,7 +1001,7 @@ public static class Operations
         catch (Exception ex) { return $"couldn't read it ({ex.Message})."; }
 
         var (_, match) = ReplacementCandidates.Classify(shortlist, c =>
-            DiscogsApiClient.TitlesLineUp(c.Title, title) && NumberedList.Matches(c.Artist, artist));
+            AppleMusicCatalog.SameRelease(c.Title, title) && NumberedList.Matches(c.Artist, artist));
 
         if (match is null)
         {

@@ -125,7 +125,7 @@ public static class ShortlistIntake
             // Classified against the growing list, so the same album twice in one playlist — Apple
             // Music can hold two editions of it — still only makes one row.
             var (outcome, match) = ReplacementCandidates.Classify(shortlist, candidate =>
-                DiscogsApiClient.TitlesLineUp(candidate.Title, album.Title)
+                AppleMusicCatalog.SameRelease(candidate.Title, album.Title)
                 && NumberedList.Matches(candidate.Artist, album.Artist));
 
             if (outcome == CandidateAddOutcome.New)
@@ -138,8 +138,9 @@ public static class ShortlistIntake
                 // replacements list, where nobody wants the edition furniture. It's the same
                 // preference a pull-down already shows when it keeps our name over the catalog's —
                 // this is just what that means when we have no name of our own yet. Dropping the
-                // suffix costs nothing on the way back either: the next pull matches on a
-                // whole-word prefix, so the shortened title still recognizes the album.
+                // suffix costs nothing on the way back either: the next pull sets edition tags and
+                // subtitles aside (AppleMusicCatalog.SameRelease), so the shortened title still
+                // recognizes the album — without a prefix rule that would read "Tical" as "Tical 2000".
                 var candidate = new CandidateAlbum
                 {
                     Title = DiscogsApiClient.BareTitle(album.Title),

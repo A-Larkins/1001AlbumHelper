@@ -76,6 +76,11 @@ public partial class InsightsPage : UserControl, IPage
             ShowAdditions(report);
             ShowShortlist(report);
         }
+        catch (Exception ex)
+        {
+            // async void above this: an escaping exception would take the whole app down.
+            SummaryText.Text = $"Couldn't build Insights — {ex.Message}";
+        }
         finally
         {
             _loading = false;
@@ -564,6 +569,10 @@ public partial class InsightsPage : UserControl, IPage
                 ? $"Saved to {path} — opening it in your browser."
                 : "Couldn't write the PDF — Tools ▸ Activity log says what went wrong.");
             if (path is not null) await ExportedFile.OpenAsync(path);
+        }
+        catch (Exception ex)
+        {
+            SetStatus($"Couldn't write the PDF — {ex.Message}");
         }
         finally
         {

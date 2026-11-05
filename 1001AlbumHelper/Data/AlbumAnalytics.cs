@@ -352,12 +352,15 @@ public static class AlbumAnalytics
     /// <summary>
     /// Count per genre (see <see cref="GenresOf"/>) across the still-pending shortlist, most first.
     /// Many shortlist genres came from Apple Music ("Alternative", "R&amp;B/Soul"), so they're put in
-    /// the words the 1001's Discogs genres use (<see cref="AlbumGenres.FromAppleMusic"/>).
+    /// the words the 1001's Discogs genres use (<see cref="AlbumGenres.FromAppleMusic"/>). Only a
+    /// lone tag is mapped — Apple Music gives one primary genre, while a Discogs string always lists
+    /// several, and its styles ("Soul", "Soundtrack") must stay styles, as they do on the 1001.
     /// </summary>
     public static List<Bucket> CandidateGenreBreakdown(IEnumerable<CandidateAlbum> candidates) => candidates
         .Where(c => c.Status == CandidateStatus.Pending && c.Genre.Trim().Length > 0)
-        .SelectMany(c => GenresOf(c.Genre))
-        .Select(g => AlbumGenres.FromAppleMusic(g) ?? g)
+        .SelectMany(c => SplitTags(c.Genre).Count == 1
+            ? new[] { AlbumGenres.FromAppleMusic(c.Genre) ?? c.Genre.Trim() }
+            : GenresOf(c.Genre).AsEnumerable())
         .GroupBy(g => g, StringComparer.OrdinalIgnoreCase)
         .Select(g => new Bucket(g.Key, g.Count()))
         .OrderByDescending(b => b.Count)

@@ -140,7 +140,10 @@ public sealed class MusicAppPlaylistWriter : IApplePlaylistWriter
             if (Count(selection) >= release.TrackCount) return Copy(selection);
 
             string? addProblem = await AddToLibraryAsync(release, url).ConfigureAwait(false);
-            if (addProblem is not null)
+            // Already in the library: nothing new is on its way, so waiting for more tracks would
+            // only sit out the timeout (a catalog count can include songs never released here).
+            if (addProblem == AlreadyInLibrary && Count(selection) > 0) return Copy(selection);
+            if (addProblem is not null && addProblem != AlreadyInLibrary)
                 return Count(selection) > 0 ? Copy(selection) : Copy(selection, addProblem);
 
             selection = await WaitForLibraryCopyAsync(release, Count(selection)).ConfigureAwait(false);
@@ -193,13 +196,16 @@ public sealed class MusicAppPlaylistWriter : IApplePlaylistWriter
         return selection;
     }
 
+    /// <summary>What <see cref="AddToLibraryAsync"/> returns when the page shows the album already added.</summary>
+    private const string AlreadyInLibrary = "!!ALREADY";
+
     /// <summary>How long to wait for Music to show the album's page after opening its link.</summary>
     private static readonly TimeSpan PageTimeout = TimeSpan.FromSeconds(20);
 
     /// <summary>
     /// Opens the release's page in Music and presses "Add to Library" — the one step AppleScript's
-    /// own dictionary can't take. Null when it was pressed (or the page says it's already added),
-    /// else what stopped it, worded for the user.
+    /// own dictionary can't take. Null when it was pressed, <see cref="AlreadyInLibrary"/> when the
+    /// page says it's already added, else what stopped it, worded for the user.
     /// <para>
     /// The button is only pressed once the page on screen is this release's: until Music has
     /// navigated, the toolbar still belongs to the previous album, and pressing it there would add
@@ -243,7 +249,7 @@ public sealed class MusicAppPlaylistWriter : IApplePlaylistWriter
                         }
                         else if (buttons.Contains("Download") || buttons.Contains("Remove from Library"))
                         {
-                            return null; // already added, under whatever name the library files it
+                            return AlreadyInLibrary; // under whatever name the library files it
                         }
                     }
                 }
