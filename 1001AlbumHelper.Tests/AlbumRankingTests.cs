@@ -260,4 +260,32 @@ public class AlbumRankingTests
         Assert.Equal("Polyphia", ranked[0].Artist);
         Assert.Equal("I Am Not Afraid Of You And I Will Beat Your Ass", ranked[1].Title); // then most-owned
     }
+
+    [Theory]
+    [InlineData("Polypphia", "Polyphia", true)]
+    [InlineData("polyphia", "Polyphia", true)]
+    [InlineData("Radiohed", "Radiohead", true)]
+    [InlineData("The Beatels", "Beatles", true)]
+    [InlineData("Polyphony", "Polyphia", false)]
+    [InlineData("Kristin Rule", "Polyphia", false)]
+    public void Spelled_alike_forgives_a_typo_but_not_a_different_name(string typed, string actual, bool alike)
+    {
+        Assert.Equal(alike, DiscogsApiClient.SpelledAlike(typed, actual));
+    }
+
+    [Fact]
+    public void After_a_misspelled_artist_their_album_comes_first()
+    {
+        // The artist-narrowed search found nothing for "Polypphia", so the title is searched alone
+        // and the typed artist only steers the order.
+        var releases = new[]
+        {
+            Release("Kitty Cleveland - Be Not Afraid", "2006", have: 4, masterId: 0),
+            Release("Polyphia - Be Not Afraid", "2026", have: 2, masterId: 0),
+        };
+
+        var ranked = DiscogsApiClient.RankSuggestions(Array.Empty<JsonElement>(), releases, "Be Not Afraid", "Polypphia");
+
+        Assert.Equal("Polyphia", ranked[0].Artist);
+    }
 }

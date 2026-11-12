@@ -154,10 +154,23 @@ public class DiscogsApiClient
         if (query.Length > 0) filters += $"&release_title={Uri.EscapeDataString(query)}";
         if (!string.IsNullOrEmpty(artist)) filters += $"&artist={Uri.EscapeDataString(artist)}";
 
-        string Url(string type) => $"https://api.discogs.com/database/search?type={type}{filters}&token={_token}";
-        var masters = GetSearchResultsAsync(Url("master"), ct);
-        var releases = GetSearchResultsAsync(Url("release"), ct);
-        return RankSuggestions(await masters, await releases, query);
+        async Task<List<AlbumSuggestion>> Search(string filters, string? artistHint)
+        {
+            string Url(string type) => $"https://api.discogs.com/database/search?type={type}{filters}&token={_token}";
+            var masters = GetSearchResultsAsync(Url("master"), ct);
+            var releases = GetSearchResultsAsync(Url("release"), ct);
+            return RankSuggestions(await masters, await releases, query, artistHint);
+        }
+
+        var found = await Search(filters, null);
+
+        // Discogs matches an artist exactly — "Polypphia" finds nothing at all, not Polyphia — so
+        // a misspelled artist would leave an empty dropdown. Search the title alone instead, with
+        // artists spelled like the one typed first.
+        if (found.Count == 0 && query.Length > 0 && !string.IsNullOrEmpty(artist))
+            found = await Search($"&format=album&per_page=50&release_title={Uri.EscapeDataString(query)}", artist);
+
+        return found;
     }
 
     /// <summary>
@@ -167,8 +180,13 @@ public class DiscogsApiClient
     /// common — a new record with two owners loses to every popular album that merely contains the
     /// words.
     /// </summary>
+    /// <param name="artistHint">
+    /// An artist the search wasn't narrowed to (it found nothing, likely a typo): albums by an
+    /// artist spelled within a letter or two of it come straight after the exact titles.
+    /// </param>
     public static List<AlbumSuggestion> RankSuggestions(
-        IEnumerable<JsonElement> masters, IEnumerable<JsonElement> releases, string query, int take = 25)
+        IEnumerable<JsonElement> masters, IEnumerable<JsonElement> releases, string query,
+        string? artistHint = null, int take = 25)
     {
         static bool HasMaster(JsonElement r) =>
             r.TryGetProperty("master_id", out var m) && m.TryGetInt64(out long id) && id != 0;
@@ -183,9 +201,37 @@ public class DiscogsApiClient
             .GroupBy(s => (Norm(s.Artist), Norm(s.Title)))
             .Select(g => g.OrderByDescending(s => s.Have).First())
             .OrderByDescending(Exact)
+            .ThenByDescending(s => artistHint is not null && SpelledAlike(s.Artist, artistHint))
             .ThenByDescending(s => s.Have)
             .Take(take)
             .ToList();
+    }
+
+    /// <summary>
+    /// Whether two artist names are the same apart from a slip of the keyboard: within one edit
+    /// for a short name, two for a longer one, once case, punctuation and a leading "the" are set
+    /// aside. "Polypphia" is Polyphia; "Polyphony" is not.
+    /// </summary>
+    public static bool SpelledAlike(string a, string b)
+    {
+        string x = NumberedList.Normalize(CleanArtist(a)), y = NumberedList.Normalize(CleanArtist(b));
+        if (x.Length == 0 || y.Length == 0) return false;
+        int allowed = Math.Min(x.Length, y.Length) >= 8 ? 2 : 1;
+        if (Math.Abs(x.Length - y.Length) > allowed) return false;
+
+        // Edit distance, with two swapped neighbors counted as one slip ("Beatels"), not two.
+        var d = new int[x.Length + 1, y.Length + 1];
+        for (int i = 0; i <= x.Length; i++) d[i, 0] = i;
+        for (int j = 0; j <= y.Length; j++) d[0, j] = j;
+        for (int i = 1; i <= x.Length; i++)
+        for (int j = 1; j <= y.Length; j++)
+        {
+            int cost = x[i - 1] == y[j - 1] ? 0 : 1;
+            d[i, j] = Math.Min(Math.Min(d[i - 1, j] + 1, d[i, j - 1] + 1), d[i - 1, j - 1] + cost);
+            if (i > 1 && j > 1 && x[i - 1] == y[j - 2] && x[i - 2] == y[j - 1])
+                d[i, j] = Math.Min(d[i, j], d[i - 2, j - 2] + 1);
+        }
+        return d[x.Length, y.Length] <= allowed;
     }
 
     /// <summary>
