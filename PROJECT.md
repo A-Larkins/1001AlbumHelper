@@ -1,7 +1,7 @@
 # 1001 Albums Helper — Project Handbook
 
 A living reference for the app: what it is, how it's built, how to ship it, and where it's going.
-**Update this as we go.** Last updated: 2026-11-04 (exact artist matches first; two removes on Playlist 2; Insights rebuilt).
+**Update this as we go.** Last updated: 2026-11-12 (a pull keeps unsent albums; one shared copy of each playlist).
 
 ---
 
@@ -117,6 +117,7 @@ a **single view with four bottom tabs** (phones don't do windows).
 | 2026-11-04 | **Insights rebuilt, and the math put right.** The favorite genre was a coin toss: ratings run high, so nine small genres tied at a perfect 4.00 average and the winner was whichever the dictionary listed first (five Glam records "beat" forty Hard Rock ones). Under that sat a bigger error: **✓ albums were left out**, and most of the '60s–'80s were marked ✓ with only the ⭐s ever scored, so the '70s read as 99% ⭐ (129 of 130) when it's 46% (129 of 278). `AlbumAnalytics` now counts every *heard* album — a ✓ is a known "not a ⭐" — and ranks genres and decades by **⭐ rate** among those with 10+ heard (ties to more albums, then A–Z), so the order always matches the percentages printed beside it; averages are only taken across scored albums and shown as a detail. A Bayesian-weighted rate was tried and dropped for exactly that reason. Genres count an album under its Discogs *styles* ("Hard Rock"), not the broad genres everything shares ("Rock"), and "Folk, World, & Country" is no longer split into a phantom "& Country". The page lost LiveCharts' stock columns for hand-drawn bars in the app's palette (an ordinal gold ramp for ⭐→❌, gray for ✓), with hover detail, and is now three separate sections: **the 1001**, **albums you added** (the Replacements list against the 1001 — decade shares, most-added artists, artists new to the list; it has no genres or ratings to chart), and **the shortlist**. One `AlbumAnalytics.Report` feeds the page, its own PDF and — new — **two Insights pages at the end of the finished-list export** (`PdfExporter.Write`'s `appendix`). LiveCharts is gone from the build. |
 | 2026-11-04 | **Exports open in a browser tab, and one Dock icon.** A finished PDF (Export page or Insights) now opens in a new tab of the default browser — asked of macOS each time, falling back to Preview — instead of a Finder window with the file selected; "Open again" and "Show in Finder" sit beside the last export (`ExportedFile`). The Dock was showing the app twice, pinned and again under recent apps: `--install` deleted the bundle and copied a new one, and a new folder is a new file to macOS, so the pinned icon stopped matching the running app. The install now empties and refills the same bundle with `ditto` (not `rsync`, which drops the extended attributes holding the non-Mach-O files' signatures) and re-registers it with Launch Services. Percentages everywhere go through `AlbumAnalytics.Percent`, which never rounds a non-zero share to "0%" or a near-total one to "100%" (the one ❌ in 775 read 0%). |
 | 2026-11-04 | **Pre-push review sweep.** Fixes from a code review of the November work: Insights' load and PDF export catch errors instead of quitting the app; an album Music says is already in the library uses the tracks already there instead of waiting 60s for more; the shortlist pull and Keep moved off whole-word prefix matching onto `AppleMusicCatalog.SameRelease`, which now also tells "Weezer (Blue Album)" from "(Green Album)" (two different non-edition tags); `LoadAllListsAsync` falls back to the saved snapshot only when the sheet is unreachable (network, timeout, Google 5xx/429), so a layout or access problem shows its real error instead of passing as "Offline"; `AlbumGenres.FromArtist` splits with `SplitTags`, so "Folk, World, & Country" stays whole; the shortlist's background lookup saves year and genre in one write and looks up a missing genre once per session; Apple Music genre names are converted only for single-tag genres; and the hidden Rate page ignores keys. Still open: one shared throttle for Apple Music catalog calls. |
+| 2026-11-12 | **Playlists and the shortlist stop undoing each other.** Queuing a batch with the shortlist's ＋ P2 and then pressing "Get from Apple Music" lost the batch, and the shortlist's buttons then refused to queue them again. Two causes. (1) **The pull dropped albums not sent yet** — by design since 2026-08-19, but wrong: Apple Music not having an album that was never sent isn't news. `SyncFromAppleMusic` now keeps them (after the Apple Music ones) and only drops an album that was sent and has since gone; the status line counts the kept ones. (2) **Every page held its own copy of the playlist**, opened once and kept for the app's lifetime, so after the pull the Shortlist and Browse pages still saw the old list — ＋ P2 said "already there" and wrote nothing, and the next add they did make saved that stale copy over the pull. Pages now share one instance per playlist (`PlaylistStore.Shared`) and listen to its `Changed` event. The ＋ P1/＋ P2 buttons on Browse and the Shortlist show whether the album is on the playlist *now* (✓ while queued, ＋ again once it's gone) instead of remembering one press; `Contains`/`Add` match on `SameAlbum`, so the shortlist's "Cassini" finds the playlist's "Cassini (5th Anniversary Remaster)"; and ＋ on an album waiting on the "delete these" checklist puts it back. The Shortlist page also re-reads the saved shortlist when it comes back on screen, folding in candidates a Playlist 2 pull added and drops made by **Remove + drop**, which it used to miss until the app restarted. |
 
 ---
 
@@ -348,8 +349,11 @@ it twice changes nothing. Playlist 1 doesn't do this at all: it holds the 1001 i
 to replace it.
 
 **Pull down vs Push all are deliberately asymmetric.** *Pull down* is a full sync: the Apple Music
-playlist wins, and the working list is rebuilt to match it (see `PlaylistStore.SyncFromAppleMusic`) —
-so albums queued in the app but never pushed are dropped. *Push all* can only ever add, because
+playlist wins for everything that has been in it, and the working list is rebuilt to match (see
+`PlaylistStore.SyncFromAppleMusic`) — an album that was sent and has since gone was deleted in the
+Music app, so it's dropped. Albums queued in the app but **not sent yet are kept**, after the Apple
+Music ones: they were never in the playlist, so their absence there says nothing (until 2026-11-12
+they were dropped too). *Push all* can only ever add, because
 that's all MediaPlayer offers. The asymmetry is the add-only constraint showing through: Apple Music
 is the listening queue and the app is the clean list, so it's the app that has to give way when the
 two disagree. Reading a playlist back also carries each album's current track count, and a
@@ -473,6 +477,10 @@ tab it creates and deletes, so it never risks the real lists.
 - **Re-deploying:** double-click **`Re-deploy to iPhone.command`** (repo root) — it renews the 7-day
   profile via `xcodebuild -allowProvisioningUpdates`, rebuilds, and reinstalls. The signing stub lives
   in `1001AlbumHelper.iOS/SignHelper/`.
+- **Don't open your own `PlaylistStore`.** Screens use `PlaylistStore.Shared(id)` and listen to
+  `Changed`; a page that calls `Open` and keeps the result holds a copy nobody updates, and its next
+  save writes that copy back over whatever a pull or another page did (2026-11-12). `Open` is for
+  tests and the command-line diagnostics.
 - **Never write the potentials sheet wholesale.** Two screens hold the shortlist at once and
   neither hears about the other's changes, so a plain "save my list" deletes whatever arrived
   meanwhile — this is how a Playlist 2 pull's new candidates vanished on 2026-08-21. Writes go

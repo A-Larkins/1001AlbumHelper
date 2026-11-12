@@ -69,6 +69,36 @@ public sealed class CandidateAlbum : INotifyPropertyChanged
 
     [JsonIgnore]
     public bool HasGenre => Genre.Length > 0;
+
+    private bool _inPlaylist2;
+
+    /// <summary>
+    /// Whether the album is on Playlist 2 right now — what the shortlist's ＋ P2 button shows. Not
+    /// persisted: the playlist is the record, and the page sets this from it whenever it changes.
+    /// </summary>
+    [JsonIgnore]
+    public bool InPlaylist2
+    {
+        get => _inPlaylist2;
+        set
+        {
+            if (_inPlaylist2 == value) return;
+            _inPlaylist2 = value;
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(InPlaylist2)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Playlist2Label)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Playlist2Tip)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(CanQueuePlaylist2)));
+        }
+    }
+
+    [JsonIgnore]
+    public string Playlist2Label => _inPlaylist2 ? "✓ P2" : "＋ P2";
+
+    [JsonIgnore]
+    public string Playlist2Tip => _inPlaylist2 ? "On Playlist 2." : "Add to Playlist 2.";
+
+    [JsonIgnore]
+    public bool CanQueuePlaylist2 => !_inPlaylist2;
 }
 
 /// <summary>Which column the shortlist is ordered by when the user sorts it.</summary>

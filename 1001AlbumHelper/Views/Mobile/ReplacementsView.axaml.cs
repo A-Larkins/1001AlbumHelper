@@ -23,7 +23,7 @@ public partial class ReplacementsView : UserControl
 {
     private List<CandidateAlbum> _all = new();
     private bool _isLive;   // true once the list came from Google Sheets (not the baked-in snapshot)
-    private readonly PlaylistStore _playlist2 = PlaylistStore.Open(2);
+    private readonly PlaylistStore _playlist2 = PlaylistStore.Shared(2);
     private readonly CandidateRepository _repo = CandidateRepository.Create();
     private CandidateSortColumn? _sortColumn;
     private bool _sortDescending;

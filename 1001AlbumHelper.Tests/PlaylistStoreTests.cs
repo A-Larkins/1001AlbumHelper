@@ -163,13 +163,14 @@ public class PlaylistStoreTests : IDisposable
     }
 
     [Fact]
-    public void Pulling_down_drops_albums_apple_music_doesnt_have()
+    public void Pulling_down_drops_a_sent_album_thats_gone_from_apple_music()
     {
-        // The point of a pull-down: Apple Music is the source of truth, so a local album it doesn't
-        // have is gone afterwards — including one queued here but never pushed.
+        // Apple Music is the source of truth for what has been there: an album that was sent and
+        // isn't any more was deleted in the Music app, so it goes here too.
         var store = PlaylistStore.Open(_id);
         store.Add("Vs.", "Pearl Jam", "1993");
         store.Add("Zuma", "Neil Young", "1975");
+        foreach (var e in store.Active.ToList()) store.MarkInAppleMusic(e);
 
         var sync = store.SyncFromAppleMusic(new[]
         {
@@ -182,15 +183,110 @@ public class PlaylistStoreTests : IDisposable
     }
 
     [Fact]
-    public void Pulling_down_into_an_empty_apple_music_playlist_empties_the_list()
+    public void Pulling_down_keeps_albums_queued_here_but_not_sent_yet()
+    {
+        // The reported bug: a batch queued from the shortlist, then a pull, and the batch was gone.
+        // An album that was never sent isn't missing from Apple Music — it was never there.
+        var store = PlaylistStore.Open(_id);
+        store.Add("Zuma", "Neil Young", "1975");
+        store.MarkInAppleMusic(store.Active[0]);
+        store.Add("Vs.", "Pearl Jam", "1993");
+
+        var sync = store.SyncFromAppleMusic(new[]
+        {
+            new PlaylistEntry("Harvest", "Neil Young", "") { TrackCount = 10 },
+            new PlaylistEntry("Zuma", "Neil Young", "") { TrackCount = 9 },
+        });
+
+        Assert.Equal(0, sync.Removed);
+        Assert.Equal(1, sync.KeptUnsent);
+        Assert.Equal(new[] { "Harvest", "Zuma", "Vs." }, store.Active.Select(e => e.Title));
+        var vs = store.Active.Single(e => e.Title == "Vs.");
+        Assert.False(vs.InAppleMusic);
+        Assert.Equal("1993", vs.Year);
+        Assert.Contains(PlaylistStore.Open(_id).Active, e => e.Title == "Vs."); // and it was saved
+    }
+
+    [Fact]
+    public void Pulling_down_marks_an_unsent_album_sent_when_apple_music_already_has_it()
+    {
+        // Queued here and added by hand in the Music app too: it's simply there now.
+        var store = PlaylistStore.Open(_id);
+        store.Add("Tago Mago", "Can", "1971");
+
+        var sync = store.SyncFromAppleMusic(new[]
+        {
+            new PlaylistEntry("Tago Mago (2011 Remastered)", "Can", "") { TrackCount = 7 },
+        });
+
+        Assert.Equal(0, sync.KeptUnsent);
+        Assert.Equal(0, sync.Added);
+        var album = Assert.Single(store.Active);
+        Assert.True(album.InAppleMusic);
+        Assert.Equal("Tago Mago", album.Title);
+    }
+
+    [Fact]
+    public void Pulling_down_into_an_empty_apple_music_playlist_drops_only_what_was_sent()
     {
         var store = PlaylistStore.Open(_id);
         store.Add("Vs.", "Pearl Jam", "1993");
+        store.MarkInAppleMusic(store.Active[0]);
+        store.Add("Zuma", "Neil Young", "1975");
 
         var sync = store.SyncFromAppleMusic(Array.Empty<PlaylistEntry>());
 
         Assert.Equal(1, sync.Removed);
-        Assert.Empty(store.Active);
+        Assert.Equal("Zuma", Assert.Single(store.Active).Title);
+    }
+
+    [Fact]
+    public void Contains_is_loose_about_edition_names_and_ignores_the_checklist()
+    {
+        var store = PlaylistStore.Open(_id);
+        store.SyncFromAppleMusic(new[]
+        {
+            new PlaylistEntry("Cassini (5th Anniversary Remaster)", "Thank You Scientist", "") { TrackCount = 9 },
+            new PlaylistEntry("Vs.", "Pearl Jam", "") { TrackCount = 12 },
+        });
+        store.RequestRemoval(store.Active.Single(e => e.Title == "Vs."));
+
+        Assert.True(store.Contains("Cassini", "Thank You Scientist"));
+        Assert.False(store.Add("Cassini", "Thank You Scientist", "2016")); // no second row
+        Assert.False(store.Contains("Vs.", "Pearl Jam")); // on the checklist, not the working list
+        Assert.False(store.Contains("Tical", "Method Man"));
+    }
+
+    [Fact]
+    public void Adding_an_album_waiting_on_the_checklist_puts_it_back()
+    {
+        var store = PlaylistStore.Open(_id);
+        store.Add("Vs.", "Pearl Jam", "1993");
+        store.MarkInAppleMusic(store.Active[0]);
+        store.RequestRemoval(store.Active[0]);
+
+        Assert.True(store.Add("Vs.", "Pearl Jam", "1993"));
+
+        var album = Assert.Single(store.Active);
+        Assert.True(album.InAppleMusic); // still in Apple Music, so nothing to send
+        Assert.Empty(store.ToRemove);
+    }
+
+    [Fact]
+    public void Every_screen_shares_one_list_and_hears_about_changes()
+    {
+        // Pages each holding their own copy is what left ＋ P2 refusing to add after a pull.
+        var a = PlaylistStore.Shared(_id);
+        var b = PlaylistStore.Shared(_id);
+        Assert.Same(a, b);
+
+        int changes = 0;
+        b.Changed += () => changes++;
+        a.Add("Vs.", "Pearl Jam", "1993");
+        a.SyncFromAppleMusic(Array.Empty<PlaylistEntry>());
+
+        Assert.Equal(2, changes);
+        Assert.True(b.Contains("Vs.", "Pearl Jam"));
     }
 
     [Fact]
@@ -267,6 +363,7 @@ public class PlaylistStoreTests : IDisposable
     {
         var store = PlaylistStore.Open(_id);
         store.Add("Vs.", "Pearl Jam", "1993");
+        store.MarkInAppleMusic(store.Active[0]); // sent, then deleted in the Music app
         store.SyncFromAppleMusic(new[] { new PlaylistEntry("Zuma", "Neil Young", "") { TrackCount = 9 } });
 
         var reopened = PlaylistStore.Open(_id);

@@ -46,10 +46,16 @@ public sealed record PlaylistEntry(string Title, string Artist, string Year)
 /// are the ones the user queued in Apple Music by hand, and Playlist 2's pull feeds them on to the
 /// potentials shortlist (see <see cref="ShortlistIntake"/>).
 /// </param>
-/// <param name="Removed">Albums the working list had that Apple Music didn't — dropped.</param>
+/// <param name="Removed">
+/// Albums that had been in Apple Music and aren't any more — deleted there by hand — so dropped here.
+/// </param>
 /// <param name="ClearedFromChecklist">Albums awaiting manual deletion that have now gone from Apple Music.</param>
+/// <param name="KeptUnsent">
+/// Albums queued here but not sent yet, which the pull left alone: Apple Music not having them is
+/// expected, not news.
+/// </param>
 public sealed record PlaylistSyncResult(
-    IReadOnlyList<PlaylistEntry> NewAlbums, int Removed, int ClearedFromChecklist)
+    IReadOnlyList<PlaylistEntry> NewAlbums, int Removed, int ClearedFromChecklist, int KeptUnsent)
 {
     /// <summary>How many albums the pull brought in.</summary>
     public int Added => NewAlbums.Count;
@@ -62,6 +68,13 @@ public sealed record PlaylistSyncResult(
 ///   2 = potential recommended replacements.
 /// Persisted as JSON in the app's writable data folder. This is the local record of what the
 /// user has picked; pushing those albums into Apple Music proper is layered on top of it.
+/// <para>
+/// The app's screens share one instance per playlist (<see cref="Shared"/>) and listen to
+/// <see cref="Changed"/>. They used to open a copy each and keep it for the app's lifetime, so a
+/// pull on the Playlists page left the Shortlist page holding the old list: its ＋ P2 thought the
+/// albums were still queued and refused to add them, and the next add it did make wrote that stale
+/// copy back over the pull.
+/// </para>
 /// </summary>
 public sealed class PlaylistStore
 {
@@ -83,6 +96,24 @@ public sealed class PlaylistStore
     }
 
     public IReadOnlyList<PlaylistEntry> Entries => _entries;
+
+    /// <summary>Raised after every change is saved, so screens showing this list can catch up.</summary>
+    public event Action? Changed;
+
+    private static readonly Dictionary<int, PlaylistStore> SharedStores = new();
+
+    /// <summary>
+    /// The app-wide instance of playlist <paramref name="id"/>, loaded from disk the first time.
+    /// Screens use this rather than <see cref="Open"/> so they all see the same list.
+    /// </summary>
+    public static PlaylistStore Shared(int id)
+    {
+        lock (SharedStores)
+        {
+            if (!SharedStores.TryGetValue(id, out var store)) SharedStores[id] = store = Open(id);
+            return store;
+        }
+    }
 
     /// <summary>The working list, minus anything awaiting manual deletion from Apple Music.</summary>
     public IReadOnlyList<PlaylistEntry> Active => _entries.Where(e => !e.PendingRemoval).ToList();
@@ -120,14 +151,37 @@ public sealed class PlaylistStore
         return new PlaylistStore(id, path, entries);
     }
 
-    public bool Contains(string title, string artist) =>
-        _entries.Any(e => NumberedList.Matches(e.Title, title) && NumberedList.Matches(e.Artist, artist));
+    private int IndexOf(string title, string artist) =>
+        _entries.FindIndex(e => SameAlbum(e, new PlaylistEntry(title, artist, "")));
 
-    /// <summary>Adds the album unless it's already present. Returns true if it was newly added.</summary>
+    /// <summary>
+    /// Whether the album is on the working list (the "delete these" checklist doesn't count). Loose
+    /// about edition names, like the pull, so the shortlist's "Cassini" finds the playlist's
+    /// "Cassini (5th Anniversary Remaster)".
+    /// </summary>
+    public bool Contains(string title, string artist)
+    {
+        int i = IndexOf(title, artist);
+        return i >= 0 && !_entries[i].PendingRemoval;
+    }
+
+    /// <summary>
+    /// Adds the album unless it's already on the working list. One waiting on the "delete these"
+    /// checklist is put back instead — Apple Music still has it, so it's simply wanted again.
+    /// Returns true if the list changed.
+    /// </summary>
     public bool Add(string title, string artist, string year)
     {
-        if (Contains(title, artist)) return false;
-        _entries.Add(new PlaylistEntry(title, artist, year));
+        int i = IndexOf(title, artist);
+        if (i >= 0)
+        {
+            if (!_entries[i].PendingRemoval) return false;
+            _entries[i] = _entries[i] with { PendingRemoval = false };
+        }
+        else
+        {
+            _entries.Add(new PlaylistEntry(title, artist, year));
+        }
         Save();
         return true;
     }
@@ -202,12 +256,19 @@ public sealed class PlaylistStore
         AppleMusicCatalog.SameRelease(a.Title, b.Title) && NumberedList.Matches(a.Artist, b.Artist);
 
     /// <summary>
-    /// Pulls the working list down from Apple Music, making that playlist the source of truth:
-    /// afterwards the list holds exactly what Apple Music holds, in its order. Albums queued here
-    /// but never pushed are dropped — that's what a pull-down means.
+    /// Pulls the working list down from Apple Music, making that playlist the source of truth for
+    /// everything that has been there: afterwards the list holds what Apple Music holds, in its
+    /// order, and an album that was sent and has since gone was deleted in the Music app, so it goes
+    /// here too.
     ///
     /// <para>
-    /// Two things deliberately survive the wipe. Albums awaiting manual deletion stay on the
+    /// Albums queued here but <em>not sent yet</em> are kept, after the Apple Music ones. Their
+    /// absence from the playlist says nothing — they were never in it. (Until 2026-11-12 a pull
+    /// dropped them too, so queuing a batch from the shortlist and then pulling lost the batch.)
+    /// </para>
+    ///
+    /// <para>
+    /// Two more things deliberately survive. Albums awaiting manual deletion stay on the
     /// checklist rather than reappearing as active — Apple Music still has them, which is the whole
     /// reason they're on it, so repopulating from Apple Music would otherwise undo the user's
     /// removal every time they synced. And where an album is already known here, its
@@ -258,8 +319,13 @@ public sealed class PlaylistStore
             }
         }
 
-        // Whatever was on the working list and isn't in Apple Music has just been dropped.
-        int removed = before.Count(e => !e.PendingRemoval && !StillInAppleMusic(e));
+        // Queued here and not sent yet: kept, unless Apple Music turned out to have it already
+        // (queued by hand there too), in which case it was folded in above.
+        var unsent = before.Where(e => !e.PendingRemoval && !e.InAppleMusic && !StillInAppleMusic(e)).ToList();
+        rebuilt.AddRange(unsent);
+
+        // Sent once, gone now: deleted in the Music app, so dropped here too.
+        int removed = before.Count(e => !e.PendingRemoval && e.InAppleMusic && !StillInAppleMusic(e));
 
         rebuilt.AddRange(stillPending);
 
@@ -267,7 +333,7 @@ public sealed class PlaylistStore
         _entries.AddRange(rebuilt);
         Save();
 
-        return new PlaylistSyncResult(arrived, removed, cleared);
+        return new PlaylistSyncResult(arrived, removed, cleared, unsent.Count);
     }
 
     private void Save()
@@ -275,5 +341,6 @@ public sealed class PlaylistStore
         var temp = _path + ".tmp";
         File.WriteAllText(temp, JsonSerializer.Serialize(_entries, Options));
         File.Move(temp, _path, overwrite: true);
+        Changed?.Invoke();
     }
 }

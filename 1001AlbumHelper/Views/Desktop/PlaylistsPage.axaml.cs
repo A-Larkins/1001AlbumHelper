@@ -24,8 +24,8 @@ public sealed record PushFailure(string Text, string? OpenUrl)
 /// app playlist it maps to by name is an add-only listening queue.
 ///
 /// <para>
-/// "Get from Apple Music" replaces the working list with whatever the Music app playlist currently
-/// holds; "Send new to Apple Music" sends the albums not yet there the other way, naming any album that
+/// "Get from Apple Music" brings the working list in line with whatever the Music app playlist
+/// currently holds, keeping albums queued here that haven't been sent yet; "Send new to Apple Music" sends the albums not yet there the other way, naming any album that
 /// couldn't be added and why. Albums already in the playlist aren't sent again, which used to
 /// leave a second copy of each one in it. The two are deliberately not symmetrical — pulling is a full sync because Apple Music is
 /// where the listening happens, while pushing can only add (see PROJECT.md §5). Both need
@@ -95,10 +95,10 @@ public partial class PlaylistsPage : UserControl, IPage
         Refresh();
     }
 
-    /// <summary>Re-reads the working list from disk, so albums queued elsewhere in the app show up.</summary>
+    /// <summary>Re-shows the working list, so albums queued elsewhere in the app show up.</summary>
     private void Refresh()
     {
-        _store = PlaylistStore.Open(_current);
+        _store = PlaylistStore.Shared(_current);
 
         var active = _store.Active;
         RowsList.ItemsSource = active;
@@ -257,7 +257,8 @@ public partial class PlaylistsPage : UserControl, IPage
 
     /// <summary>
     /// Pulls the working list down from the Music app, which becomes the source of truth — the
-    /// list ends up holding exactly what that playlist holds. See <see cref="PlaylistStore.SyncFromAppleMusic"/>.
+    /// list ends up holding what that playlist holds, plus anything queued here and not sent yet.
+    /// See <see cref="PlaylistStore.SyncFromAppleMusic"/>.
     /// <para>
     /// On Playlist 2 the pull does one thing more: albums it finds there for the first time were
     /// queued in the Music app by hand, which is exactly what a potential replacement is, so they
@@ -276,7 +277,8 @@ public partial class PlaylistsPage : UserControl, IPage
             var albums = await AppleMusic.Writer!.ReadAlbumsAsync(AppleMusicName);
             var sync = _store.SyncFromAppleMusic(albums);
             string note = albums.Count == 0
-                ? $"“{AppleMusicName}” is empty, or the Music app has no playlist by that name — the working list is now empty too."
+                ? $"“{AppleMusicName}” is empty, or the Music app has no playlist by that name."
+                  + (sync.KeptUnsent > 0 ? $" Kept {sync.KeptUnsent} not sent yet." : "")
                 : Summarize(sync, albums.Count);
 
             // Music reports no years, so anything new arrives blank — fill those before moving on.
@@ -412,8 +414,9 @@ public partial class PlaylistsPage : UserControl, IPage
     {
         var parts = new List<string>();
         if (sync.Added > 0) parts.Add($"{sync.Added} new");
-        if (sync.Removed > 0) parts.Add($"{sync.Removed} dropped");
+        if (sync.Removed > 0) parts.Add($"{sync.Removed} gone from the Music app, dropped");
         if (sync.ClearedFromChecklist > 0) parts.Add($"{sync.ClearedFromChecklist} ticked off the checklist");
+        if (sync.KeptUnsent > 0) parts.Add($"{sync.KeptUnsent} not sent yet, kept");
 
         string what = parts.Count > 0 ? string.Join(", ", parts) : "no changes";
         return $"Pulled {inAppleMusic} album{(inAppleMusic == 1 ? "" : "s")} — {what}.";

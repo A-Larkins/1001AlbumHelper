@@ -14,8 +14,8 @@ public partial class BrowsePage : UserControl, IPage
     private enum Which { Master, MustHear, Replacements }
 
     private readonly Dictionary<Which, List<ViewRow>> _cache = new();
-    private readonly PlaylistStore _playlist1 = PlaylistStore.Open(1);
-    private readonly PlaylistStore _playlist2 = PlaylistStore.Open(2);
+    private readonly PlaylistStore _playlist1 = PlaylistStore.Shared(1);
+    private readonly PlaylistStore _playlist2 = PlaylistStore.Shared(2);
     private Which _current = Which.Master;
 
     /// <summary>When the lists on show are the saved copy (the sheet couldn't be reached), when that copy is from.</summary>
@@ -32,6 +32,21 @@ public partial class BrowsePage : UserControl, IPage
     {
         InitializeComponent();
         SearchBox.TextChanged += (_, _) => ApplyFilter();
+
+        // A pull or a remove on the Playlists page changes what's queued; the ＋ buttons follow.
+        _playlist1.Changed += () => Dispatcher.UIThread.Post(MarkQueuedRows);
+        _playlist2.Changed += () => Dispatcher.UIThread.Post(MarkQueuedRows);
+    }
+
+    /// <summary>
+    /// Sets each row of the list on show to whether its album is on its playlist, so ＋ reads ✓
+    /// for what's queued and is offered again for anything that has since left the playlist.
+    /// </summary>
+    private void MarkQueuedRows()
+    {
+        if (!_cache.TryGetValue(_current, out var rows)) return;
+        foreach (var row in rows)
+            row.InPlaylist = (row.Playlist == 2 ? _playlist2 : _playlist1).Contains(row.Title, row.Artist);
     }
 
     private bool _loaded;
@@ -113,6 +128,7 @@ public partial class BrowsePage : UserControl, IPage
         // rather than leaving the previous list on screen under the new tab's heading.
         if (!_cache.ContainsKey(which)) { await LoadAsync(force: true); return; }
 
+        MarkQueuedRows();
         ApplyFilter();
     }
 
@@ -259,6 +275,8 @@ public partial class BrowsePage : UserControl, IPage
     {
         if (sender is not Button { DataContext: ViewRow row }) return;
         var playlist = row.Playlist == 2 ? _playlist2 : _playlist1;
-        row.MarkQueued(playlist.Add(row.Title, row.Artist, row.Year));
+        playlist.Add(row.Title, row.Artist, row.Year);
+        row.InPlaylist = true; // added now, or it was already there
+
     }
 }

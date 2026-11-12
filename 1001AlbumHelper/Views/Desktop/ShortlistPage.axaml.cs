@@ -43,7 +43,7 @@ public partial class ShortlistPage : UserControl, IPage
 
     /// <summary>The shortlist backed by Google Sheets when a service account is configured (else local-only).</summary>
     private readonly CandidateRepository _repo = CandidateRepository.Create();
-    private readonly PlaylistStore _playlist2 = PlaylistStore.Open(2);
+    private readonly PlaylistStore _playlist2 = PlaylistStore.Shared(2);
 
     /// <summary>Stops the background year lookup — kept for the page's lifetime, which is the app's.</summary>
     private readonly CancellationTokenSource _closing = new();
@@ -78,13 +78,22 @@ public partial class ShortlistPage : UserControl, IPage
         RowsList.ItemsSource = _shown;
         SearchBox.TextChanged += (_, _) => ApplyFilter();
         UpdateSortIndicators();
+
+        // A pull or a remove on the Playlists page changes what's on Playlist 2; ＋ P2 follows.
+        _playlist2.Changed += () => Dispatcher.UIThread.Post(MarkQueuedRows);
     }
 
     private bool _loaded;
 
     public async void OnShown()
     {
-        if (_loaded) return;
+        if (_loaded)
+        {
+            // Back from elsewhere: a Playlist 2 pull may have added candidates, and Remove + drop
+            // may have ruled on one, both straight into the saved shortlist.
+            if (!_busy && FoldInSavedChanges()) await PrefetchDetailsAsync();
+            return;
+        }
         _loaded = true;
 
         // Rows come from the local file, so the page is populated and interactive straight away.
@@ -141,6 +150,54 @@ public partial class ShortlistPage : UserControl, IPage
         if (!_holdPersist && e.PropertyName is nameof(CandidateAlbum.Year) or nameof(CandidateAlbum.Genre)) Persist();
     }
 
+    /// <summary>
+    /// Brings in what other pages have saved to the shortlist since this one loaded it: new
+    /// candidates are added, and a decision or a year made elsewhere is taken. The albums already
+    /// on screen are updated in place rather than replaced, so a prefetch working its way down the
+    /// list keeps writing to the rows that are showing. Returns true if anything changed.
+    /// </summary>
+    private bool FoldInSavedChanges()
+    {
+        List<CandidateAlbum> saved;
+        try { saved = ReplacementCandidates.Load(); }
+        catch { return false; } // the next visit, or Reload, will say what's wrong with the file
+
+        bool changed = false;
+        _holdPersist = true; // these came from the file; writing them straight back is pointless
+        try
+        {
+            foreach (var album in saved)
+            {
+                var mine = _all.FirstOrDefault(a =>
+                    NumberedList.Matches(a.Title, album.Title) && NumberedList.Matches(a.Artist, album.Artist));
+                if (mine is null)
+                {
+                    album.Note = "";
+                    Watch(album);
+                    _all.Add(album);
+                    changed = true;
+                    continue;
+                }
+                if (mine.Status != album.Status) { mine.Status = album.Status; changed = true; }
+                if (mine.Year.Trim().Length == 0 && album.Year.Trim().Length > 0) { mine.Year = album.Year; changed = true; }
+                if (mine.Genre.Trim().Length == 0 && album.Genre.Trim().Length > 0) { mine.Genre = album.Genre; changed = true; }
+            }
+        }
+        finally
+        {
+            _holdPersist = false;
+        }
+
+        if (changed) ApplyFilter();
+        return changed;
+    }
+
+    /// <summary>Sets each row's ＋ P2 to whether its album is on Playlist 2 right now.</summary>
+    private void MarkQueuedRows()
+    {
+        foreach (var album in _shown) album.InPlaylist2 = _playlist2.Contains(album.Title, album.Artist);
+    }
+
     // ---------- Filtering ----------
     private void ApplyFilter()
     {
@@ -172,6 +229,7 @@ public partial class ShortlistPage : UserControl, IPage
 
         _shown.Clear();
         foreach (var album in shown) _shown.Add(album);
+        MarkQueuedRows();
 
         int decided = _all.Count - pending.Count;
         CountText.Text = shown.Count == pending.Count
@@ -362,10 +420,9 @@ public partial class ShortlistPage : UserControl, IPage
 
     private void OnAddToPlaylist2(object? sender, RoutedEventArgs e)
     {
-        if (sender is not Button button || button.DataContext is not CandidateAlbum album) return;
-        bool added = _playlist2.Add(album.Title, album.Artist, album.Year);
-        button.Content = added ? "✓ P2" : "· P2";
-        button.IsEnabled = false;
+        if (sender is not Button { DataContext: CandidateAlbum album }) return;
+        _playlist2.Add(album.Title, album.Artist, album.Year);
+        album.InPlaylist2 = true; // added now, or it was already there
     }
 
     private async Task KeepAsync(CandidateAlbum album)
