@@ -135,6 +135,12 @@ public class DiscogsApiClient
     /// that is reliably the original pressing — which is the year this app wants. Picking the
     /// *earliest* year instead would look equally sensible and be subtly wrong: it hands you
     /// Blue Train as 1957 (a recording-date master) rather than its 1958 release.
+    /// <para>
+    /// Releases are asked for alongside the masters, and those that belong to no master are added
+    /// in. Discogs only makes a master once someone groups an album's pressings, so a new or obscure
+    /// album often has none yet: Polyphia's 2026 <i>Be Not Afraid</i> exists only as one digital
+    /// release, and a masters-only search could never offer it, artist named or not.
+    /// </para>
     /// </remarks>
     public async Task<List<AlbumSuggestion>> SearchAlbumsAsync(
         string query, string? artist = null, CancellationToken ct = default)
@@ -144,12 +150,88 @@ public class DiscogsApiClient
         if (query.Length == 0 && string.IsNullOrEmpty(artist)) return new List<AlbumSuggestion>();
 
         // format=album keeps singles and EPs out of a list that is only ever about albums.
-        var url = $"https://api.discogs.com/database/search?type=master&format=album&per_page=50&token={_token}";
-        if (query.Length > 0) url += $"&release_title={Uri.EscapeDataString(query)}";
-        if (!string.IsNullOrEmpty(artist)) url += $"&artist={Uri.EscapeDataString(artist)}";
+        var filters = "&format=album&per_page=50";
+        if (query.Length > 0) filters += $"&release_title={Uri.EscapeDataString(query)}";
+        if (!string.IsNullOrEmpty(artist)) filters += $"&artist={Uri.EscapeDataString(artist)}";
 
-        var results = await GetSearchResultsAsync(url, ct);
-        return RankAlbumResults(results);
+        async Task<List<AlbumSuggestion>> Search(string filters, string? artistHint)
+        {
+            string Url(string type) => $"https://api.discogs.com/database/search?type={type}{filters}&token={_token}";
+            var masters = GetSearchResultsAsync(Url("master"), ct);
+            var releases = GetSearchResultsAsync(Url("release"), ct);
+            return RankSuggestions(await masters, await releases, query, artistHint);
+        }
+
+        var found = await Search(filters, null);
+
+        // Discogs matches an artist exactly — "Polypphia" finds nothing at all, not Polyphia — so
+        // a misspelled artist would leave an empty dropdown. Search the title alone instead, with
+        // artists spelled like the one typed first.
+        if (found.Count == 0 && query.Length > 0 && !string.IsNullOrEmpty(artist))
+            found = await Search($"&format=album&per_page=50&release_title={Uri.EscapeDataString(query)}", artist);
+
+        return found;
+    }
+
+    /// <summary>
+    /// The dropdown's list: <see cref="RankAlbumResults"/>'s rules over the masters plus any release
+    /// that has no master (see <see cref="SearchAlbumsAsync"/>), with albums named exactly what was
+    /// typed ahead of the rest. Ownership alone would bury the one you mean whenever its title is
+    /// common — a new record with two owners loses to every popular album that merely contains the
+    /// words.
+    /// </summary>
+    /// <param name="artistHint">
+    /// An artist the search wasn't narrowed to (it found nothing, likely a typo): albums by an
+    /// artist spelled within a letter or two of it come straight after the exact titles.
+    /// </param>
+    public static List<AlbumSuggestion> RankSuggestions(
+        IEnumerable<JsonElement> masters, IEnumerable<JsonElement> releases, string query,
+        string? artistHint = null, int take = 25)
+    {
+        static bool HasMaster(JsonElement r) =>
+            r.TryGetProperty("master_id", out var m) && m.TryGetInt64(out long id) && id != 0;
+
+        string typed = NumberedList.Normalize(query);
+        bool Exact(AlbumSuggestion s) => typed.Length > 0 && NumberedList.Normalize(s.Title) == typed;
+
+        return masters.Concat(releases.Where(r => !HasMaster(r)))
+            .Select(ToSuggestion)
+            .Where(s => s is not null)
+            .Select(s => s!)
+            .GroupBy(s => (Norm(s.Artist), Norm(s.Title)))
+            .Select(g => g.OrderByDescending(s => s.Have).First())
+            .OrderByDescending(Exact)
+            .ThenByDescending(s => artistHint is not null && SpelledAlike(s.Artist, artistHint))
+            .ThenByDescending(s => s.Have)
+            .Take(take)
+            .ToList();
+    }
+
+    /// <summary>
+    /// Whether two artist names are the same apart from a slip of the keyboard: within one edit
+    /// for a short name, two for a longer one, once case, punctuation and a leading "the" are set
+    /// aside. "Polypphia" is Polyphia; "Polyphony" is not.
+    /// </summary>
+    public static bool SpelledAlike(string a, string b)
+    {
+        string x = NumberedList.Normalize(CleanArtist(a)), y = NumberedList.Normalize(CleanArtist(b));
+        if (x.Length == 0 || y.Length == 0) return false;
+        int allowed = Math.Min(x.Length, y.Length) >= 8 ? 2 : 1;
+        if (Math.Abs(x.Length - y.Length) > allowed) return false;
+
+        // Edit distance, with two swapped neighbors counted as one slip ("Beatels"), not two.
+        var d = new int[x.Length + 1, y.Length + 1];
+        for (int i = 0; i <= x.Length; i++) d[i, 0] = i;
+        for (int j = 0; j <= y.Length; j++) d[0, j] = j;
+        for (int i = 1; i <= x.Length; i++)
+        for (int j = 1; j <= y.Length; j++)
+        {
+            int cost = x[i - 1] == y[j - 1] ? 0 : 1;
+            d[i, j] = Math.Min(Math.Min(d[i - 1, j] + 1, d[i, j - 1] + 1), d[i - 1, j - 1] + cost);
+            if (i > 1 && j > 1 && x[i - 1] == y[j - 2] && x[i - 2] == y[j - 1])
+                d[i, j] = Math.Min(d[i, j], d[i - 2, j - 2] + 1);
+        }
+        return d[x.Length, y.Length] <= allowed;
     }
 
     /// <summary>

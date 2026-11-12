@@ -58,7 +58,7 @@ public partial class PlaylistView : UserControl
     public void Refresh()
     {
         if (_playlistId == 0) return;
-        _store = PlaylistStore.Open(_playlistId);
+        _store = PlaylistStore.Shared(_playlistId);
         var active = _store.Active;
         Rows.ItemsSource = active;
         EmptyText.IsVisible = active.Count == 0;

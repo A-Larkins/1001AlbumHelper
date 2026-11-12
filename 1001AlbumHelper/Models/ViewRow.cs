@@ -10,7 +10,7 @@ namespace _1001AlbumHelper;
 /// Rating is blank for the derived lists. Top-level (not nested) so the XAML compiler can bind
 /// to it via x:DataType.
 /// <para>
-/// Change-notifying rather than a record because the row remembers whether it's been sent to a
+/// Change-notifying rather than a record because the row shows whether its album is on its working
 /// playlist. That state has to live on the row and not on the button: the lists virtualize, so a
 /// button whose label was set directly would carry that label onto whichever row its container was
 /// later recycled for.
@@ -18,8 +18,7 @@ namespace _1001AlbumHelper;
 /// </summary>
 public sealed class ViewRow : INotifyPropertyChanged
 {
-    /// <summary>Null until the ＋ button is pressed; then true if it was added, false if it was already there.</summary>
-    private bool? _queued;
+    private bool _inPlaylist;
     private string _rating;
 
     public ViewRow(string number, string rating, string title, string artist, string year,
@@ -76,20 +75,30 @@ public sealed class ViewRow : INotifyPropertyChanged
     /// <summary>Everything searchable, flattened once so filtering doesn't redo the work.</summary>
     public string Haystack { get; }
 
-    /// <summary>The ＋ button's label: "＋ P2" until pressed, then "✓ P2" added or "· P2" already there.</summary>
-    public string PlaylistLabel => $"{(_queued is null ? "＋" : _queued.Value ? "✓" : "·")} P{Playlist}";
+    /// <summary>The ＋ button's label: "＋ P2", or "✓ P2" while the album is on Playlist 2.</summary>
+    public string PlaylistLabel => $"{(_inPlaylist ? "✓" : "＋")} P{Playlist}";
 
-    public string PlaylistTip => $"Add to Playlist {Playlist}.";
+    public string PlaylistTip => _inPlaylist ? $"On Playlist {Playlist}." : $"Add to Playlist {Playlist}.";
 
-    /// <summary>False once the row has been sent, so it can't be queued twice.</summary>
-    public bool CanQueue => _queued is null;
+    /// <summary>False while the album is on the playlist, so it can't be queued twice.</summary>
+    public bool CanQueue => !_inPlaylist;
 
-    /// <summary>Records what pressing ＋ did, so the button can show it and stop offering.</summary>
-    public void MarkQueued(bool added)
+    /// <summary>
+    /// Whether the album is on its working playlist right now. Set from the playlist itself — on
+    /// load, after ＋, and whenever the playlist changes elsewhere (a pull, a remove) — so the button
+    /// offers ＋ again once the album has gone, rather than remembering one press forever.
+    /// </summary>
+    public bool InPlaylist
     {
-        _queued = added;
-        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(PlaylistLabel)));
-        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(CanQueue)));
+        get => _inPlaylist;
+        set
+        {
+            if (_inPlaylist == value) return;
+            _inPlaylist = value;
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(PlaylistLabel)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(PlaylistTip)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(CanQueue)));
+        }
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;

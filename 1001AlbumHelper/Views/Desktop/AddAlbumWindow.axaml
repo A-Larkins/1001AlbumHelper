@@ -117,7 +117,7 @@
         <!-- IsTextCompletionEnabled="False": inline completion rewrites what you're typing
              using whichever result came back first, which fights every keystroke. -->
         <AutoCompleteBox x:Name="TitleBox" Watermark="e.g. Blue Train"
-                         FilterMode="None" MinimumPrefixLength="2"
+                         FilterMode="None" MinimumPrefixLength="2" MaxDropDownHeight="360"
                          IsTextCompletionEnabled="False"
                          MinimumPopulateDelay="0:0:0.35">
           <AutoCompleteBox.ItemTemplate>

@@ -27,8 +27,8 @@ public partial class AlbumListView : UserControl
     private readonly Dictionary<string, List<ViewRow>> _cache = new();
     private string _active = Tab1001;
     private List<ViewRow> _all = new();
-    private readonly PlaylistStore _playlist1 = PlaylistStore.Open(1);
-    private readonly PlaylistStore _playlist2 = PlaylistStore.Open(2);
+    private readonly PlaylistStore _playlist1 = PlaylistStore.Shared(1);
+    private readonly PlaylistStore _playlist2 = PlaylistStore.Shared(2);
     private ViewRowSortColumn? _sortColumn;
     private bool _sortDescending;
 
@@ -330,6 +330,7 @@ public partial class AlbumListView : UserControl
     {
         if (sender is not Button { DataContext: ViewRow row }) return;
         var playlist = row.Playlist == 2 ? _playlist2 : _playlist1;
-        row.MarkQueued(playlist.Add(row.Title, row.Artist, row.Year)); // ✓ = just added, · = was already on it
+        playlist.Add(row.Title, row.Artist, row.Year);
+        row.InPlaylist = true; // added now, or it was already there
     }
 }

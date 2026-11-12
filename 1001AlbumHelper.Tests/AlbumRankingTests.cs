@@ -208,4 +208,84 @@ public class AlbumRankingTests
     {
         Assert.Null(DiscogsApiClient.PreferOriginalRelease(Array.Empty<AlbumSuggestion>()));
     }
+
+    /// <summary>One Discogs-shaped <em>release</em> result: <paramref name="masterId"/> 0 means no master.</summary>
+    private static JsonElement Release(string title, string year, int have, long masterId) =>
+        JsonSerializer.SerializeToElement(new
+        {
+            title,
+            year,
+            master_id = masterId,
+            format = new[] { "File", "FLAC", "Album" },
+            community = new { have, want = 0 },
+        });
+
+    [Fact]
+    public void A_release_with_no_master_is_offered()
+    {
+        // Polyphia's Be Not Afraid (2026) is a single digital release on Discogs, with no master —
+        // a masters-only dropdown could never show it.
+        var masters = new[] { Result("Kristin Rule - Be Not Afraid", "2006", have: 1) };
+        var releases = new[] { Release("Polyphia - Be Not Afraid", "2026", have: 2, masterId: 0) };
+
+        var ranked = DiscogsApiClient.RankSuggestions(masters, releases, "Be Not Afraid");
+
+        Assert.Contains(ranked, s => s.Artist == "Polyphia" && s.Year == "2026");
+    }
+
+    [Fact]
+    public void A_release_that_belongs_to_a_master_is_left_to_the_master()
+    {
+        // Its master already speaks for it, with the original year — the release would be a
+        // reissue's year under the same name.
+        var masters = new[] { Result("Kloster - Do Not Be Afraid", "2008", have: 96) };
+        var releases = new[] { Release("Kloster - Do Not Be Afraid", "2009", have: 79, masterId: 387801) };
+
+        var only = Assert.Single(DiscogsApiClient.RankSuggestions(masters, releases, "Do Not Be Afraid"));
+        Assert.Equal("2008", only.Year);
+    }
+
+    [Fact]
+    public void Albums_named_exactly_what_was_typed_come_first()
+    {
+        var masters = new[]
+        {
+            Result("Yo La Tengo - I Am Not Afraid Of You And I Will Beat Your Ass", "2006", have: 9067),
+            Result("Caroline Rose - I Will Not Be Afraid", "2014", have: 260),
+        };
+        var releases = new[] { Release("Polyphia - Be Not Afraid", "2026", have: 2, masterId: 0) };
+
+        var ranked = DiscogsApiClient.RankSuggestions(masters, releases, "be not afraid");
+
+        Assert.Equal("Polyphia", ranked[0].Artist);
+        Assert.Equal("I Am Not Afraid Of You And I Will Beat Your Ass", ranked[1].Title); // then most-owned
+    }
+
+    [Theory]
+    [InlineData("Polypphia", "Polyphia", true)]
+    [InlineData("polyphia", "Polyphia", true)]
+    [InlineData("Radiohed", "Radiohead", true)]
+    [InlineData("The Beatels", "Beatles", true)]
+    [InlineData("Polyphony", "Polyphia", false)]
+    [InlineData("Kristin Rule", "Polyphia", false)]
+    public void Spelled_alike_forgives_a_typo_but_not_a_different_name(string typed, string actual, bool alike)
+    {
+        Assert.Equal(alike, DiscogsApiClient.SpelledAlike(typed, actual));
+    }
+
+    [Fact]
+    public void After_a_misspelled_artist_their_album_comes_first()
+    {
+        // The artist-narrowed search found nothing for "Polypphia", so the title is searched alone
+        // and the typed artist only steers the order.
+        var releases = new[]
+        {
+            Release("Kitty Cleveland - Be Not Afraid", "2006", have: 4, masterId: 0),
+            Release("Polyphia - Be Not Afraid", "2026", have: 2, masterId: 0),
+        };
+
+        var ranked = DiscogsApiClient.RankSuggestions(Array.Empty<JsonElement>(), releases, "Be Not Afraid", "Polypphia");
+
+        Assert.Equal("Polyphia", ranked[0].Artist);
+    }
 }
