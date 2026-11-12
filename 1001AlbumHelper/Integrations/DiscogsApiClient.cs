@@ -135,6 +135,12 @@ public class DiscogsApiClient
     /// that is reliably the original pressing — which is the year this app wants. Picking the
     /// *earliest* year instead would look equally sensible and be subtly wrong: it hands you
     /// Blue Train as 1957 (a recording-date master) rather than its 1958 release.
+    /// <para>
+    /// Releases are asked for alongside the masters, and those that belong to no master are added
+    /// in. Discogs only makes a master once someone groups an album's pressings, so a new or obscure
+    /// album often has none yet: Polyphia's 2026 <i>Be Not Afraid</i> exists only as one digital
+    /// release, and a masters-only search could never offer it, artist named or not.
+    /// </para>
     /// </remarks>
     public async Task<List<AlbumSuggestion>> SearchAlbumsAsync(
         string query, string? artist = null, CancellationToken ct = default)
@@ -144,12 +150,42 @@ public class DiscogsApiClient
         if (query.Length == 0 && string.IsNullOrEmpty(artist)) return new List<AlbumSuggestion>();
 
         // format=album keeps singles and EPs out of a list that is only ever about albums.
-        var url = $"https://api.discogs.com/database/search?type=master&format=album&per_page=50&token={_token}";
-        if (query.Length > 0) url += $"&release_title={Uri.EscapeDataString(query)}";
-        if (!string.IsNullOrEmpty(artist)) url += $"&artist={Uri.EscapeDataString(artist)}";
+        var filters = "&format=album&per_page=50";
+        if (query.Length > 0) filters += $"&release_title={Uri.EscapeDataString(query)}";
+        if (!string.IsNullOrEmpty(artist)) filters += $"&artist={Uri.EscapeDataString(artist)}";
 
-        var results = await GetSearchResultsAsync(url, ct);
-        return RankAlbumResults(results);
+        string Url(string type) => $"https://api.discogs.com/database/search?type={type}{filters}&token={_token}";
+        var masters = GetSearchResultsAsync(Url("master"), ct);
+        var releases = GetSearchResultsAsync(Url("release"), ct);
+        return RankSuggestions(await masters, await releases, query);
+    }
+
+    /// <summary>
+    /// The dropdown's list: <see cref="RankAlbumResults"/>'s rules over the masters plus any release
+    /// that has no master (see <see cref="SearchAlbumsAsync"/>), with albums named exactly what was
+    /// typed ahead of the rest. Ownership alone would bury the one you mean whenever its title is
+    /// common — a new record with two owners loses to every popular album that merely contains the
+    /// words.
+    /// </summary>
+    public static List<AlbumSuggestion> RankSuggestions(
+        IEnumerable<JsonElement> masters, IEnumerable<JsonElement> releases, string query, int take = 25)
+    {
+        static bool HasMaster(JsonElement r) =>
+            r.TryGetProperty("master_id", out var m) && m.TryGetInt64(out long id) && id != 0;
+
+        string typed = NumberedList.Normalize(query);
+        bool Exact(AlbumSuggestion s) => typed.Length > 0 && NumberedList.Normalize(s.Title) == typed;
+
+        return masters.Concat(releases.Where(r => !HasMaster(r)))
+            .Select(ToSuggestion)
+            .Where(s => s is not null)
+            .Select(s => s!)
+            .GroupBy(s => (Norm(s.Artist), Norm(s.Title)))
+            .Select(g => g.OrderByDescending(s => s.Have).First())
+            .OrderByDescending(Exact)
+            .ThenByDescending(s => s.Have)
+            .Take(take)
+            .ToList();
     }
 
     /// <summary>
